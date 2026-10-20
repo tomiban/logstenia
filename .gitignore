@@ -1,0 +1,37 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+lerna-debug.log*
+
+# Dependencies / build output
+node_modules
+dist
+dist-ssr
+*.local
+
+# Source PDFs (raw data, not needed for the app build)
+*.pdf
+
+# Agent / tooling state
+.wrangler
+.codegraph
+.pi
+.dsh
+.hermes
+.opencode
+.gga
+.impeccable
+.atl
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
