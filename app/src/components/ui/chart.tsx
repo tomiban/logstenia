@@ -36,7 +36,7 @@ export function ChartTooltip({
 export interface ChartDatum {
   label?: string;
   amount?: number;
-  current?: boolean;
+  marker?: 'lime' | 'ink';
 }
 
 export interface AxisTickProps {
@@ -59,7 +59,11 @@ export function ValueTick({ x = 0, y = 0, index = 0, payload, data = [] }: AxisT
       <text textAnchor="middle" dy={26} className="label-status text-muted-foreground" fill="currentColor" fontSize={10}>
         {label}
       </text>
-      {item?.current ? <rect x={-4} y={32} width={8} height={8} fill="var(--voltage-lime)" /> : null}
+      {item?.marker === 'lime' ? (
+        <rect x={-4} y={32} width={8} height={8} fill="var(--voltage-lime)" />
+      ) : item?.marker === 'ink' ? (
+        <rect x={-4} y={32} width={8} height={8} className="fill-foreground" />
+      ) : null}
     </g>
   );
 }

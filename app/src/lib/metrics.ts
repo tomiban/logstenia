@@ -320,6 +320,76 @@ export interface GoalDerivation {
   kind: 'registro' | 'sesiones' | 'sin';
 }
 
+export interface AnchorLike {
+  ejercicio: string;
+  unidad: 'sec' | 'reps';
+  objetivo: number;
+}
+
+export interface AnchorProgress {
+  exercise: string;
+  unit: 'sec' | 'reps';
+  target: number;
+  current: number;
+  pct: number;
+  reached: boolean;
+  source: string | null;
+}
+
+/** Removes repeated anchors, keeping the hardest target for each exercise. */
+export function dedupeAnchors(anchors: AnchorLike[]): AnchorLike[] {
+  const byKey = new Map<string, AnchorLike>();
+  for (const anchor of anchors) {
+    const key = `${normalizeText(anchor.ejercicio)}|${anchor.unidad}`;
+    const existing = byKey.get(key);
+    if (!existing || anchor.objetivo > existing.objetivo) byKey.set(key, anchor);
+  }
+  return [...byKey.values()];
+}
+
+/**
+ * Progress against the training anchors. Every record belongs to the most
+ * specific anchor it matches, so one anchor never steals another one's records.
+ */
+export function anchorProgress(anchors: AnchorLike[], entries: MarkEntry[]): AnchorProgress[] {
+  const keys = anchors.map((a) => normalizeText(a.ejercicio));
+  const best = new Map<number, { value: number; source: string }>();
+
+  for (const entry of entries) {
+    const name = normalizeText(entry.exercise);
+    let target = -1;
+    let targetKey = '';
+    keys.forEach((key, index) => {
+      if (anchors[index].unidad !== entry.unit) return;
+      if (!name.startsWith(key)) return;
+      if (key.length > targetKey.length) {
+        target = index;
+        targetKey = key;
+      }
+    });
+    if (target < 0) continue;
+    const current = best.get(target);
+    if (!current || entry.value > current.value) {
+      best.set(target, { value: entry.value, source: entry.exercise });
+    }
+  }
+
+  return anchors.map((anchor, index) => {
+    const hit = best.get(index);
+    const current = hit?.value ?? 0;
+    const pct = anchor.objetivo > 0 ? Math.min(100, Math.round((current / anchor.objetivo) * 100)) : 0;
+    return {
+      exercise: anchor.ejercicio,
+      unit: anchor.unidad,
+      target: anchor.objetivo,
+      current,
+      pct,
+      reached: anchor.objetivo > 0 && current >= anchor.objetivo,
+      source: hit?.source ?? null,
+    };
+  });
+}
+
 /**
  * Derives a goal's current value from what was actually trained:
  * count goals ("Completar sesiones") from the sessions of their program,

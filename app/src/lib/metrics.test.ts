@@ -8,6 +8,8 @@ import {
   bestMarks,
   computeGoals,
   deriveGoal,
+  anchorProgress,
+  dedupeAnchors,
   planDistribution,
   compareSessions,
   exerciseSeries,
@@ -350,6 +352,57 @@ describe('exerciseSeries', () => {
   });
 });
 
+describe('anchorProgress', () => {
+  const anchors = dedupeAnchors([
+    { ejercicio: 'Dominadas pronas', unidad: 'reps', objetivo: 10 },
+    { ejercicio: 'Flexiones', unidad: 'reps', objetivo: 15 },
+    { ejercicio: 'Flexiones en pica', unidad: 'reps', objetivo: 8 },
+    { ejercicio: 'Tuck planche', unidad: 'sec', objetivo: 10 },
+  ]);
+
+  it('keeps the hardest target when an anchor is repeated', () => {
+    expect(anchors).toHaveLength(4);
+  });
+
+  it('gives a record to the most specific anchor', () => {
+    const entries = collectMarks(
+      [
+        ses('2026-10-01', { sets: [{ exercise: 'Flexiones en pica (pies en altura)', setIndex: 1, value: '8', unit: 'reps', bloqueOrden: 0, orden: 0 }] }),
+        ses('2026-10-02', { sets: [{ exercise: 'Flexiones en suelo', setIndex: 1, value: '12', unit: 'reps', bloqueOrden: 0, orden: 0 }] }),
+      ],
+      [],
+    );
+    const progress = anchorProgress(anchors, entries);
+    const pica = progress.find((p) => p.exercise === 'Flexiones en pica')!;
+    const flexiones = progress.find((p) => p.exercise === 'Flexiones')!;
+    expect(pica.current).toBe(8);
+    expect(flexiones.current).toBe(12);
+  });
+
+  it('computes the percentage and the reached state', () => {
+    const entries = collectMarks(
+      [ses('2026-10-01', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 }] })],
+      [],
+    );
+    const progress = anchorProgress(anchors, entries);
+    const planche = progress.find((p) => p.exercise === 'Tuck planche')!;
+    expect(planche).toMatchObject({ current: 12, target: 10, pct: 100, reached: true, source: 'Tuck planche' });
+  });
+
+  it('leaves an anchor without records at zero', () => {
+    const progress = anchorProgress(anchors, []);
+    expect(progress.find((p) => p.exercise === 'Tuck planche')).toMatchObject({ current: 0, pct: 0, source: null });
+  });
+
+  it('does not mix units', () => {
+    const entries = collectMarks(
+      [ses('2026-10-01', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'reps', bloqueOrden: 0, orden: 0 }] })],
+      [],
+    );
+    const progress = anchorProgress(anchors, entries);
+    expect(progress.find((p) => p.exercise === 'Tuck planche')!.current).toBe(0);
+  });
+});
 describe('unitForExercise', () => {
   it('reads the unit from the plan catalog', () => {
     expect(unitForExercise('Tuck planche')).toBe('sec');

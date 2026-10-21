@@ -2,13 +2,12 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { db } from '../db';
+import { SettingsMenu } from './SettingsMenu';
 
 const NAV = [
   { id: 'home', label: 'Hoy', path: '/', icon: 'home' },
   { id: 'planes', label: 'Planes', path: '/planes', icon: 'plans' },
   { id: 'metrics', label: 'Métricas', path: '/metrics', icon: 'metrics' },
-  { id: 'progress', label: 'Progreso', path: '/progress', icon: 'progress' },
-  { id: 'settings', label: 'Ajustes', path: '/settings', icon: 'settings' },
 ];
 
 function Icon({ name }: { name: string }) {
@@ -62,9 +61,8 @@ export default function Layout({ children }: { children: ReactNode }) {
               </NavLink>
             ))}
           </nav>
-          <span className="shrink-0 label-caps text-muted-foreground md:hidden">
-            {fecha}
-          </span>
+          <span className="shrink-0 label-caps text-muted-foreground md:hidden">{fecha}</span>
+          <SettingsMenu />
         </div>
       </header>
       <main id="main" className="mx-auto max-w-6xl space-y-4 px-4 py-6 sm:px-6">
