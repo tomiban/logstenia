@@ -3,6 +3,12 @@ import { getCategories } from '../lib/plans';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+const LEVEL_LABEL: Record<string, string> = {
+  beginner: 'principiante',
+  intermediate: 'intermedio',
+  advanced: 'avanzado',
+};
+
 export default function Skill() {
   const { id } = useParams();
   const cat = getCategories().find(c => c.id === id);
@@ -24,7 +30,7 @@ export default function Skill() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="font-semibold">{p.name}</h2>
-                  <p className="text-xs text-[var(--muted)] mt-0.5">{p.level}</p>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">{LEVEL_LABEL[p.level] ?? p.level}</p>
                 </div>
                 {p.optional && <Badge variant="secondary">Opcional</Badge>}
               </div>

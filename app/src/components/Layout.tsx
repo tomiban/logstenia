@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { db } from '../db';
+import { migrateMarksToIds } from '../lib/marks';
 import { SettingsMenu } from './SettingsMenu';
 
 const NAV = [
@@ -29,11 +30,12 @@ function Icon({ name }: { name: string }) {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const fecha = useMemo(() => new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' }), []);
+  const fecha = new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' });
   useEffect(() => {
     db.settings.get('theme').then(s => {
       if (s?.value === 'dark') document.documentElement.classList.add('dark');
     }).catch(() => {});
+    migrateMarksToIds().catch(() => {});
   }, []);
 
   return (

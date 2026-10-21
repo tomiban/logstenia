@@ -321,7 +321,9 @@ export interface GoalDerivation {
 }
 
 export interface AnchorLike {
-  ejercicio: string;
+  ejercicio: string; // display name
+  match?: string; // optional exercise-name prefix used to match marks (defaults to ejercicio)
+  ejercicioId?: string; // preferred: match marks by exercise id
   unidad: 'sec' | 'reps';
   objetivo: number;
 }
@@ -340,7 +342,7 @@ export interface AnchorProgress {
 export function dedupeAnchors(anchors: AnchorLike[]): AnchorLike[] {
   const byKey = new Map<string, AnchorLike>();
   for (const anchor of anchors) {
-    const key = `${normalizeText(anchor.ejercicio)}|${anchor.unidad}`;
+    const key = `${normalizeText(anchor.match ?? anchor.ejercicio)}|${anchor.unidad}`;
     const existing = byKey.get(key);
     if (!existing || anchor.objetivo > existing.objetivo) byKey.set(key, anchor);
   }
@@ -352,19 +354,25 @@ export function dedupeAnchors(anchors: AnchorLike[]): AnchorLike[] {
  * specific anchor it matches, so one anchor never steals another one's records.
  */
 export function anchorProgress(anchors: AnchorLike[], entries: MarkEntry[]): AnchorProgress[] {
-  const keys = anchors.map((a) => normalizeText(a.ejercicio));
+  const keys = anchors.map((a) => a.ejercicioId ?? normalizeText(a.match ?? a.ejercicio));
   const best = new Map<number, { value: number; source: string }>();
 
   for (const entry of entries) {
     const name = normalizeText(entry.exercise);
+    const entryId = (entry as any).exerciseId;
     let target = -1;
     let targetKey = '';
     keys.forEach((key, index) => {
       if (anchors[index].unidad !== entry.unit) return;
-      if (!name.startsWith(key)) return;
-      if (key.length > targetKey.length) {
+      const anchor = anchors[index];
+      if (anchor.ejercicioId && entryId) {
+        if (anchor.ejercicioId !== entryId) return;
+      } else {
+        if (!name.startsWith(key as string)) return;
+      }
+      if (String(key).length > targetKey.length) {
         target = index;
-        targetKey = key;
+        targetKey = String(key);
       }
     });
     if (target < 0) continue;

@@ -3,12 +3,13 @@ import json, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "app", "src", "data", "plans.json")
 
-def ex(name, timeSec=None, reps=None, cadence=None, notes=None):
+def ex(name, timeSec=None, reps=None, cadence=None, notes=None, tags=None):
     e = {"name": name}
     if timeSec is not None: e["timeSec"] = timeSec
     if reps is not None: e["reps"] = reps
     if cadence: e["cadence"] = cadence
     if notes: e["notes"] = notes
+    if tags: e["tags"] = tags
     return e
 
 def blk(type_, sets, restSets, restEx=None, exercises=None):
@@ -20,22 +21,6 @@ def model(mid, name, intensity, total, blocks):
     return {"id": mid, "name": name, "intensity": intensity, "totalTimeMin": total, "blocks": blocks}
 
 handstand_models = [
-
-  model("hs-m1", "Modelo M1 (Movilidad)", 1, 10, [
-    blk("single", 2, 0, exercises=[ex("Press de hombro + rotaciones (banda)", reps="10", notes="x brazo")]),
-    blk("single", 2, 0, exercises=[ex("Estiramiento de hombro en barra + elevaciones (banda)", 15, notes="x brazo")]),
-    blk("single", 3, 0, exercises=[ex("Predicador en barra (retro/anteversión)", 20, notes="cambiar cada 3s")]),
-    blk("single", 2, 0, exercises=[ex("Estiramiento dorsal + hombro en barra media", 10, notes="x brazo")]),
-    blk("single", 2, 0, exercises=[ex("Superset de muñecas (prono/supino/dorsal)", 10, notes="en cada posición")]),
-  ]),
-  model("hs-m2", "Modelo M2 (Movilidad)", 1, 10, [
-    blk("single", 2, 0, exercises=[ex("Nado en suelo (movilidad de hombros)", reps="20")]),
-    blk("single", 2, 0, exercises=[ex("Elevaciones de escápula (banda)", reps="15")]),
-    blk("single", 3, 0, exercises=[ex("Predicador en suelo para hombro", 20)]),
-    blk("single", 3, 0, exercises=[ex("Estiramiento de hombro en barra vertical", 15, notes="x brazo")]),
-    blk("single", 2, 0, exercises=[ex("Posición en pica (pies en altura)", 15, notes="10-15s, empuje")]),
-    blk("single", 2, 0, exercises=[ex("Superset de muñecas (prono/supino/dorsal)", 10, notes="en cada posición")]),
-  ]),
   model("hs-r1-n1", "Refuerzo R1 - Nivel 1", 2, 20, [
     blk("single", 4, 120, exercises=[ex("Flexiones en pica (buscando profundidad)", reps="4-8")]),
     blk("single", 3, 90, exercises=[ex("Fondos escapulares (buscando inclinación)", reps="6-10")]),
@@ -96,29 +81,42 @@ handstand_models = [
     blk("single", 4, 180, exercises=[ex("Desde rana subida a pino por libre", reps="3-5")]),
     blk("single", 4, 180, exercises=[ex("Desde rana subida a pino + bajada", reps="3-5")]),
   ]),
+  model("handstand-benchmark", "Desbloquear", 1, 5, [
+    blk("single", 1, 0, exercises=[ex("Pino por libre", 40, notes="Anota el resultado en Progreso semanal", tags=["isometricos"])]),
+  ]),
 ]
 
-handstand_program = {
-  "id": "handstand",
-  "categoryId": "handstand",
-  "name": "Handstand",
-  "level": "beginner",
-  "description": "Movilidad, refuerzo (3 niveles), balance y pino por fuerza.",
-  "objectives": ["Dominar el pino al 100%", "Ganar resistencia", "Ganar fuerza", "Ganar equilibrio"],
-  "goals": [],
-  "frequency": "varias×/sem",
-  "restBetweenSessions": "48h",
-  "rules": ["Las rutinas de refuerzo no se compaginan con otras rutinas el mismo día.", "Dominar cada ejercicio antes de pasar al siguiente."],
-  "models": handstand_models,
-}
+PRINCIPIANTE_IDS = {"hs-r1-n1", "hs-r2-n1", "hs-balance-n1"}
+INTERMEDIO_IDS = {"hs-r1-n2", "hs-r2-n2", "hs-balance-n2"}
+AVANZADO_IDS = {"hs-r1-n3", "hs-r2-n3", "hs-balance-n3", "hs-pino-fuerza", "handstand-benchmark"}
+
+def make_program(pid, name, level, models):
+    return {
+        "id": pid,
+        "categoryId": "handstand",
+        "name": name,
+        "level": level,
+        "description": "Programa de handstand.",
+        "objectives": ["Dominar el pino al 100%", "Ganar resistencia", "Ganar fuerza", "Ganar equilibrio"],
+        "goals": [],
+        "frequency": "varias×/sem",
+        "restBetweenSessions": "48h",
+        "rules": ["Las rutinas de refuerzo no se compaginan con otras rutinas el mismo día.", "Dominar cada ejercicio antes de pasar al siguiente."],
+        "models": models,
+    }
 
 with open(DATA, encoding="utf-8") as f:
     data = json.load(f)
 
 for c in data["categories"]:
     if c["id"] == "handstand":
-        c["programs"] = [handstand_program]
+        c["programs"] = [
+            make_program("handstand-principiante", "Handstand - Principiante", "beginner", [m for m in handstand_models if m["id"] in PRINCIPIANTE_IDS]),
+            make_program("handstand-intermedio", "Handstand - Intermedio", "intermediate", [m for m in handstand_models if m["id"] in INTERMEDIO_IDS]),
+            make_program("handstand-avanzado", "Handstand - Avanzado", "advanced", [m for m in handstand_models if m["id"] in AVANZADO_IDS]),
+        ]
 
 with open(DATA, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
-print("handstand merged:", len(handstand_models), "models")
+print("handstand merged: 3 programs")
+PY

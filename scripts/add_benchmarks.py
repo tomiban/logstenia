@@ -19,7 +19,7 @@ for c in data["categories"]:
             continue
         p["models"].append({
             "id": p["id"] + "-benchmark",
-            "name": "Toma de marcas",
+            "name": "Desbloquear",
             "intensity": 1,
             "totalTimeMin": 5,
             "blocks": [

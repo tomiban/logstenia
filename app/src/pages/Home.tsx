@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCategories } from '../lib/plans';
 import type { Category, Program } from '../types';
@@ -37,13 +37,18 @@ export default function Home() {
 
   useEffect(() => {
     (async () => {
-      setMesoInicioState(await getMesoInicio());
-      setWarmupState(await getWarmup());
-      setSessions(await db.sessions.toArray());
-      setProgress(await db.progress.toArray());
-      const sp = await db.settings.get('startedPlans');
-      setStartedPlanIds((sp?.value as string[]) || []);
-      setLoading(false);
+      try {
+        setMesoInicioState(await getMesoInicio());
+        setWarmupState(await getWarmup());
+        setSessions(await db.sessions.toArray());
+        setProgress(await db.progress.toArray());
+        const sp = await db.settings.get('startedPlans');
+        setStartedPlanIds((sp?.value as string[]) || []);
+      } catch (e) {
+        console.error('Home load failed', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -53,7 +58,7 @@ export default function Home() {
     }
   }, [mesoInicio]);
 
-  const ahora = useMemo(() => new Date(), []);
+  const ahora = new Date();
   const hoyIso = iso(ahora);
 
   const dIni = mesoInicio ? new Date(mesoInicio + 'T00:00:00') : null;
@@ -61,7 +66,7 @@ export default function Home() {
   const iniDescarga = dIni ? addDias(dIni, MESO.carga * 7) : null;
   const faltaDescarga = iniDescarga ? entreDias(ahora, iniDescarga) : null;
 
-  const fechasLog = useMemo(() => new Set(sessions.map((s) => s.date)), [sessions]);
+  const fechasLog = new Set(sessions.map((s) => s.date));
   const lunes = lunesDe(ahora);
   const semana7 = Array.from({ length: 7 }, (_, i) => {
     const d = addDias(lunes, i);
@@ -82,7 +87,7 @@ export default function Home() {
     })();
   }, [cats]);
 
-  const startedPrograms = useMemo(() => {
+  const startedPrograms = (() => {
     const startedIds = new Set(sessions.filter((s) => s.completed).map((s) => s.planId));
     const manualIds = new Set(startedPlanIds);
     const out: { prog: Program; cat: Category; sessions: number; completedModels: number; totalModels: number; best: { value: number; unit: string } | null }[] = [];
@@ -107,7 +112,7 @@ export default function Home() {
       }
     }
     return out;
-  }, [cats, sessions, progress, marks, startedPlanIds]);
+  })();
 
   const toggleWarmup = async () => {
     const v = !warmup;
@@ -120,7 +125,7 @@ export default function Home() {
     await setMesoInicio(v);
   };
 
-  const ultimas = useMemo(() => {
+  const ultimas = (() => {
     const m = new Map<string, { k: string; fecha: string; sesion_id: string; series: number }>();
     for (const s of sessions) {
       const k = s.date + '|' + s.modelId;
@@ -129,13 +134,13 @@ export default function Home() {
       m.set(k, x);
     }
     return [...m.values()].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, 5);
-  }, [sessions]);
+  })();
 
-  const info = useMemo(() => {
+  const info = (() => {
     const m = new Map<string, { prog: Program; modelId: string }>();
     for (const c of cats) for (const p of c.programs) for (const md of p.models) m.set(md.id, { prog: p, modelId: md.id });
     return m;
-  }, [cats]);
+  })();
 
   if (loading) {
     return (

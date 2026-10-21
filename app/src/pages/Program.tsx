@@ -65,14 +65,14 @@ export default function Program() {
       {!started && (
         <div className="border border-[var(--ink)] bg-[var(--voltage-lime)] p-3 flex items-center justify-between gap-3">
           <span className="label-caps text-[var(--ink)]">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
-          <Button variant="default" size="sm" onClick={async () => {
+          <Button variant="default" size="sm" disabled={!unlocked} onClick={async () => {
             const r = await db.settings.get('startedPlans');
             const arr = (r?.value as string[]) || [];
             if (!arr.includes(p.id)) {
               await db.settings.put({ key: 'startedPlans', value: [...arr, p.id] });
             }
             setStarted(true);
-          }}>Empezar plan</Button>
+          }}>{unlocked ? 'Empezar plan' : 'Bloqueado'}</Button>
         </div>
       )}
 
