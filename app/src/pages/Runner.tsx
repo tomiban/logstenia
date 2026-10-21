@@ -428,6 +428,8 @@ export default function Runner() {
       });
       // clear draft
       await db.settings.delete(`borrador:${model!.id}`);
+      // a resumed session records only its own elapsed time
+      inicioRef.current = Date.now();
     } catch {
       setErrorMsg('No se pudo guardar la sesión en este dispositivo.');
     }

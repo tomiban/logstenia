@@ -248,11 +248,12 @@ export default function Progress() {
                     </div>
                     <div className="mt-2 flex h-10 items-end gap-0.5 border-b border-border">
                       {s.points.map((p, i) => (
-                        <div
-                          key={`${p.date}-${p.value}-${i}`}
-                          className="flex-1 bg-foreground"
-                          style={{ height: `${Math.max(8, Math.round((p.value / s.best) * 100))}%` }}
-                        />
+                        <div key={`${p.date}-${p.value}-${i}`} className="flex h-full flex-1 items-end justify-center">
+                          <div
+                            className="w-full max-w-[72px] bg-foreground"
+                            style={{ height: `${Math.max(8, Math.round((p.value / s.best) * 100))}%` }}
+                          />
+                        </div>
                       ))}
                     </div>
                     <div className="label-caps mt-1 text-muted-foreground">
