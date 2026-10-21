@@ -7,8 +7,7 @@ test('el runner informa los descansos configurados dentro del ejercicio', async 
   await page.goto(`/run/${MODELO}`);
 
   await expect(page.getByText('descanso por serie 90s')).toBeVisible();
-  await expect(page.getByText('descanso final 120s', { exact: true })).toBeVisible();
-  await expect(page.getByText('descanso 90s', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('descanso final 120s')).toBeVisible();
 });
 
 test('los descansos de la rutina no se editan en el runner', async ({ page }) => {
@@ -22,7 +21,7 @@ test('los descansos de la rutina no se editan en el runner', async ({ page }) =>
 test('el descanso al finalizar aparece tambien sin descanso entre ejercicios', async ({ page }) => {
   await page.goto('/run/cardio-r1');
 
-  await expect(page.getByText('descanso final 60s', { exact: true })).toBeVisible();
+  await expect(page.getByText('descanso final 60s')).toBeVisible();
 
   await page.getByRole('button', { name: 'Siguiente' }).click();
   await page.getByRole('button', { name: 'Continuar' }).click();

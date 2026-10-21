@@ -124,7 +124,6 @@ function Paso({
         {lista.map((v, i) => {
           const anteriorRegistrada = i === 0 || yaRegistrada(i - 1);
           const habilitada = i === 0 || anteriorRegistrada;
-          const descanso = descansoDeSerie(i);
           const marca = marcas[`${step.blockIdx}#${step.exIdx}#${i + 1}`];
           return (
             <div key={i} className="flex flex-wrap items-center gap-3 py-2">
@@ -142,7 +141,6 @@ function Paso({
                   <Input type="number" className="h-9 w-24" value={v.value || ''} onChange={(e) => set(i, e.target.value)} placeholder="reps" />
                 </div>
               )}
-              {!habilitada && <span className="label-status text-[var(--muted)]">completá la serie anterior</span>}
               {habilitada && v.value && (
                 yaRegistrada(i) && !editando.has(i) ? (
                   <Button variant="ghost" size="sm" className="label-caps h-8" disabled={bloqueado}
@@ -154,9 +152,6 @@ function Paso({
                   </Button>
                 )
               )}
-              <span className="label-status text-[var(--muted)]">
-                {i < series - 1 ? `descanso ${descanso}s` : `descanso final ${descanso}s`}
-              </span>
               {marca === 'pr' && (
                 <Badge className="label-status border border-[var(--ink)] bg-[var(--voltage-lime)] text-[var(--ink)]">▲ nuevo PR</Badge>
               )}
