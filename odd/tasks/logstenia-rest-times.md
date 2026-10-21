@@ -65,3 +65,26 @@ no se editan en ningún punto de la app.
   `npm run test:e2e` (18 ok: 9 pruebas × mobile/desktop). La prueba e2e del runner cubre que los
   descansos se informan, que no hay sliders editables y que el descanso de serie y el final
   usan la duración configurada.
+- L10: Commits (rama `feat/logstenia`): `13e7d05` feat(app): respect the routine rests in the
+  runner and drop the redundant save · `ccbf3bc` docs(app): document the routine rests and the
+  runner flow. El commit previo `15aff14` deja el trabajo pendiente de sesiones anteriores
+  (CRUD de planes, marcas por id, videos de ejercicio) en un commit aparte para no mezclarlo.
+  Nota: el hook de pre-commit (GGA) no puede ejecutarse en este entorno (falta el Claude CLI) y
+  el assessment nativo quedó `unassessable`; la verificación es la de L9.
+- L11: En el runner, el descanso de serie arranca al confirmar una serie que no es la última y
+  el descanso final arranca al confirmar la última serie o al presionar "Siguiente"; el overlay
+  aplica el destino configurado tanto al terminar la cuenta regresiva como al omitirlo.
+- L12: "no aparece ahora el tempriozadoor de descanso al darle siguiente" — el descanso al
+  finalizar el ejercicio no se disparaba al presionar "Siguiente" en rutinas cuyo bloque no
+  define descanso entre ejercicios (`restBetweenExercisesSec: 0`, como las superseries de
+  cardio): el descanso quedaba en 0 y no se armaba el temporizador.
+- L13: Corrección: (a) el descanso al finalizar el ejercicio es el descanso entre ejercicios del
+  bloque y, si el bloque no lo define (0 o ausente), el descanso entre series del bloque;
+  (b) el temporizador del descanso final se dispara siempre al presionar "Siguiente" (que
+  confirma lo tipeado y pasa al ejercicio siguiente) y no al confirmar la última serie, que solo
+  registra la serie. Se eliminó el estado `descansoFinalAplicado`.
+- L14: Nota de concurrencia: durante la sesión aparecieron archivos de otra sesión de agente
+  (`app/src/lib/videos.ts`, `app/src/data/plansVideo.test.ts`,
+  `scripts/output/exercise-videos.json`). Los 4 tests que fallan en `npm test` pertenecen a ese
+  trabajo en curso (videos por ejercicio) y no a esta feature: `src/lib/rest.test.ts` y
+  `src/lib/steps.test.ts` están en verde.

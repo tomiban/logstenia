@@ -50,3 +50,25 @@ test('al confirmar al pasar de ejercicio se respeta el descanso final', async ({
   await page.getByRole('button', { name: 'saltar descanso' }).click();
   await expect(page.getByRole('heading', { name: 'Flexiones en supino' })).toBeVisible();
 });
+
+test('el descanso final se espera al pasar al siguiente ejercicio, no al confirmar la serie', async ({ page }) => {
+  await page.goto(`/run/${MODELO}`);
+
+  // las tres primeras series disparan el descanso de serie
+  for (let i = 0; i < 3; i++) {
+    await page.getByPlaceholder('reps').nth(i).fill(String(10 + i));
+    await page.getByRole('button', { name: 'confirmar' }).first().click();
+    await page.getByRole('button', { name: 'saltar descanso' }).click();
+  }
+
+  // la última serie no dispara el descanso final
+  await page.getByPlaceholder('reps').nth(3).fill('13');
+  await page.getByRole('button', { name: 'confirmar' }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
+
+  // "Siguiente" sí muestra el temporizador de descanso
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
+  await expect(descanso).toBeVisible();
+  await expect(descanso).toContainText('descanso configurado: 120s');
+});

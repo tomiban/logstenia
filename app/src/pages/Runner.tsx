@@ -40,7 +40,6 @@ interface PasoProps {
   marcas: Record<string, Marca>;
   bloqueado: boolean;
   onDescansoSerie: (segundos: number) => void;
-  onDescansoFinal: (segundos: number) => void;
 }
 
 function Paso({
@@ -53,7 +52,6 @@ function Paso({
   marcas,
   bloqueado,
   onDescansoSerie,
-  onDescansoFinal,
 }: PasoProps) {
   const exercise = step.exercise;
   const lista = valores;
@@ -72,33 +70,40 @@ function Paso({
   /** Descanso configurado tras la serie `i` (la última serie usa el descanso final). */
   const descansoDeSerie = (i: number) => (i < series - 1 ? step.restAfterSetSec : step.restAfterExerciseSec);
 
-  /** Registra la serie y dispara el descanso configurado que corresponde. */
+  /** Registra la serie y dispara el descanso de serie configurado. */
   const confirmarSerie = (i: number) => {
     const v = lista[i];
     if (!v || !v.value) return;
     registrar(i + 1, v.value);
-    if (i < series - 1) {
-      const segundos = descansoDeSerie(i);
-      if (segundos > 0) onDescansoSerie(segundos);
-      return;
-    }
-    if (step.restAfterExerciseSec > 0) onDescansoFinal(step.restAfterExerciseSec);
+    if (i >= series - 1) return;
+    const segundos = descansoDeSerie(i);
+    if (segundos > 0) onDescansoSerie(segundos);
   };
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <div>
-        <div className="flex items-center gap-2">
-          <span className="label-caps">Bloque {step.blockIdx}</span>
-          <Badge variant="outline" className="label-status border-[var(--border)] text-[var(--muted)]">{step.block.type}</Badge>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="label-caps">Bloque {step.blockIdx}</span>
+            <Badge variant="outline" className="label-status border-[var(--border)] text-[var(--muted)]">{step.block.type}</Badge>
+          </div>
+          <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
+          <p className="label-caps mt-1">
+            {exercise.timeSec ? `objetivo ${exercise.timeSec}s` : esTiempo ? `objetivo ${exercise.reps || 'max'} hold` : (exercise.reps ? `objetivo ${exercise.reps} reps` : '')}
+            {` · ${series} series`}
+            {` · descanso por serie ${step.restAfterSetSec}s`}
+            {` · descanso final ${step.restAfterExerciseSec}s`}
+          </p>
         </div>
-        <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
-        <p className="label-caps mt-1">
-          {exercise.timeSec ? `objetivo ${exercise.timeSec}s` : esTiempo ? `objetivo ${exercise.reps || 'max'} hold` : (exercise.reps ? `objetivo ${exercise.reps} reps` : '')}
-          {` · ${series} series`}
-          {` · descanso por serie ${step.restAfterSetSec}s`}
-          {` · descanso final ${step.restAfterExerciseSec}s`}
-        </p>
+        {exercise.video?.thumbnail && (
+          <img
+            src={exercise.video.thumbnail}
+            alt=""
+            loading="lazy"
+            className="h-20 w-36 shrink-0 border border-[var(--border)] object-cover"
+          />
+        )}
       </div>
 
       {esTiempo && (
@@ -253,7 +258,6 @@ export default function Runner() {
   const [descansoSegundos, setDescansoSegundos] = useState(0);
   const [descansoEtiqueta, setDescansoEtiqueta] = useState('Descanso');
   const [descansoDestino, setDescansoDestino] = useState<Destino>(null);
-  const [descansoFinalAplicado, setDescansoFinalAplicado] = useState<number | null>(null);
   const [segRestantes, setSegRestantes] = useState(0);
   const [borradorCargado, setBorradorCargado] = useState(false);
   const inicioRef = useRef(0);
@@ -392,10 +396,9 @@ export default function Runner() {
     setDescansoHasta(Date.now() + segundos * 1000);
   };
 
-  /** Cambia de ejercicio: el descanso final del ejercicio anterior vuelve a aplicar. */
+  /** Cambia de ejercicio. */
   const irA = (indice: number) => {
     tocarBeep();
-    setDescansoFinalAplicado(null);
     setI(indice);
   };
 
@@ -495,8 +498,7 @@ export default function Runner() {
   const siguiente = () => {
     confirmarTipeados();
     const esUltimo = idx >= n - 1;
-    if (descansoFinalAplicado !== idx && step.restAfterExerciseSec > 0) {
-      setDescansoFinalAplicado(idx);
+    if (step.restAfterExerciseSec > 0) {
       iniciarDescanso(step.restAfterExerciseSec, 'Descanso al finalizar el ejercicio', esUltimo ? { fin: true } : { indice: idx + 1 });
       return;
     }
@@ -525,10 +527,6 @@ export default function Runner() {
             marcas={marcas}
             bloqueado={descansoHasta != null}
             onDescansoSerie={(segundos: number) => iniciarDescanso(segundos, 'Descanso de serie', null)}
-            onDescansoFinal={(segundos: number) => {
-              setDescansoFinalAplicado(idx);
-              iniciarDescanso(segundos, 'Descanso al finalizar el ejercicio', null);
-            }}
           />
         </div>
       </Card>

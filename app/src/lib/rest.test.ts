@@ -34,15 +34,15 @@ describe('restAfterSet', () => {
 describe('restAfterExercise', () => {
   it('usa el descanso entre ejercicios del bloque', () => {
     const b = block({ restBetweenSetsSec: 90, restBetweenExercisesSec: 30 });
-    expect(restAfterExercise(b, false)).toBe(30);
-    expect(restAfterExercise(b, true)).toBe(30);
+    expect(restAfterExercise(b)).toBe(30);
   });
 
-  it('usa cero entre ejercicios del bloque cuando el bloque no define ese descanso', () => {
-    expect(restAfterExercise(block({ restBetweenSetsSec: 90 }), false)).toBe(0);
+  it('cae en el descanso entre series cuando el bloque no define descanso entre ejercicios', () => {
+    expect(restAfterExercise(block({ restBetweenSetsSec: 90 }))).toBe(90);
+    expect(restAfterExercise(block({ restBetweenSetsSec: 90, restBetweenExercisesSec: 0 }))).toBe(90);
   });
 
-  it('el último ejercicio del bloque hereda el descanso entre series', () => {
-    expect(restAfterExercise(block({ restBetweenSetsSec: 90 }), true)).toBe(90);
+  it('cae en cero cuando el bloque no define ningún descanso', () => {
+    expect(restAfterExercise(block({ restBetweenSetsSec: 0 }))).toBe(0);
   });
 });

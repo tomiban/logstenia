@@ -36,7 +36,7 @@ describe('buildSteps', () => {
     expect(steps[1]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 15 });
   });
 
-  it('el último ejercicio del bloque hereda el descanso entre series', () => {
+  it('sin descanso entre ejercicios usa el descanso entre series', () => {
     const steps = buildSteps(modelo([
       {
         type: 'biseries', sets: 2, restBetweenSetsSec: 60,
@@ -44,7 +44,7 @@ describe('buildSteps', () => {
       },
     ]));
 
-    expect(steps[0]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 0 });
+    expect(steps[0]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 60 });
     expect(steps[1]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 60 });
   });
 

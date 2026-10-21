@@ -27,12 +27,12 @@ export function restAfterSet(block: Block): number {
 }
 
 /**
- * Descanso al terminar un ejercicio del bloque.
- * Los ejercicios que no cierran el bloque usan el descanso entre ejercicios; el último
- * ejercicio hereda ese descanso o, si el bloque no lo define, el descanso entre series.
+ * Descanso al terminar un ejercicio.
+ * Si el bloque define descanso entre ejercicios se usa ese; si no (0 o ausente, como en las
+ * superseries) se usa el descanso entre series del bloque, que es el descanso de la vuelta.
  */
-export function restAfterExercise(block: Block, isLastInBlock: boolean): number {
+export function restAfterExercise(block: Block): number {
   const entreEjercicios = seg(block?.restBetweenExercisesSec);
-  if (entreEjercicios !== null) return entreEjercicios;
-  return isLastInBlock ? restAfterSet(block) : 0;
+  if (entreEjercicios !== null && entreEjercicios > 0) return entreEjercicios;
+  return restAfterSet(block);
 }

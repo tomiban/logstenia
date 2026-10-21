@@ -27,7 +27,7 @@ export function buildSteps(model: Model): WorkoutStep[] {
         block,
         exercise,
         restAfterSetSec: restAfterSet(block),
-        restAfterExerciseSec: restAfterExercise(block, exIdx === ejercicios.length - 1),
+        restAfterExerciseSec: restAfterExercise(block),
       });
     });
   });
