@@ -1,305 +1,280 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from '../db';
-import { allPrograms } from '../lib/plans';
-import { computeStats, type Stats } from '../lib/stats';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Progress as ProgressBar } from '@/components/ui/progress';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import type { MarkRecord, SessionRecord } from '../db';
+import {
+  collectMarks,
+  compareSessions,
+  exerciseSeries,
+  type SessionComparison,
+} from '../lib/metrics';
+import { cn } from '@/lib/utils';
 
-const WEEKS = ['S1','S2','S3','S4','S5','S6','S7','S8'];
+const UNIT_LABEL: Record<'sec' | 'reps', string> = { sec: 'seg', reps: 'reps' };
+const nf = new Intl.NumberFormat('es-AR');
+const SESSIONS_SHOWN = 12;
+
+function Panel({
+  title,
+  meta,
+  children,
+}: {
+  title: string;
+  meta?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border border-border bg-card">
+      <header className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2">
+        <h2 className="label-caps text-foreground">{title}</h2>
+        {meta ? <span className="label-caps text-muted-foreground">{meta}</span> : null}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function Readout({ label, value, unit, note }: { label: string; value: string; unit?: string; note?: string }) {
+  return (
+    <div className="bg-card p-4">
+      <div className="label-caps text-muted-foreground">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="metric text-3xl text-foreground">{value}</span>
+        {unit ? <span className="label-caps text-muted-foreground">{unit}</span> : null}
+      </div>
+      {note ? <div className="mt-1.5 label-caps text-muted-foreground">{note}</div> : null}
+    </div>
+  );
+}
 
 export default function Progress() {
-  // --- métricas ---
-  const [stats, setStats] = useState<Stats>({ sessions: 0, totalMin: 0, streak: 0, byPlan: [] });
-  const [progressRows, setProgressRows] = useState<any[]>([]);
-  const [goalCurrent, setGoalCurrent] = useState<Record<string, number>>({});
-
-  // --- progreso semanal ---
-  const [exercise, setExercise] = useState('');
-  const [week, setWeek] = useState('S1');
-  const [value, setValue] = useState('');
-
-  // --- ajustes ---
-  const [sound, setSound] = useState(true);
-  const [dark, setDark] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const loadAll = useCallback(async () => {
-    setStats(await computeStats());
-    const pr = await db.progress.toArray();
-    setProgressRows(pr);
-    const g = await db.goals.toArray();
-    const gm: Record<string, number> = {};
-    g.forEach(x => { gm[x.goalId] = x.current; });
-    setGoalCurrent(gm);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadAll(); }, [loadAll]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const s = await db.settings.get('sound');
-      if (s) setSound(!!s.value);
-      const t = await db.settings.get('theme');
-      if (t) setDark(t.value === 'dark');
+      try {
+        const [s, m] = await Promise.all([db.sessions.toArray(), db.marks.toArray()]);
+        if (cancelled) return;
+        setSessions(s);
+        setMarks(m);
+      } catch {
+        if (!cancelled) setError('No se pudieron leer los datos de este dispositivo.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-  }, []);
-
-  const saveProgress = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!exercise || !value) return;
-    await db.progress.add({ exerciseId: exercise, week, value: Number(value), date: new Date().toISOString() });
-    setExercise(''); setValue('');
-    loadAll();
-  };
-
-  const grouped = useMemo(() => {
-    const out: Record<string, Record<string, number>> = {};
-    progressRows.forEach(r => {
-      out[r.exerciseId] = out[r.exerciseId] || {};
-      out[r.exerciseId][r.week] = r.value;
-    });
-    return out;
-  }, [progressRows]);
-
-  const toggleSound = async () => {
-    const v = !sound;
-    setSound(v);
-    await db.settings.put({ key: 'sound', value: v });
-  };
-  const toggleTheme = async () => {
-    const v = !dark;
-    setDark(v);
-    await db.settings.put({ key: 'theme', value: v ? 'dark' : 'light' });
-    document.documentElement.classList.toggle('dark', v);
-  };
-  const testSound = () => {
-    const a = new Audio('/sounds/item-found.mp3');
-    a.play().catch(() => {});
-  };
-  const exportData = async () => {
-    const data = {
-      sessions: await db.sessions.toArray(),
-      progress: await db.progress.toArray(),
-      goals: await db.goals.toArray(),
-      settings: await db.settings.toArray(),
-      marks: await db.marks.toArray(),
-      tags: await db.tags.toArray(),
-      exportedAt: new Date().toISOString(),
+    return () => {
+      cancelled = true;
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'logstenia-backup.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    setMsg('Backup exportado.');
-  };
-  const importData = async (file: File) => {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (Array.isArray(data.sessions)) await db.sessions.bulkPut(data.sessions);
-      if (Array.isArray(data.progress)) await db.progress.bulkPut(data.progress);
-      if (Array.isArray(data.goals)) await db.goals.bulkPut(data.goals);
-      if (Array.isArray(data.settings)) await db.settings.bulkPut(data.settings);
-      if (Array.isArray(data.marks)) await db.marks.bulkPut(data.marks);
-      if (Array.isArray(data.tags)) await db.tags.bulkPut(data.tags);
-      setMsg('Importación completada.');
-      loadAll();
-    } catch {
-      setMsg('Error al importar el archivo.');
-    }
-  };
+  }, []);
 
   if (loading) {
     return (
-      <div className="space-y-6" aria-busy="true" aria-label="Cargando">
-        <div className="h-8 w-40 animate-pulse bg-[var(--muted-surface)]" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse bg-[var(--muted-surface)]" />
+      <div className="space-y-4" aria-busy="true" aria-label="Cargando">
+        <div className="h-8 w-40 animate-pulse bg-secondary" />
+        <div className="grid grid-cols-3 gap-px bg-border">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-28 animate-pulse bg-secondary" />
           ))}
         </div>
-        <div className="h-48 animate-pulse bg-[var(--muted-surface)]" />
+        <div className="h-48 animate-pulse bg-secondary" />
       </div>
     );
   }
 
+  const comparisons = compareSessions(sessions);
+  const windowed = comparisons.slice(-SESSIONS_SHOWN);
+  const comparable = windowed.filter((c) => c.gained !== null);
+  const gained = comparable.filter((c) => c.gained).length;
+  const bestSession = windowed.reduce<SessionComparison | null>(
+    (best, c) => (best === null || c.summary.durationMin > best.summary.durationMin ? c : best),
+    null,
+  );
+  const newBests = windowed.reduce((total, c) => total + c.newBests.length, 0);
+  const series = exerciseSeries(collectMarks(sessions, marks)).filter((s) => s.points.length > 1);
+
+  const hasDuration = sessions.some((s) => (s.durationSec || 0) > 0);
+  const measure = (c: SessionComparison) => (hasDuration ? c.summary.durationMin : c.summary.series);
+  const measureUnit = hasDuration ? 'min' : 'series';
+  const peak = Math.max(1, ...windowed.map(measure));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-bold tracking-tight">Progreso</h1>
-        <p className="label-caps text-[var(--muted)]">métricas, marcas y ajustes</p>
+        <p className="label-caps text-muted-foreground">
+          evolución de tus sesiones · últimas {windowed.length || SESSIONS_SHOWN}
+        </p>
       </header>
 
-      {/* Métricas */}
-      <section className="space-y-3">
-        <h2 className="font-heading text-base font-bold">Métricas</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="p-4">
-            <div className="metric text-3xl text-[var(--foreground)]">{stats.sessions}</div>
-            <div className="label-caps text-[var(--muted)] mt-1">sesiones</div>
-          </Card>
-          <Card className="p-4">
-            <div className="metric text-3xl text-[var(--foreground)]">{stats.totalMin}</div>
-            <div className="label-caps text-[var(--muted)] mt-1">minutos totales</div>
-          </Card>
-          <Card className="p-4">
-            <div className="metric text-3xl text-[var(--foreground)]">{stats.streak}</div>
-            <div className="label-caps text-[var(--muted)] mt-1">racha (días)</div>
-          </Card>
-          <Card className="p-4">
-            <div className="metric text-3xl text-[var(--foreground)]">{stats.byPlan.length}</div>
-            <div className="label-caps text-[var(--muted)] mt-1">planes usados</div>
-          </Card>
-        </div>
+      {error ? (
+        <section className="border border-border bg-card p-4" role="alert">
+          <h2 className="font-heading text-base font-bold">{error}</h2>
+        </section>
+      ) : null}
 
-        <div>
-          <h3 className="label-caps text-[var(--foreground)] mb-2">Sesiones por plan</h3>
-          {stats.byPlan.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">Sin sesiones registradas aún.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {stats.byPlan.map(b => (
-                <li key={b.planId} className="flex justify-between border-b border-[var(--border)] py-1">
-                  <span>{b.name}</span><span className="metric text-[var(--muted)]">{b.count}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {sessions.length === 0 ? (
+        <section className="border border-border bg-card p-4">
+          <h2 className="font-heading text-base font-bold">Todavía no hay sesiones para comparar</h2>
+          <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+            Cada sesión que termines alimenta esta pantalla sola: duración, series registradas y las marcas
+            que superaste. No hay nada que anotar.
+          </p>
+          <Link
+            to="/"
+            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
+          >
+            Empezar a entrenar
+          </Link>
+        </section>
+      ) : null}
 
-        <div>
-          <h3 className="label-caps text-[var(--foreground)] mb-2">Progreso registrado (holds/reps)</h3>
-          {progressRows.length === 0 && <p className="text-sm text-[var(--muted)]">Sin registros aún. Usá el formulario de abajo.</p>}
-          <ul className="space-y-1 text-sm">
-            {progressRows.map(p => (
-              <li key={p.id} className="flex justify-between border-b border-[var(--border)] py-1">
-                <span>{p.exerciseId} · {p.week}</span>
-                <span className="metric text-[var(--muted)]">{p.value}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {sessions.length > 0 ? (
+        <>
+          <section className="border border-border" aria-label="Resumen de la evolución">
+            <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
+              <Readout
+                label="Sesiones ganadas"
+                value={`${gained}/${comparable.length}`}
+                note="vs la sesión anterior del mismo plan"
+              />
+              <Readout
+                label="Mejor sesión"
+                value={bestSession ? nf.format(measure(bestSession)) : '—'}
+                unit={bestSession ? measureUnit : undefined}
+                note={bestSession ? dayLabel(bestSession.summary.date) : undefined}
+              />
+              <Readout label="Marcas superadas" value={nf.format(newBests)} note={`en ${windowed.length} sesiones`} />
+            </div>
+          </section>
 
-        <div>
-          <h3 className="label-caps text-[var(--foreground)] mb-2">Metas</h3>
-          {allPrograms().flatMap(p => p.goals).length === 0 && (
-            <p className="text-sm text-[var(--muted)]">Sin metas definidas.</p>
-          )}
-          <div className="space-y-3">
-            {allPrograms().flatMap(p => p.goals.map(g => ({ program: p, goal: g }))).map(({ program, goal }) => {
-              const cur = goalCurrent[goal.id] ?? 0;
-              const pct = Math.min(100, Math.round((cur / goal.target) * 100));
-              return (
-                <Card key={goal.id} className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-sm">{goal.name}</span>
-                    <Badge variant="secondary">{program.name}</Badge>
-                  </div>
-                  <ProgressBar value={pct} className="mb-2" />
-                  <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                    <span>{cur} / {goal.target} {goal.unit}</span>
-                    <Input
-                      type="number"
-                      className="w-20 h-8 text-xs"
-                      defaultValue={cur}
-                      onBlur={async (e) => {
-                        const v = Number(e.target.value);
-                        if (Number.isNaN(v)) return;
-                        setGoalCurrent(prev => ({ ...prev, [goal.id]: v }));
-                        await db.goals.put({ goalId: goal.id, current: v, updatedAt: new Date().toISOString() });
-                      }}
+          <Panel title="Duración por sesión" meta={`${measureUnit} · ${windowed.length} sesiones`}>
+            <div className="p-4">
+              <div
+                className="flex h-32 items-end gap-1 border-b border-border"
+                role="img"
+                aria-label={`Duración de las últimas ${windowed.length} sesiones. Máximo ${nf.format(peak)} ${measureUnit}.`}
+              >
+                {windowed.map((c) => {
+                  const value = measure(c);
+                  const pct = Math.round((value / peak) * 100);
+                  return (
+                    <div key={`${c.summary.date}-${c.summary.planId}`} className="flex h-full flex-1 items-end justify-center">
+                      {value === 0 ? (
+                        <div className="h-px w-full max-w-[72px] bg-border" />
+                      ) : (
+                        <div
+                          className="w-full max-w-[72px] bg-foreground"
+                          style={{ height: `${Math.max(4, pct)}%` }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex gap-1">
+                {windowed.map((c) => (
+                  <div key={`${c.summary.date}-${c.summary.planId}`} className="flex flex-1 flex-col items-center gap-1">
+                    <span className="metric text-xs text-foreground">{nf.format(measure(c))}</span>
+                    <span className="label-status text-muted-foreground">{dayLabel(c.summary.date)}</span>
+                    <span
+                      className={cn('h-2 w-2', c.gained ? 'bg-accent' : 'bg-transparent')}
+                      aria-hidden="true"
                     />
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Progreso semanal */}
-      <section className="space-y-3">
-        <h2 className="font-heading text-base font-bold">Progreso semanal (S1..S8)</h2>
-        <form onSubmit={saveProgress} className="flex flex-wrap items-end gap-2 border border-[var(--border)] bg-[var(--surface)] p-3">
-          <div className="flex-1 min-w-[160px] space-y-1">
-            <label htmlFor="prog-exercise" className="label-caps text-[var(--muted)]">Ejercicio</label>
-            <Input id="prog-exercise" value={exercise} onChange={e=>setExercise(e.target.value)} placeholder="Hold tuck planche" />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="prog-week" className="label-caps text-[var(--muted)]">Semana</label>
-            <select id="prog-week" value={week} onChange={(e) => setWeek(e.target.value)} className="h-10 min-w-[80px] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm">
-              {WEEKS.map(w=><option key={w}>{w}</option>)}
-            </select>
-          </div>
-          <div className="w-24 space-y-1">
-            <label htmlFor="prog-value" className="label-caps text-[var(--muted)]">Valor</label>
-            <Input id="prog-value" type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0" />
-          </div>
-          <Button type="submit" size="sm" className="min-h-[40px]">Guardar</Button>
-        </form>
-
-        {Object.keys(grouped).length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">Sin registros aún. Guardá tu primera marca arriba.</p>
-        ) : (
-          <div className="overflow-x-auto border border-[var(--border)]">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--muted-surface)]">
-                  <th className="sticky left-0 bg-[var(--muted-surface)] p-2 text-left label-caps text-[var(--muted)]">Ejercicio</th>
-                  {WEEKS.map(w=><th key={w} className="p-2 text-center label-caps text-[var(--muted)]">{w}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(grouped).map(([ex, vals]) => (
-                  <tr key={ex} className="border-t border-[var(--border)]">
-                    <td className="sticky left-0 bg-[var(--surface)] p-2 font-medium">{ex}</td>
-                    {WEEKS.map(w => <td key={w} className="p-2 text-center metric text-[var(--foreground)]">{vals[w] ?? '—'}</td>)}
-                  </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </div>
+            </div>
+          </Panel>
 
-      {/* Ajustes */}
-      <section className="space-y-3">
-        <h2 className="font-heading text-base font-bold">Ajustes</h2>
-        <div className="space-y-2">
-          <h3 className="label-caps text-[var(--foreground)]">Sonido</h3>
-          <label className="flex min-h-[48px] items-center justify-between border border-[var(--border)] bg-[var(--surface)] p-3">
-            <span className="text-sm">Sonido al terminar descanso</span>
-            <input type="checkbox" className="h-5 w-5" aria-label="Sonido al terminar descanso" checked={sound} onChange={toggleSound} />
-          </label>
-          <Button variant="secondary" size="sm" onClick={testSound}>Probar sonido</Button>
-        </div>
-        <div className="space-y-2">
-          <h3 className="label-caps text-[var(--foreground)]">Tema</h3>
-          <label className="flex min-h-[48px] items-center justify-between border border-[var(--border)] bg-[var(--surface)] p-3">
-            <span className="text-sm">Tema oscuro</span>
-            <input type="checkbox" className="h-5 w-5" aria-label="Tema oscuro" checked={dark} onChange={toggleTheme} />
-          </label>
-        </div>
-        <div className="space-y-2">
-          <h3 className="label-caps text-[var(--foreground)]">Datos</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={exportData}>Exportar backup</Button>
-            <label className="inline-flex min-h-[40px] cursor-pointer items-center border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm">
-              Importar backup
-              <input type="file" accept="application/json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) importData(f); }} />
-            </label>
-          </div>
-          {msg && <p className="label-caps text-[var(--muted)]">{msg}</p>}
-        </div>
-      </section>
+          <Panel title="Comparación por sesión" meta={`${windowed.length} sesiones`}>
+            {windowed.length === 0 ? (
+              <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones registradas</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {[...windowed].reverse().map((c, i) => (
+                  <li key={`${c.summary.date}-${c.summary.planId}-${i}`} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">{c.summary.planName}</span>
+                        {c.newBests.length > 0 ? (
+                          <span className="label-status shrink-0 border border-ink bg-accent px-1 text-ink">PR</span>
+                        ) : null}
+                      </div>
+                      <div className="label-caps mt-1 text-muted-foreground">
+                        {dayLabel(c.summary.date)} · {nf.format(c.summary.series)} series
+                        {c.seriesDelta === null ? '' : ` (${signed(c.seriesDelta)})`}
+                      </div>
+                      {c.newBests.length > 0 ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          superaste: {c.newBests.join(', ')}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="metric text-lg text-foreground">
+                        {nf.format(c.summary.durationMin)}{' '}
+                        <span className="label-caps text-muted-foreground">min</span>
+                      </div>
+                      <div className="label-caps mt-1 text-muted-foreground">
+                        {c.durationDelta === null ? 'sin comparación' : `${signed(c.durationDelta)} vs anterior`}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Evolución por ejercicio" meta={`${series.length} con historial`}>
+            {series.length === 0 ? (
+              <p className="label-caps px-4 py-4 text-muted-foreground">
+                con dos registros del mismo ejercicio vas a ver acá la curva de progreso
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {series.map((s) => (
+                  <li key={`${s.exercise}-${s.unit}`} className="px-4 py-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-sm font-medium">{s.exercise}</span>
+                      <span className="metric shrink-0 text-sm text-foreground">
+                        {nf.format(s.best)}{' '}
+                        <span className="label-caps text-muted-foreground">{UNIT_LABEL[s.unit]}</span>
+                      </span>
+                    </div>
+                    <div className="mt-2 flex h-10 items-end gap-0.5 border-b border-border">
+                      {s.points.map((p, i) => (
+                        <div
+                          key={`${p.date}-${p.value}-${i}`}
+                          className="flex-1 bg-foreground"
+                          style={{ height: `${Math.max(8, Math.round((p.value / s.best) * 100))}%` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="label-caps mt-1 text-muted-foreground">
+                      {nf.format(s.improvements)} mejoras · {nf.format(s.points.length)} registros
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </>
+      ) : null}
     </div>
   );
+}
+
+function dayLabel(isoDay: string): string {
+  const [, m, d] = isoDay.split('-');
+  return `${d}/${m}`;
+}
+
+function signed(value: number): string {
+  if (value === 0) return '0';
+  return `${value > 0 ? '+' : '−'}${nf.format(Math.abs(value))}`;
 }

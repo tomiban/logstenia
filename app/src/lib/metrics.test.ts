@@ -8,6 +8,9 @@ import {
   bestMarks,
   computeGoals,
   planDistribution,
+  compareSessions,
+  exerciseSeries,
+  unitForExercise,
   delta,
 } from './metrics';
 import type { SessionRecord } from '../db';
@@ -236,5 +239,123 @@ describe('delta', () => {
 
   it('has no direction without a previous value', () => {
     expect(delta(3, null)).toBe('—');
+  });
+});
+
+describe('compareSessions', () => {
+  const sessions = [
+    ses('2026-10-01', {
+      planId: 'a',
+      durationSec: 1800,
+      sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '10', unit: 'sec', bloqueOrden: 0, orden: 0 }],
+    }),
+    ses('2026-10-05', {
+      planId: 'a',
+      durationSec: 2400,
+      sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '15', unit: 'sec', bloqueOrden: 0, orden: 0 }],
+    }),
+    ses('2026-10-06', {
+      planId: 'a',
+      durationSec: 2400,
+      sets: [
+        { exercise: 'Tuck planche', setIndex: 1, value: '15', unit: 'sec', bloqueOrden: 0, orden: 0 },
+        { exercise: 'Flexiones', setIndex: 1, value: '20', unit: 'reps', bloqueOrden: 1, orden: 0 },
+      ],
+    }),
+    ses('2026-10-07', { planId: 'a', durationSec: 1200, sets: [] }),
+  ];
+
+  it('has no comparison for the first session', () => {
+    const [first] = compareSessions(sessions);
+    expect(first.previous).toBeNull();
+    expect(first.gained).toBeNull();
+    expect(first.durationDelta).toBeNull();
+  });
+
+  it('compares each session against the previous one of the same plan', () => {
+    const all = compareSessions(sessions);
+    expect(all[1].previous?.date).toBe('2026-10-01');
+    expect(all[1].durationDelta).toBe(10);
+    expect(all[1].gained).toBe(true);
+  });
+
+  it('marks a session as lost when it lasted less than the previous one', () => {
+    const all = compareSessions(sessions);
+    expect(all[3].durationDelta).toBe(-20);
+    expect(all[3].gained).toBe(false);
+  });
+
+  it('marks a session as gained when it kept the time and added series', () => {
+    const all = compareSessions(sessions);
+    expect(all[2].durationDelta).toBe(0);
+    expect(all[2].seriesDelta).toBe(1);
+    expect(all[2].gained).toBe(true);
+  });
+
+  it('detects the new bests of each session', () => {
+    const all = compareSessions(sessions);
+    expect(all[0].newBests).toEqual([]);
+    expect(all[1].newBests).toEqual(['Tuck planche']);
+    expect(all[2].newBests).toEqual([]);
+    expect(all[3].newBests).toEqual([]);
+  });
+
+  it('summarizes the work of a session', () => {
+    const [first] = compareSessions(sessions);
+    expect(first.summary).toMatchObject({ durationMin: 30, series: 1, seconds: 10, reps: 0 });
+  });
+});
+
+describe('exerciseSeries', () => {
+  it('groups the values of an exercise over time and counts the improvements', () => {
+    const entries = collectMarks(
+      [
+        ses('2026-10-01', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '10', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+        ses('2026-10-05', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '15', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+        ses('2026-10-06', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+      ],
+      [],
+    );
+    const series = exerciseSeries(entries);
+    expect(series).toHaveLength(1);
+    expect(series[0]).toMatchObject({ exercise: 'Tuck planche', unit: 'sec', best: 15, improvements: 2 });
+    expect(series[0].points.map((p) => p.value)).toEqual([10, 15, 12]);
+  });
+
+  it('orders the exercises by how many times they improved', () => {
+    const entries = collectMarks(
+      [
+        ses('2026-10-01', {
+          sets: [
+            { exercise: 'Tuck planche', setIndex: 1, value: '10', unit: 'sec', bloqueOrden: 0, orden: 0 },
+            { exercise: 'Flexiones', setIndex: 1, value: '10', unit: 'reps', bloqueOrden: 1, orden: 0 },
+          ],
+        }),
+        ses('2026-10-05', {
+          sets: [
+            { exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 },
+            { exercise: 'Tuck planche', setIndex: 2, value: '14', unit: 'sec', bloqueOrden: 0, orden: 0 },
+            { exercise: 'Flexiones', setIndex: 1, value: '12', unit: 'reps', bloqueOrden: 1, orden: 0 },
+          ],
+        }),
+      ],
+      [],
+    );
+    const series = exerciseSeries(entries);
+    expect(series[0].exercise).toBe('Tuck planche');
+    expect(series[0].improvements).toBe(3);
+    expect(series[1].exercise).toBe('Flexiones');
+    expect(series[1].improvements).toBe(2);
+  });
+});
+
+describe('unitForExercise', () => {
+  it('reads the unit from the plan catalog', () => {
+    expect(unitForExercise('Tuck planche')).toBe('sec');
+    expect(unitForExercise('Dominadas pronas')).toBe('reps');
+  });
+
+  it('falls back to reps for an exercise outside the catalog', () => {
+    expect(unitForExercise('Ejercicio inventado')).toBe('reps');
   });
 });

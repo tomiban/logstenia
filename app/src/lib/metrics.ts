@@ -2,7 +2,7 @@
 // No database access: takes data in, returns numbers. Testable in isolation.
 
 import { clasificar, type Grupo, type Subgrupo } from './clasificar';
-import { getProgram } from './plans';
+import { allModels, getProgram } from './plans';
 import type { SessionRecord, MarkRecord } from '../db';
 import type { Goal } from '../types';
 
@@ -160,7 +160,7 @@ export function weeklyVolume(sessions: SessionRecord[], weeks: number, today: st
   return buckets;
 }
 
-export type MarkSource = 'sesion' | 'marca';
+export type MarkSource = 'sesion' | 'marca' | 'registro';
 
 export interface MarkEntry {
   exercise: string;
@@ -168,6 +168,29 @@ export interface MarkEntry {
   unit: 'sec' | 'reps';
   date: string;
   source: MarkSource;
+}
+
+export interface ProgressRecordLike {
+  exerciseId: string;
+  week: string;
+  value: number;
+  date: string;
+}
+
+/** Exercise unit taken from the plan catalog, so manual records can be compared. */
+const EXERCISE_UNITS = new Map<string, 'sec' | 'reps'>();
+for (const { model } of allModels()) {
+  for (const block of model.blocks) {
+    for (const ex of block.exercises) {
+      const unit: 'sec' | 'reps' = ex.timeSec && !ex.reps ? 'sec' : 'reps';
+      const key = normalizeExercise(ex.name);
+      if (unit === 'sec' || !EXERCISE_UNITS.has(key)) EXERCISE_UNITS.set(key, unit);
+    }
+  }
+}
+
+export function unitForExercise(exercise: string): 'sec' | 'reps' {
+  return EXERCISE_UNITS.get(normalizeExercise(exercise)) ?? 'reps';
 }
 
 export interface BestMark extends MarkEntry {
@@ -182,7 +205,11 @@ function normalizeExercise(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-export function collectMarks(sessions: SessionRecord[], marks: MarkRecord[]): MarkEntry[] {
+export function collectMarks(
+  sessions: SessionRecord[],
+  marks: MarkRecord[],
+  progress: ProgressRecordLike[] = [],
+): MarkEntry[] {
   const out: MarkEntry[] = [];
   for (const s of sessions) {
     for (const set of s.sets ?? []) {
@@ -205,6 +232,16 @@ export function collectMarks(sessions: SessionRecord[], marks: MarkRecord[]): Ma
       unit: m.unit,
       date: m.date.slice(0, 10),
       source: 'marca',
+    });
+  }
+  for (const p of progress) {
+    if (!Number.isFinite(p.value) || p.value <= 0) continue;
+    out.push({
+      exercise: p.exerciseId,
+      value: p.value,
+      unit: unitForExercise(p.exerciseId),
+      date: p.date.slice(0, 10),
+      source: 'registro',
     });
   }
   return out;
@@ -311,4 +348,131 @@ export function delta(current: number, previous: number | null): string {
   const diff = Math.round(current - previous);
   if (diff === 0) return '0';
   return `${diff > 0 ? '+' : '−'}${Math.abs(diff)}`;
+}
+
+export interface SessionSummary {
+  date: string;
+  planId: string;
+  planName: string;
+  durationMin: number;
+  series: number;
+  reps: number;
+  seconds: number;
+}
+
+export function summarizeSession(session: SessionRecord): SessionSummary {
+  let series = 0;
+  let reps = 0;
+  let seconds = 0;
+  for (const set of session.sets ?? []) {
+    const value = Number(set.value);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    series += 1;
+    if (set.unit === 'sec') seconds += value;
+    else reps += value;
+  }
+  return {
+    date: session.date,
+    planId: session.planId,
+    planName: getProgram(session.planId)?.name ?? session.planId,
+    durationMin: Math.round((session.durationSec || 0) / 60),
+    series,
+    reps,
+    seconds,
+  };
+}
+
+export interface SessionComparison {
+  summary: SessionSummary;
+  previous: SessionSummary | null;
+  durationDelta: number | null;
+  seriesDelta: number | null;
+  gained: boolean | null;
+  newBests: string[];
+}
+
+function previousIndex(sorted: SessionRecord[], index: number): number | null {
+  const planId = sorted[index].planId;
+  for (let j = index - 1; j >= 0; j--) {
+    if (sorted[j].planId === planId) return j;
+  }
+  return index > 0 ? index - 1 : null;
+}
+
+/**
+ * Compares every session against the previous one (same plan when possible)
+ * and flags the sessions that were gained: more time, or the same time with more work.
+ */
+export function compareSessions(sessions: SessionRecord[]): SessionComparison[] {
+  const sorted = [...sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const summaries = sorted.map(summarizeSession);
+  const bestSoFar = new Map<string, number>();
+  const out: SessionComparison[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const session = sorted[i];
+    const current = summaries[i];
+    const prevIndex = previousIndex(sorted, i);
+    const previous = prevIndex === null ? null : summaries[prevIndex];
+    const durationDelta = previous ? current.durationMin - previous.durationMin : null;
+    const seriesDelta = previous ? current.series - previous.series : null;
+    const gained =
+      durationDelta === null ? null : durationDelta > 0 || (durationDelta === 0 && (seriesDelta ?? 0) > 0);
+
+    const newBests: string[] = [];
+    for (const set of session.sets ?? []) {
+      const value = Number(set.value);
+      if (!Number.isFinite(value) || value <= 0) continue;
+      const key = `${normalizeExercise(set.exercise)}|${set.unit}`;
+      const previousBest = bestSoFar.get(key) ?? 0;
+      if (previousBest > 0 && value > previousBest) {
+        newBests.push(set.exercise);
+      }
+      if (value > previousBest) bestSoFar.set(key, value);
+    }
+
+    out.push({ summary: current, previous, durationDelta, seriesDelta, gained, newBests: [...new Set(newBests)] });
+  }
+
+  return out;
+}
+
+export interface ExercisePoint {
+  date: string;
+  value: number;
+}
+
+export interface ExerciseSeries {
+  exercise: string;
+  unit: 'sec' | 'reps';
+  points: ExercisePoint[];
+  best: number;
+  improvements: number;
+}
+
+/** Trajectory of every exercise with recorded values, ordered by how many times it improved. */
+export function exerciseSeries(entries: MarkEntry[]): ExerciseSeries[] {
+  const groups = new Map<string, { exercise: string; unit: 'sec' | 'reps'; points: ExercisePoint[] }>();
+  for (const entry of entries) {
+    const key = `${normalizeExercise(entry.exercise)}|${entry.unit}`;
+    const group = groups.get(key);
+    if (group) group.points.push({ date: entry.date, value: entry.value });
+    else groups.set(key, { exercise: entry.exercise, unit: entry.unit, points: [{ date: entry.date, value: entry.value }] });
+  }
+
+  const out: ExerciseSeries[] = [];
+  for (const group of groups.values()) {
+    group.points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    let best = 0;
+    let improvements = 0;
+    for (const point of group.points) {
+      if (point.value > best) {
+        best = point.value;
+        improvements += 1;
+      }
+    }
+    out.push({ exercise: group.exercise, unit: group.unit, points: group.points, best, improvements });
+  }
+
+  return out.sort((a, b) => b.improvements - a.improvements || b.points.length - a.points.length);
 }

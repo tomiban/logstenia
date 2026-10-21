@@ -7,7 +7,8 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 ## Specs
 
 - S1: "quiero diseñar enteramente toda la pantalla de metricas siguiendo los estandares de diseño y producto."
-- S2: Decisión de estructura del usuario: "Ruta propia /metrics con tab en el nav". `/metrics` → Telemetría · Volumen · Marcas (PR) · Metas · Por plan. `/progress` → Registro semanal S1..S8 + tabla. `/settings` → Sonido · Tema · Datos.
+- S2: Decisión de estructura del usuario: "Ruta propia /metrics con tab en el nav". `/metrics` → Telemetría · Volumen · Marcas (PR) · Metas · Por plan. `/progress` → evolución automática de las sesiones (charts y métricas, sin anotación manual). `/settings` → Sonido · Tema · Datos.
+- S2b: Corrección de producto del usuario: "LA IDEA DE PROGRESO NO ES ANOTAR NADA,. DEBE SOR CHARTS Y METRICAS DE MIS REGISTROS COMPARANDO SESIONES GANANCIAS ETC ESO QUIERO PARA SABER COMO VENGO ENTRENANDO" — se elimina el formulario y la tabla semanal S1..S8 de la pantalla; Progreso pasa a derivar todo de los registros.
 - S3: La pantalla abre con una franja de telemetría (patrón firma del sistema): 4 lecturas label/número en mono tabular — sesiones, minutos, racha, sesión media — con Δ contra el período anterior de igual longitud.
 - S4: Selector de rango: 7 D · 30 D · 90 D · TODO. El estado activo se marca con relleno tinta y texto lima (nunca dos balizas en la misma vista).
 - S5: Volumen por semana: últimas 8 semanas en minutos, barras construidas con la retícula suiza (divs, sin librería de charts), números en mono bajo cada columna y resumen accesible.
@@ -19,6 +20,8 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - S11: El runner persiste la duración real de la sesión, así "minutos" no es siempre 0.
 - S12: Build, lint y tests siguen pasando; la pantalla se verifica renderizada a 375px y 1280px.
 
+- S13: La pantalla de Progreso no pide anotar nada: resume "sesiones ganadas" (sesión vs la anterior del mismo plan: más tiempo, o el mismo tiempo con más series), duración por sesión en gráfico, comparación fila a fila con Δ y marcas superadas, y la evolución de cada ejercicio con historial.
+
 ## Tasks
 
 - T1 [S3,S4,S5,S6,S7,S8] `app/src/lib/metrics.ts`: derivaciones puras de métricas (rangos, telemetría, volumen semanal, marcas, metas, distribución por plan) + `app/src/lib/metrics.test.ts`. Route: inline. Commit: `feat(metrics): add pure metrics derivations with tests`.
@@ -26,6 +29,7 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - T3 [S2,S10] Split de `/progress` y `/settings`: `app/src/pages/Settings.tsx` nuevo, `app/src/pages/Progress.tsx` reducido al registro semanal, rutas en `app/src/App.tsx` y nav de 5 tabs en `app/src/components/Layout.tsx`; `app/src/lib/stats.ts` eliminado (quedó sin consumidores). Route: inline. Commit: `feat(nav): split metrics, progress and settings into their own routes`.
 - T4 [S11] `app/src/pages/Runner.tsx` + `app/src/lib/session.ts`: persistir `durationSec` real con el cálculo de duración cubierto por test unitario. Route: inline. Commit: `fix(runner): persist real session duration`.
 - T5 [S12] Verificación: `npm run build`, `npm run lint`, `npm test` y captura renderizada de `/metrics`, `/progress` y `/settings` a 390px, 768px y 1280px, en claro y oscuro. Route: inline. Commit: ninguno (verificación).
+- T6 [S2b,S13] `app/src/pages/Progress.tsx` + `app/src/lib/metrics.ts`: reemplazo del registro manual por evolución automática (comparación de sesiones + series por ejercicio). Route: inline. Commit: `feat(progress): replace manual register with session evolution`.
 
 ## Log
 
@@ -39,3 +43,6 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - L8: Hallazgo de tokens: `--foreground`, `--ink` y `--muted-surface` no se redefinen en `.dark`, así que el texto y las barras quedaban invisibles en tema oscuro. Las pantallas nuevas usan `--text`, `--muted`, `--secondary` y `--border` (tokens que sí se redefinen) y el estado activo del nav y del filtro usa `bg-primary`/`text-primary-foreground`.
 - L9: Revisión GGA (proveedor opencode, porque el hook exige Claude CLI y no está instalado) sobre `lib/metrics.ts`: tipos re-declarados, identificadores y comentarios en español, campos muertos, `Delta.dir` sin consumidor y duplicación con `lib/stats.ts`. Todo corregido en el mismo commit; `stats.ts` se eliminó al quedar sin consumidores.
 - L10: `durationSec` se calculó en el runner a partir del tiempo transcurrido y el cálculo se extrajo a `lib/session.ts` con test unitario, siguiendo la regla del proyecto de cubrir la lógica del runner con tests.
+- L11: El usuario corrigió el producto: "LA IDEA DE PROGRESO NO ES ANOTAR NADA,. DEBE SOR CHARTS Y METRICAS DE MIS REGISTROS COMPARANDO SESIONES GANANCIAS ETC ESO QUIERO PARA SABER COMO VENGO ENTRENANDO". Se reescribió la pantalla de Progreso: el formulario semanal S1..S8 y la tabla de registros salen de la UI (los datos ya guardados no se borran) y entran resumen de sesiones ganadas, gráfico de duración por sesión, comparación fila a fila con Δ y marcas superadas, y evolución por ejercicio.
+- L12: `lib/metrics.ts` crece con `compareSessions` (comparación contra la sesión anterior del mismo plan, detección de marcas superadas) y `exerciseSeries` (trayectoria por ejercicio); 37 tests cubren `metrics.ts` y 4 cubren `session.ts`. Un test se verificó por mutación: sin la regla "mismo tiempo + más series = ganada" el test falla.
+- L13: La review GGA marcó el uso de `var(--token)` en className (AGENTS.md lo rechaza) y la falta de manejo de error en las llamadas a la base: las pantallas nuevas migraron a las utilidades semánticas (`text-foreground`, `text-muted-foreground`, `bg-card`, `bg-secondary`, `border-border`, `bg-accent`, `bg-primary`) y se registró `--color-ink` en `@theme inline`; cada `await db.*` quedó con try/catch y la importación de backup valida la forma del JSON.
