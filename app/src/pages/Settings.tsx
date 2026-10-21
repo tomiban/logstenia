@@ -129,7 +129,7 @@ export default function Settings() {
           <Row label="Sonido al terminar el descanso">
             <input
               type="checkbox"
-              className="h-5 w-5"
+              className="h-5 w-5 accent-[var(--text)]"
               aria-label="Sonido al terminar el descanso"
               checked={sound}
               onChange={toggleSound}
@@ -153,7 +153,7 @@ export default function Settings() {
           <Row label="Tema oscuro">
             <input
               type="checkbox"
-              className="h-5 w-5"
+              className="h-5 w-5 accent-[var(--text)]"
               aria-label="Tema oscuro"
               checked={dark}
               onChange={toggleTheme}

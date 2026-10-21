@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --voltage-lime: #ccff00;
   --ink: #111111;
   --paper: #f8f9fa;
@@ -86,6 +87,7 @@ body {
 }
 
 .dark {
+  color-scheme: dark;
   --bg: #111111;
   --paper: #111111;
   --surface: #1a1a1a;
