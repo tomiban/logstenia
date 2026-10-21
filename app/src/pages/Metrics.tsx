@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../db';
-import type { MarkRecord, SessionRecord } from '../db';
+import { db, type MarkRecord, type SessionRecord } from '../db';
 import { allPrograms } from '../lib/plans';
 import {
   RANGE_OPTIONS,

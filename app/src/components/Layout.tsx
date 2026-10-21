@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { db } from '../db';
 
 const NAV = [
@@ -28,7 +29,7 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
   const fecha = useMemo(() => new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' }), []);
   useEffect(() => {
     db.settings.get('theme').then(s => {
