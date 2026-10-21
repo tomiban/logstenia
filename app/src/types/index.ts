@@ -2,13 +2,28 @@ export type Level = 'beginner' | 'intermediate' | 'advanced';
 export type Intensity = 1 | 2 | 3;
 export type BlockType = 'single' | 'biseries' | 'superseries';
 
+/** Example video for an exercise, collected with Playwright. */
+export interface ExerciseVideo {
+  /** YouTube video id. */
+  id: string;
+  title: string;
+  channel: string;
+  /** Video URL. */
+  url: string;
+  /** Thumbnail image URL. */
+  thumbnail: string;
+}
+
 export interface Exercise {
+  id?: string;
   name: string;
   reps?: string;
   timeSec?: number;
   cadence?: string;
   notes?: string;
   tags?: string[];
+  /** Associated example video (collected with Playwright). */
+  video?: ExerciseVideo;
 }
 
 export interface Block {

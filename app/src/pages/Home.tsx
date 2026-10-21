@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCategories } from '../lib/plans';
+import { useCategories } from '../lib/usePlans';
 import type { Category, Program } from '../types';
 import { db } from '../db';
 import { Card } from '@/components/ui/card';
@@ -25,7 +25,7 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export default function Home() {
   const navigate = useNavigate();
-  const cats = getCategories();
+  const cats = useCategories();
   const [mesoInicio, setMesoInicioState] = useState('');
   const [warmup, setWarmupState] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);

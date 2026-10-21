@@ -27,6 +27,27 @@ Los PDFs se extraen con `scripts/parse_pdfs.py` (genera `scripts/output/*.txt`).
 `scripts/build_cardio.py` genera `app/src/data/plans.json` con el programa de Cardio
 curado. El resto de categorías están como placeholder para curación incremental.
 
+### Videos de ejercicio (thumbnails)
+
+Cada ejercicio tiene asociado un video de YouTube (recolectado con Playwright) para
+poder mostrarlo como thumbnail:
+
+```bash
+node scripts/collect_exercise_videos.mjs            # recolecta (reanudable, orden de PDF)
+node scripts/collect_exercise_videos.mjs --list     # lista los ejercicios en orden de PDF
+python3 scripts/apply_exercise_videos.py            # proyecta el dato crudo en plans.json
+python3 scripts/apply_exercise_videos.py --check    # verifica sincronía sin escribir
+python3 scripts/apply_exercise_videos.py --stats    # cobertura y ejercicios sin video
+python3 scripts/set_exercise_video.py --list   # lista ejercicios sin video
+python3 scripts/set_exercise_video.py "Nombre" "https://www.youtube.com/watch?v=ID"  # fija/corrige un video a mano
+```
+
+El recolector recorre los PDFs en orden (`cardio.pdf` → ... →
+`pdf-rutinas-de-resistencia-planche_compress.pdf`), busca un video por nombre de
+ejercicio y deja el dato crudo en `scripts/output/exercise-videos.json`. El merge a
+`app/src/data/plans.json` es idempotente: el campo `video` de cada ejercicio es siempre
+la proyección de ese archivo.
+
 ## Funcionalidades (MVP)
 
 - Navegación por categorías → programas → intensidades → modelos (rutina del día).

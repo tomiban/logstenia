@@ -53,6 +53,54 @@ test('al pasar de ejercicio se avisa cuántas series se omiten', async ({ page }
   await expect(descanso).toContainText('descanso configurado: 120s');
 });
 
+test('cancelar el modal deja al usuario en el mismo ejercicio', async ({ page }) => {
+  await page.goto(`/run/${MODELO}`);
+
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+
+  const modal = page.getByRole('dialog', { name: 'series sin registrar' });
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText('Quedan 4 series sin registrar');
+
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+
+  await expect(modal).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Simulación curl Hefesto (banda detrás)' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
+});
+
+test('al finalizar la rutina también se avisa cuántas series se omiten', async ({ page }) => {
+  await page.goto('/run/cardio-r1');
+
+  // cardio-r1 tiene 4 bloques de 4 ejercicios: se avanza hasta el último
+  for (let i = 0; i < 20; i++) {
+    if (await page.getByRole('button', { name: 'Finalizar entrenamiento' }).count() > 0) break;
+    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await expect(page.getByRole('dialog', { name: 'series sin registrar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    const hayDescanso = await page.getByRole('dialog', { name: 'Descanso en curso' })
+      .waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+    if (hayDescanso) {
+      await page.getByRole('button', { name: 'saltar descanso' }).click();
+    }
+  }
+
+  await expect(page.getByRole('button', { name: 'Finalizar entrenamiento' })).toBeVisible();
+  await page.getByRole('button', { name: 'Finalizar entrenamiento' }).click();
+
+  const modal = page.getByRole('dialog', { name: 'series sin registrar' });
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText('series sin registrar');
+
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  const hayDescanso = await page.getByRole('dialog', { name: 'Descanso en curso' })
+    .waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+  if (hayDescanso) {
+    await page.getByRole('button', { name: 'saltar descanso' }).click();
+  }
+  await expect(page.getByText('Entrenamiento terminado')).toBeVisible();
+});
+
 test('el descanso de serie usa el tiempo configurado de la rutina', async ({ page }) => {
   await page.goto(`/run/${MODELO}`);
 

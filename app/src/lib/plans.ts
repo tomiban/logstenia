@@ -6,6 +6,13 @@ import { addTag } from './tags';
 // In-memory cache (storage-agnostic: backed by plansRepository).
 let data: PlanData = plansJson as PlanData;
 
+// Reactive version counter for UI subscriptions.
+let version = 0;
+const listeners = new Set<() => void>();
+function notify() { version += 1; listeners.forEach((l) => l()); }
+export function subscribePlans(cb: () => void): () => void { listeners.add(cb); return () => listeners.delete(cb); }
+export function getPlansVersion(): number { return version; }
+
 const programIndex = new Map<string, Program>();
 const modelIndex = new Map<string, { model: Model; program: Program }>();
 const categoryIndex = new Map<string, Category>();
@@ -36,6 +43,7 @@ export async function initPlans(): Promise<void> {
     await plansRepository.seedIfEmpty(data);
   }
   rebuildIndexes();
+  notify();
   // Seed tags declared on models (idempotent).
   for (const c of data.categories) {
     for (const p of c.programs) {
@@ -51,6 +59,7 @@ export async function initPlans(): Promise<void> {
 export async function persistPlans(): Promise<void> {
   await plansRepository.save(data);
   rebuildIndexes();
+  notify();
 }
 
 // ---- read (sync, from cache) ----
@@ -147,12 +156,27 @@ export async function deleteBlock(modelId: string, blockIndex: number): Promise<
 export async function updateExercise(modelId: string, blockIndex: number, exerciseIndex: number, patch: any): Promise<void> {
   const entry = modelIndex.get(modelId);
   const block = entry?.model.blocks[blockIndex];
-  if (block && block.exercises[exerciseIndex]) Object.assign(block.exercises[exerciseIndex], patch);
+  if (block && block.exercises[exerciseIndex]) {
+    for (const k of Object.keys(patch)) {
+      const ex: any = block.exercises[exerciseIndex];
+      if (patch[k] === undefined) delete ex[k];
+      else ex[k] = patch[k];
+    }
+  }
   await persistPlans();
 }
 export async function deleteExercise(modelId: string, blockIndex: number, exerciseIndex: number): Promise<void> {
   const entry = modelIndex.get(modelId);
   const block = entry?.model.blocks[blockIndex];
   if (block) block.exercises.splice(exerciseIndex, 1);
+  await persistPlans();
+}
+
+
+// Exercise creation
+export async function createExercise(modelId: string, blockIndex: number, exercise: any): Promise<void> {
+  const entry = modelIndex.get(modelId);
+  const block = entry?.model.blocks[blockIndex];
+  if (block) block.exercises.push(exercise);
   await persistPlans();
 }

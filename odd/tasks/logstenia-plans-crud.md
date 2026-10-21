@@ -26,3 +26,27 @@ Refactor para que los ejercicios tengan id propio, las marcas/anclas se consulte
 ## Log
 
 - L1: Solicitud original: consultas por id (no por nombre) y CRUD sobre planes, sin backend. Estrategia: soft delete descartado, hard delete sin cascada.
+
+## UI (nuevo requisito 2026-10-21)
+
+- S9: Se puede crear/editar/borrar categorías desde la pantalla Planes.
+- S10: Se puede crear/editar/borrar programas desde la pantalla de categoría (Skill).
+- S11: Se puede crear/editar/borrar rutinas (modelos) desde la pantalla de programa.
+- S12: Se puede crear/editar/borrar bloques y ejercicios desde la pantalla de rutina (modo edición).
+- S13: Borrado duro sin cascada; sesiones/marcas quedan huérfanas pero consultables.
+
+### Tasks adicionales
+
+- T8 [S9] UI CRUD de categorías (Planes.tsx).
+- T9 [S10] UI CRUD de programas (Skill.tsx).
+- T10 [S11] UI CRUD de rutinas (Program.tsx).
+- T11 [S12] UI CRUD de bloques/ejercicios (Routine.tsx) + modo edición.
+- T12 [S1..S13] Verificación build/test/lint/e2e.
+
+## Log
+
+- L2: Nuevo requisito usuario: "quiero poder crear y editar planes programas y rutinas." Implementado CRUD UI con botones en pantallas existentes, borrado duro sin cascada. Reactividad vía usePlans (version counter).
+
+## Log
+
+- L3: Modernización UX/UI con shadcn/ui: Dialog para crear/editar, AlertDialog para borrado, Select/Textarea/Label, DropdownMenu (⋯) para acciones por entidad. Etiquetas de ejercicios movidas a submenu dentro del dropdown.

@@ -66,7 +66,10 @@ const STOPWORDS = new Set([
 ]);
 
 const FITNESS_RE = /calistenia|calisthenics|fitness|entrenamiento|entren|movilidad|skills|workout|gym|street|musculacion/i;
-const NOISE_RE = /\bw\s*\/?\s*worship|rutina completa|entrenamiento completo|playlist|\bmix\b|sesion completa|sesion de/i;
+/** Compilaciones y rutinas: nunca son el video de un ejercicio puntual. */
+const REJECT_RE = /\bw\s*\/|worship|\bworkout\b|\brutina\b|\bsesion\b|plan de|follow along|full body|repeticiones|\bintense\b|\bsemana\b|\bdesafio\b|\breto\b|playlist/i;
+/** "12 min de ..." indica una compilacion, no una demo del ejercicio. */
+const COMPILATION_RE = /(^|\s)\d+\s*(min|minutos?|hours?|horas?)\s+de/i;
 
 const norm = (s) =>
   s
@@ -102,28 +105,51 @@ function parseViews(text) {
   return n;
 }
 
+/** Tokens de la consulta, en orden y sin repetir. */
+const queryTokens = (exerciseName) => [...new Set(tokens(exerciseName))];
+
+/** ¿Aparecen los tokens de la consulta como secuencia contigua en el titulo? */
+function hasPhrase(titleTokens, qTokens) {
+  if (qTokens.length === 0) return false;
+  for (let i = 0; i + qTokens.length <= titleTokens.length; i++) {
+    let ok = true;
+    for (let j = 0; j < qTokens.length; j++) {
+      if (titleTokens[i + j] !== qTokens[j]) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
 /**
  * Ranks a search result against the exercise name.
- * Higher is better; negative means "not this exercise".
+ * Returns null when the result cannot represent this exercise.
  */
-function scoreResult(result, exerciseName) {
-  const qName = norm(searchName(exerciseName));
-  const qTokens = [...new Set(tokens(exerciseName))];
-  if (qTokens.length === 0) return -100;
+function scoreResult(result, exerciseName, usedIds = new Map()) {
+  const qTokens = queryTokens(exerciseName);
+  if (qTokens.length === 0) return null;
 
+  const titleTokens = tokens(result.title);
   const titleNorm = norm(result.title);
   const channelNorm = norm(result.channel);
-  const tSet = new Set(tokens(result.title));
+  const tSet = new Set(titleTokens);
+
+  if (REJECT_RE.test(titleNorm)) return null;
 
   const matched = qTokens.filter((t) => tSet.has(t));
   const coverage = matched.length / qTokens.length;
-  let score = coverage * 55;
+  const phrase = hasPhrase(titleTokens, qTokens);
+  if (coverage < 0.4 && !phrase) return null;
 
-  if (titleNorm.includes(qName)) score += 25;
-  else if (matched.length >= 2 && titleNorm.includes(matched[0])) score += 5;
+  let score = coverage * 55;
+  if (phrase) score += 25;
+  else if (matched.length >= 2) score += 5;
 
   if (FITNESS_RE.test(`${titleNorm} ${channelNorm}`)) score += 10;
-  if (NOISE_RE.test(titleNorm)) score -= 25;
+  if (COMPILATION_RE.test(titleNorm)) score -= 30;
 
   const views = parseViews(result.views);
   score += Math.min(5, Math.log10(views + 1));
@@ -136,6 +162,9 @@ function scoreResult(result, exerciseName) {
 
   if (result.isShort) score -= 15;
   if (result.isLive) score -= 20;
+
+  // Un mismo video para dos ejercicios distintos no sirve como thumbnail de ambos.
+  if (usedIds.has(result.id)) score -= 15;
 
   return score;
 }
@@ -309,6 +338,12 @@ async function main() {
 
   let done = 0;
   let hits = 0;
+  // Ids ya usados por otro ejercicio (cache +collected) para no repetir thumbnail.
+  const usedIds = new Map();
+  for (const [name, record] of Object.entries(cache)) {
+    if (record && record.id) usedIds.set(record.id, name);
+  }
+
   for (const exercise of pending) {
     if (limit && done >= limit) break;
     done += 1;
@@ -324,14 +359,16 @@ async function main() {
       const results = await search(page, query);
       if (!results.length) continue;
       const ranked = results
-        .map((r) => ({ ...r, score: scoreResult(r, exercise.name) }))
+        .map((r) => ({ ...r, score: scoreResult(r, exercise.name, usedIds) }))
+        .filter((r) => r.score !== null)
         .sort((a, b) => b.score - a.score);
-      if (!best || ranked[0].score > best.score) best = { ...ranked[0], query };
-      if (best.score >= minScore) break;
+      if (ranked.length && (!best || ranked[0].score > best.score)) best = { ...ranked[0], query };
+      if (best && best.score >= minScore) break;
     }
 
     if (best && best.score >= minScore) {
       hits += 1;
+      usedIds.set(best.id, exercise.name);
       cache[exercise.name] = {
         id: best.id,
         title: best.title,

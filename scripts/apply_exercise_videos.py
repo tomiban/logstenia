@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Proyecta el dato crudo de videos de ejercicio onto `app/src/data/plans.json`.
+"""Projects the raw exercise-video data onto `app/src/data/plans.json`.
 
-Entrada: `scripts/output/exercise-videos.json` (nombre del ejercicio -> video).
-Salida:  `app/src/data/plans.json`, con un campo `video` por ejercicio resuelto.
+Input:  `scripts/output/exercise-videos.json` (exercise name -> video).
+Output: `app/src/data/plans.json`, with a `video` field on every resolved exercise.
 
-El merge es idempotente y total: el estado de `video` en `plans.json` es siempre la
-proyección del archivo crudo (un ejercicio sin coincidencia queda sin `video`).
+The merge is idempotent and total: the `video` state in `plans.json` is always the
+projection of the raw file (an exercise without a match keeps no `video` field).
 
-Uso:
-  python3 scripts/apply_exercise_videos.py            # escribe
-  python3 scripts/apply_exercise_videos.py --check    # verifica sin escribir
-  python3 scripts/apply_exercise_videos.py --stats    # solo cobertura
+Usage:
+  python3 scripts/apply_exercise_videos.py            # writes
+  python3 scripts/apply_exercise_videos.py --check    # verifies without writing
+  python3 scripts/apply_exercise_videos.py --stats    # coverage only
 """
 import argparse
 import json
@@ -24,19 +24,19 @@ VIDEOS = os.path.join(ROOT, "scripts", "output", "exercise-videos.json")
 VIDEO_FIELDS = ("id", "title", "channel", "url", "thumbnail")
 
 
-def load(path):
+def load(path: str) -> dict:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def video_of(record):
-    """Payload de `video` para un ejercicio, o None si no hay match."""
+def video_of(record: dict | None) -> dict | None:
+    """`video` payload for an exercise, or None when there is no match."""
     if not record or not record.get("id"):
         return None
     return {k: record.get(k) for k in VIDEO_FIELDS}
 
 
-def iter_exercises(plans):
+def iter_exercises(plans: dict):
     for category in plans["categories"]:
         for program in category["programs"]:
             for model in program["models"]:
@@ -45,9 +45,9 @@ def iter_exercises(plans):
                         yield exercise
 
 
-def project(plans, videos):
-    """Aplica (o devuelve) la proyección de `videos` sobre `plans`."""
-    changed = []
+def project(plans: dict, videos: dict) -> tuple[list[str], int, int]:
+    """Applies the projection of `videos` onto `plans`."""
+    changed: list[str] = []
     matched_instances = 0
     total_instances = 0
     for exercise in iter_exercises(plans):
@@ -66,7 +66,7 @@ def project(plans, videos):
     return changed, matched_instances, total_instances
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="verifica sin escribir")
     parser.add_argument("--stats", action="store_true", help="solo cobertura")

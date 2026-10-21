@@ -29,6 +29,8 @@ Delivery: work-unit commits. Runner: `npm test` (vitest) + `npm run build` (tsc+
 - S5: La app puede consumir el dato: `Exercise` en `app/src/types/index.ts` tipa el campo `video`.
 - S6: La recolección es auditable: queda el dato crudo en `scripts/output/exercise-videos.json`
   (nombre del ejercicio → video elegido) y un merge idempotente a `plans.json`.
+- S7: El thumbnail se ve en la app: la pantalla de rutina muestra la imagen del ejercicio y el
+  boton de video abre ese video (no una busqueda); el runner muestra la imagen del ejercicio actual.
 
 ## Tasks
 
@@ -40,6 +42,7 @@ Delivery: work-unit commits. Runner: `npm test` (vitest) + `npm run build` (tsc+
 - T4 [S1] Ejecutar la recolección completa (background) → `scripts/output/exercise-videos.json`. Route: inline.
 - T5 [S2,S3] Aplicar el merge a `plans.json` y medir cobertura. Route: inline.
 - T6 [S2,S3,S5] Verificación: JSON válido, `npm test`, `npm run build`, `npm run lint`. Route: inline.
+- T7 [S7] UI: `Video` usa el video recolectado y muestra el thumbnail; rutina y runner lo muestran. Route: inline.
 
 ## Log
 
@@ -54,3 +57,17 @@ Delivery: work-unit commits. Runner: `npm test` (vitest) + `npm run build` (tsc+
 - L4: `plans.json` ya tiene cambios sin commitear de la unidad previa (`logstenia-plans-crud`).
   Por eso el dato crudo vive en `scripts/output/exercise-videos.json` y el merge a `plans.json`
   es un script idempotente: nada se pierde al regenerar `plans.json` desde los `build_*.py`.
+- L5: Scoring de la recolección: cobertura de tokens >= 0.4 o coincidencia de frase, rechazo de
+  compilaciones (`workout`, `rutina`, `w/`, `sesion`), penalización a videos ya usados por otro
+  ejercicio y preferencia por demos cortas (8s-5min). Verificado sobre los primeros 14 ejercicios
+  de `cardio.pdf`: 13/14 con match razonable.
+- L6: La recolección completa corre en background (423 nombres, ~10 por minuto). El cache se
+  escribe cada 5 entradas, así que una interrupción no pierde lo ya recolectado.
+- L7: El gate de pre-commit (GGA) no pudo ejecutarse con el provider configurado (`claude`, CLI
+  no instalada). Se ejecuto con `opencode` (ya instalado) sobre una copia temporal de la
+  configuracion y se reviso el diff: los comentarios en TypeScript deben ir en ingles, el test
+  no puede usar `node:fs`/`node:path` (el `tsconfig.app.json` excluye los tipos de Node) y la
+  feature queda a medio aterrizar si el tipo `ExerciseVideo` no lo consume la UI. Todo corregido.
+- L8: T7 (UI) nace de ese review: el dato sin mostrar no cumple la intencion ("quiero poner como
+  thumbnail"). Alcance: `Video` usa el video recolectado cuando existe y muestra el thumbnail;
+  la rutina lo muestra por ejercicio y el runner el del ejercicio actual.
