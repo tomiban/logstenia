@@ -1,21 +1,35 @@
-export type Step =
-  | { kind: 'work'; exercise: { name: string; timeSec?: number; reps?: string }; blockIdx: number; setIdx: number; exIdx: number }
-  | { kind: 'rest'; seconds: number; label: string };
+import type { Block, Exercise, Model } from '../types';
+import { restAfterExercise, restAfterSet } from './rest';
 
-export function buildSteps(model: any): Step[] {
-  const steps: Step[] = [];
-  model.blocks.forEach((block: any, bi: number) => {
-    for (let s = 0; s < block.sets; s++) {
-      block.exercises.forEach((ex: any, ei: number) => {
-        steps.push({ kind: 'work', exercise: ex, blockIdx: bi, setIdx: s, exIdx: ei });
-        if (ei < block.exercises.length - 1 && block.restBetweenExercisesSec > 0) {
-          steps.push({ kind: 'rest', seconds: block.restBetweenExercisesSec, label: 'Descanso' });
-        }
+export interface WorkoutStep {
+  /** Índice del bloque dentro del modelo. */
+  blockIdx: number;
+  /** Índice del ejercicio dentro del bloque. */
+  exIdx: number;
+  block: Block;
+  exercise: Exercise;
+  /** Descanso entre series del ejercicio. */
+  restAfterSetSec: number;
+  /** Descanso al terminar el ejercicio, antes del siguiente. */
+  restAfterExerciseSec: number;
+}
+
+/** Aplana un modelo en los pasos del runner: un paso por ejercicio, con sus descansos. */
+export function buildSteps(model: Model): WorkoutStep[] {
+  const steps: WorkoutStep[] = [];
+  const blocks = model?.blocks ?? [];
+  blocks.forEach((block, blockIdx) => {
+    const ejercicios = block?.exercises ?? [];
+    ejercicios.forEach((exercise, exIdx) => {
+      steps.push({
+        blockIdx,
+        exIdx,
+        block,
+        exercise,
+        restAfterSetSec: restAfterSet(block),
+        restAfterExerciseSec: restAfterExercise(block, exIdx === ejercicios.length - 1),
       });
-      if (s < block.sets - 1 && block.restBetweenSetsSec > 0) {
-        steps.push({ kind: 'rest', seconds: block.restBetweenSetsSec, label: 'Descanso entre series' });
-      }
-    }
+    });
   });
   return steps;
 }

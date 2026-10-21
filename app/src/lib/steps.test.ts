@@ -1,35 +1,54 @@
 import { describe, it, expect } from 'vitest';
 import { buildSteps } from './steps';
+import type { Model } from '../types';
+
+const modelo = (blocks: any[]): Model => ({ id: 'm1', name: 'M1', intensity: 2, totalTimeMin: 10, blocks });
 
 describe('buildSteps', () => {
-  it('flattens a single block with sets and rest', () => {
-    const model = {
-      blocks: [
-        { type: 'single', sets: 2, restBetweenSetsSec: 30, restBetweenExercisesSec: 0,
-          exercises: [{ name: 'Plank', timeSec: 30 }] },
-      ],
-    };
-    const steps = buildSteps(model);
-    // 2 sets: work + rest between sets
-    expect(steps).toHaveLength(3);
-    expect(steps[0]).toMatchObject({ kind: 'work' });
-    expect(steps[1]).toMatchObject({ kind: 'rest', seconds: 30 });
-    expect(steps[2]).toMatchObject({ kind: 'work' });
+  it('devuelve un paso por ejercicio con sus descansos', () => {
+    const steps = buildSteps(modelo([
+      {
+        type: 'single', sets: 3, restBetweenSetsSec: 90, restBetweenExercisesSec: 120,
+        exercises: [{ name: 'Plancha', timeSec: 30 }],
+      },
+    ]));
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      blockIdx: 0,
+      exIdx: 0,
+      restAfterSetSec: 90,
+      restAfterExerciseSec: 120,
+    });
+    expect(steps[0].exercise.name).toBe('Plancha');
   });
 
-  it('adds rest between exercises in biseries', () => {
-    const model = {
-      blocks: [
-        { type: 'biseries', sets: 1, restBetweenSetsSec: 0, restBetweenExercisesSec: 15,
-          exercises: [{ name: 'A', timeSec: 10 }, { name: 'B', timeSec: 10 }] },
-      ],
-    };
-    const steps = buildSteps(model);
-    expect(steps).toHaveLength(3);
-    expect(steps[1]).toMatchObject({ kind: 'rest', seconds: 15 });
+  it('deriva los descansos del bloque', () => {
+    const steps = buildSteps(modelo([
+      {
+        type: 'biseries', sets: 2, restBetweenSetsSec: 60, restBetweenExercisesSec: 15,
+        exercises: [{ name: 'A' }, { name: 'B' }],
+      },
+    ]));
+
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 15 });
+    expect(steps[1]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 15 });
   });
 
-  it('returns empty for no blocks', () => {
-    expect(buildSteps({ blocks: [] })).toEqual([]);
+  it('el último ejercicio del bloque hereda el descanso entre series', () => {
+    const steps = buildSteps(modelo([
+      {
+        type: 'biseries', sets: 2, restBetweenSetsSec: 60,
+        exercises: [{ name: 'A' }, { name: 'B' }],
+      },
+    ]));
+
+    expect(steps[0]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 0 });
+    expect(steps[1]).toMatchObject({ restAfterSetSec: 60, restAfterExerciseSec: 60 });
+  });
+
+  it('devuelve vacío para un modelo sin bloques', () => {
+    expect(buildSteps(modelo([]))).toEqual([]);
   });
 });
