@@ -21,6 +21,8 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - S12: Build, lint y tests siguen pasando; la pantalla se verifica renderizada a 375px y 1280px.
 
 - S13: La pantalla de Progreso no pide anotar nada: resume "sesiones ganadas" (sesión vs la anterior del mismo plan: más tiempo, o el mismo tiempo con más series), duración por sesión en gráfico, comparación fila a fila con Δ y marcas superadas, y la evolución de cada ejercicio con historial.
+- S14: Los gráficos son de librería (recharts, ya estaba en el stack): barras para volumen y duración, líneas para la evolución por ejercicio. Tooltip, ticks y ejes con el mismo sistema visual (sin sombras, radio 0, mono para los números).
+- S15: Cero entradas de datos en Métricas y Progreso: las metas se derivan de los registros (las metas de conteo, de las sesiones del programa; las metas de valor, de tu mejor marca del ejercicio que corresponde).
 
 ## Tasks
 
@@ -30,6 +32,7 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - T4 [S11] `app/src/pages/Runner.tsx` + `app/src/lib/session.ts`: persistir `durationSec` real con el cálculo de duración cubierto por test unitario. Route: inline. Commit: `fix(runner): persist real session duration`.
 - T5 [S12] Verificación: `npm run build`, `npm run lint`, `npm test` y captura renderizada de `/metrics`, `/progress` y `/settings` a 390px, 768px y 1280px, en claro y oscuro. Route: inline. Commit: ninguno (verificación).
 - T6 [S2b,S13] `app/src/pages/Progress.tsx` + `app/src/lib/metrics.ts`: reemplazo del registro manual por evolución automática (comparación de sesiones + series por ejercicio). Route: inline. Commit: `feat(progress): replace manual register with session evolution`.
+- T7 [S14,S15] Charts de librería y metas derivadas: `app/src/components/ui/chart.tsx` (tooltip + tick propios), `app/src/pages/Metrics.tsx` y `app/src/pages/Progress.tsx` con recharts, `deriveGoal` en `app/src/lib/metrics.ts` (+ tests). Route: inline. Commit: `feat(ui): use recharts charts and derive goals from records`.
 
 ## Log
 
@@ -48,3 +51,4 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - L13: La review GGA marcó el uso de `var(--token)` en className (AGENTS.md lo rechaza) y la falta de manejo de error en las llamadas a la base: las pantallas nuevas migraron a las utilidades semánticas (`text-foreground`, `text-muted-foreground`, `bg-card`, `bg-secondary`, `border-border`, `bg-accent`, `bg-primary`) y se registró `--color-ink` en `@theme inline`; cada `await db.*` quedó con try/catch y la importación de backup valida la forma del JSON.
 - L14: Commits (rama `feat/logstenia`): `4746ac8` feat(metrics): redesign metrics screen with telemetry, volume and marks · `2ec0b06` feat(progress): replace manual register with session evolution · `29cef52` feat(nav): split metrics, progress and settings into their own routes · `5827786` fix(runner): persist real session duration · `7af7a48` + `58ce641` + `287909f` ajustes de review (barras, reloj de sesión, una sola baliza por vista).
 - L15: Verificación final: `tsc -b` limpio, `npm run build` OK, `npm test` 57/57 en 5 archivos, `npm run lint` sin errores (los warnings restantes son preexistentes de Home/Runner/Layout), detector de Impeccable sin hallazgos y capturas renderizadas a 390px, 768px y 1280px en claro y oscuro de `/metrics`, `/progress` y `/settings`. La assessment nativa (`gentle_review assess` sobre 9dc6cb6..HEAD) devolvió riesgo medio con `reviewDue: false` ("under_budget"), así que no se abrió una review nativa.
+- L16: Segunda corrección del usuario: "USA CHARTS DE LIBRERIAS NO VEO NINGUNO Y SIGUE HABIENDO ENTRADA DE DATOS NO QUIERO ESO". Los gráficos hechos a mano con divs se reemplazaron por recharts (`app/src/components/ui/chart.tsx` con el tooltip y el tick propios para no romper el sistema visual) y el último input de la app en las pantallas de datos (el valor editable de las metas) se eliminó: las metas ahora se derivan de los registros con `deriveGoal` (conteo de sesiones del programa para metas de conteo; mejor marca del ejercicio para metas de valor). Verificado: no queda ningún `<input>`, `<select>` ni `<textarea>` en Métricas ni Progreso; en Ajustes solo quedan los dos toggles y el import de backup.

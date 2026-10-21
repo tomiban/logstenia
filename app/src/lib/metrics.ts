@@ -292,6 +292,61 @@ export interface GoalProgress {
   program: string;
 }
 
+const GOAL_STOPWORDS = new Set([
+  'de', 'del', 'la', 'el', 'los', 'las', 'y', 'en', 'un', 'una', 'a', 'al',
+  'por', 'para', 'con', 'dia', 'dias', 'hold', 'holds',
+]);
+
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function goalCoreToken(goalName: string): string | null {
+  const tokens = normalizeText(goalName)
+    .split(' ')
+    .filter((t) => t.length >= 4 && !GOAL_STOPWORDS.has(t));
+  if (tokens.length === 0) return null;
+  return tokens.reduce((longest, t) => (t.length > longest.length ? t : longest), tokens[0]);
+}
+
+export interface GoalDerivation {
+  value: number;
+  source: string | null;
+  kind: 'registro' | 'sesiones' | 'sin';
+}
+
+/**
+ * Derives a goal's current value from what was actually trained:
+ * count goals ("Completar sesiones") from the sessions of their program,
+ * value goals ("Hold plank") from the best matching record.
+ */
+export function deriveGoal(
+  goal: { name: string; unit: 'sec' | 'reps' },
+  programId: string,
+  entries: MarkEntry[],
+  sessions: SessionRecord[],
+): GoalDerivation {
+  const name = normalizeText(goal.name);
+  if (name.includes('sesion') || name.includes('dia')) {
+    const count = sessions.filter((s) => s.planId === programId).length;
+    return { value: count, source: null, kind: 'sesiones' };
+  }
+  const token = goalCoreToken(goal.name);
+  if (!token) return { value: 0, source: null, kind: 'sin' };
+  let best: MarkEntry | null = null;
+  for (const entry of entries) {
+    if (entry.unit !== goal.unit) continue;
+    if (!normalizeText(entry.exercise).startsWith(token)) continue;
+    if (!best || entry.value > best.value) best = entry;
+  }
+  return best ? { value: best.value, source: best.exercise, kind: 'registro' } : { value: 0, source: null, kind: 'sin' };
+}
+
 export function computeGoals(
   current: { goalId: string; current: number }[],
   planGoals: { goal: Goal; program: string }[],

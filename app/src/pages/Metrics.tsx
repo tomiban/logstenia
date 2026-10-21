@@ -8,29 +8,35 @@ import {
   collectMarks,
   computeGoals,
   computeTelemetry,
+  deriveGoal,
   delta,
   planDistribution,
   weeklyVolume,
   windowsFor,
   type BestMark,
+  type GoalDerivation,
   type RangeKey,
 } from '../lib/metrics';
-import { Input } from '@/components/ui/input';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
+import { ChartTooltip, ValueTick } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 
 const UNIT_LABEL: Record<'sec' | 'reps', string> = { sec: 'seg', reps: 'reps' };
 const nf = new Intl.NumberFormat('es-AR');
 const WEEKS_SHOWN = 8;
 
-const PLAN_GOALS = allPrograms().flatMap((p) => p.goals.map((goal) => ({ goal, program: p.name })));
+const PLAN_GOALS = allPrograms().flatMap((p) => p.goals.map((goal) => ({ goal, program: p.name, programId: p.id })));
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function nowIso(): string {
-  return new Date().toISOString();
+function goalNote(derivation: GoalDerivation | undefined): string {
+  if (!derivation || derivation.kind === 'sin') return 'sin registros';
+  if (derivation.kind === 'sesiones') return `${nf.format(derivation.value)} sesiones del plan`;
+  return `mejor ${derivation.source}`;
 }
+
 
 function Panel({
   title,
@@ -88,29 +94,6 @@ function Readout({
   );
 }
 
-function GoalValue({ goal, onSave }: { goal: { id: string; name: string; current: number }; onSave: (value: number) => void }) {
-  const [resetKey, setResetKey] = useState(0);
-  return (
-    <Input
-      key={`${goal.id}-${goal.current}-${resetKey}`}
-      type="number"
-      inputMode="numeric"
-      min={0}
-      defaultValue={goal.current}
-      aria-label={`valor actual de ${goal.name}`}
-      className="metric h-11 w-24 text-right"
-      onBlur={(e) => {
-        const parsed = Number(e.target.value);
-        if (!Number.isFinite(parsed) || parsed < 0) {
-          setResetKey((k) => k + 1);
-          return;
-        }
-        if (parsed !== goal.current) onSave(parsed);
-      }}
-    />
-  );
-}
-
 function MarkRow({ mark }: { mark: BestMark }) {
   return (
     <li className="flex items-center gap-3 px-4 py-3">
@@ -145,7 +128,6 @@ export default function Metrics() {
   const [today, setToday] = useState('');
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [marks, setMarks] = useState<MarkRecord[]>([]);
-  const [goalRows, setGoalRows] = useState<{ goalId: string; current: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -153,11 +135,10 @@ export default function Metrics() {
     let cancelled = false;
     (async () => {
       try {
-        const [s, m, g] = await Promise.all([db.sessions.toArray(), db.marks.toArray(), db.goals.toArray()]);
+        const [s, m] = await Promise.all([db.sessions.toArray(), db.marks.toArray()]);
         if (cancelled) return;
         setSessions(s);
         setMarks(m);
-        setGoalRows(g.map((r) => ({ goalId: r.goalId, current: r.current })));
         setToday(todayIso());
       } catch {
         if (!cancelled) setError('No se pudieron leer los datos de este dispositivo.');
@@ -192,9 +173,16 @@ export default function Metrics() {
   const win = windowsFor(range, today, earliest);
   const telemetry = computeTelemetry(sessions, win);
   const volume = weeklyVolume(sessions, WEEKS_SHOWN, today);
-  const best = bestMarks(collectMarks(sessions, marks), today);
+  const entries = collectMarks(sessions, marks);
+  const best = bestMarks(entries, today);
   const dist = planDistribution(sessions, win.current);
-  const goals = computeGoals(goalRows, PLAN_GOALS);
+  const derivations = new Map(
+    PLAN_GOALS.map(({ goal, programId }) => [goal.id, deriveGoal(goal, programId, entries, sessions)]),
+  );
+  const goals = computeGoals(
+    PLAN_GOALS.map(({ goal }) => ({ goalId: goal.id, current: derivations.get(goal.id)?.value ?? 0 })),
+    PLAN_GOALS,
+  );
 
   const rangeOpt = RANGE_OPTIONS.find((o) => o.key === range);
   const prevNote = win.previous ? `vs ${win.days} d previos` : 'histórico completo';
@@ -202,7 +190,11 @@ export default function Metrics() {
   const hasDuration = sessions.some((s) => (s.durationSec || 0) > 0);
   const volumeValue = (w: (typeof volume)[number]) => (hasDuration ? w.minutes : w.sessions);
   const volumeUnit = hasDuration ? 'min' : 'sesiones';
-  const peak = Math.max(1, ...volume.map(volumeValue));
+  const volumeData = volume.map((w) => ({
+    label: w.label,
+    amount: volumeValue(w),
+    current: w.current,
+  }));
 
   const markGroups: { key: string; title: string; rows: BestMark[] }[] = [];
   for (const mark of best) {
@@ -218,20 +210,6 @@ export default function Metrics() {
     }
   }
 
-  const saveGoal = async (goalId: string, value: number) => {
-    setGoalRows((prev) => [...prev.filter((g) => g.goalId !== goalId), { goalId, current: value }]);
-    const updatedAt = nowIso();
-    try {
-      const existing = await db.goals.where('goalId').equals(goalId).first();
-      if (existing?.id !== undefined) {
-        await db.goals.update(existing.id, { current: value, updatedAt });
-      } else {
-        await db.goals.add({ goalId, current: value, updatedAt });
-      }
-    } catch {
-      setError('No se pudo guardar el valor de la meta.');
-    }
-  };
 
   const sinSesiones = sessions.length === 0;
 
@@ -333,42 +311,25 @@ export default function Metrics() {
           {sinSesiones ? (
             <p className="label-caps text-muted-foreground">sin sesiones para graficar</p>
           ) : (
-            <>
-              <div
-                className="flex h-32 items-end gap-1 border-b border-border"
-                role="img"
-                aria-label={`Volumen de las últimas ${WEEKS_SHOWN} semanas. Máximo ${nf.format(peak)} ${volumeUnit} por semana.`}
-              >
-                {volume.map((w) => {
-                  const value = volumeValue(w);
-                  const pct = Math.round((value / peak) * 100);
-                  return (
-                    <div key={w.start} className="flex h-full flex-1 items-end justify-center">
-                      {value === 0 ? (
-                        <div className="h-px w-full max-w-[72px] bg-border" />
-                      ) : (
-                        <div
-                          className="w-full max-w-[72px] bg-foreground"
-                          style={{ height: `${Math.max(4, pct)}%` }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex gap-1">
-                {volume.map((w) => (
-                  <div key={w.start} className="flex flex-1 flex-col items-center gap-1">
-                    <span className="metric text-xs text-foreground">{nf.format(volumeValue(w))}</span>
-                    <span className="label-status text-muted-foreground">{w.label}</span>
-                    <span
-                      className={cn('h-2 w-2', w.current ? 'bg-accent' : 'bg-transparent')}
-                      aria-hidden="true"
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
+            <div className="text-foreground">
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={volumeData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis
+                    dataKey="label"
+                    height={44}
+                    interval={0}
+                    tick={(props) => <ValueTick {...props} data={volumeData} />}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<ChartTooltip unit={volumeUnit} />}
+                    cursor={{ fill: 'var(--muted-surface)' }}
+                  />
+                  <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </Panel>
@@ -415,12 +376,12 @@ export default function Metrics() {
                       style={{ width: `${goal.pct}%` }}
                     />
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
                     <span className="label-caps text-muted-foreground">
                       <span className="metric text-foreground">{nf.format(goal.current)}</span> /{' '}
                       {nf.format(goal.target)} {UNIT_LABEL[goal.unit]}
                     </span>
-                    <GoalValue goal={goal} onSave={(v) => saveGoal(goal.id, v)} />
+                    <span className="label-caps text-muted-foreground">{goalNote(derivations.get(goal.id))}</span>
                   </div>
                 </li>
               ))}

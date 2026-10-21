@@ -8,7 +8,8 @@ import {
   exerciseSeries,
   type SessionComparison,
 } from '../lib/metrics';
-import { cn } from '@/lib/utils';
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChartTooltip, ValueTick } from '@/components/ui/chart';
 
 const UNIT_LABEL: Record<'sec' | 'reps', string> = { sec: 'seg', reps: 'reps' };
 const nf = new Intl.NumberFormat('es-AR');
@@ -96,11 +97,15 @@ export default function Progress() {
   const hasDuration = sessions.some((s) => (s.durationSec || 0) > 0);
   const measure = (c: SessionComparison) => (hasDuration ? c.summary.durationMin : c.summary.series);
   const measureUnit = hasDuration ? 'min' : 'series';
-  const peak = Math.max(1, ...windowed.map(measure));
   const bestSession = windowed.reduce<SessionComparison | null>(
     (best, c) => (best === null || measure(c) > measure(best) ? c : best),
     null,
   );
+  const sessionData = windowed.map((c) => ({
+    label: dayLabel(c.summary.date),
+    amount: measure(c),
+    current: c.gained === true,
+  }));
 
   return (
     <div className="space-y-4">
@@ -154,39 +159,21 @@ export default function Progress() {
 
           <Panel title="Duración por sesión" meta={`${measureUnit} · ${windowed.length} sesiones`}>
             <div className="p-4">
-              <div
-                className="flex h-32 items-end gap-1 border-b border-border"
-                role="img"
-                aria-label={`Duración de las últimas ${windowed.length} sesiones. Máximo ${nf.format(peak)} ${measureUnit}.`}
-              >
-                {windowed.map((c) => {
-                  const value = measure(c);
-                  const pct = Math.round((value / peak) * 100);
-                  return (
-                    <div key={`${c.summary.date}-${c.summary.planId}`} className="flex h-full flex-1 items-end justify-center">
-                      {value === 0 ? (
-                        <div className="h-px w-full max-w-[72px] bg-border" />
-                      ) : (
-                        <div
-                          className="w-full max-w-[72px] bg-foreground"
-                          style={{ height: `${Math.max(4, pct)}%` }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex gap-1">
-                {windowed.map((c) => (
-                  <div key={`${c.summary.date}-${c.summary.planId}`} className="flex flex-1 flex-col items-center gap-1">
-                    <span className="metric text-xs text-foreground">{nf.format(measure(c))}</span>
-                    <span className="label-status text-muted-foreground">{dayLabel(c.summary.date)}</span>
-                    <span
-                      className={cn('h-2 w-2', c.gained ? 'bg-accent' : 'bg-transparent')}
-                      aria-hidden="true"
+              <div className="text-foreground">
+                <ResponsiveContainer width="100%" height={150}>
+                  <BarChart data={sessionData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                    <XAxis
+                      dataKey="label"
+                      height={44}
+                      interval={0}
+                      tick={(props) => <ValueTick {...props} data={sessionData} />}
+                      axisLine={{ stroke: 'var(--border)' }}
+                      tickLine={false}
                     />
-                  </div>
-                ))}
+                    <Tooltip content={<ChartTooltip unit={measureUnit} />} cursor={{ fill: 'var(--muted-surface)' }} />
+                    <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </Panel>
@@ -246,15 +233,22 @@ export default function Progress() {
                         <span className="label-caps text-muted-foreground">{UNIT_LABEL[s.unit]}</span>
                       </span>
                     </div>
-                    <div className="mt-2 flex h-10 items-end gap-0.5 border-b border-border">
-                      {s.points.map((p, i) => (
-                        <div key={`${p.date}-${p.value}-${i}`} className="flex h-full flex-1 items-end justify-center">
-                          <div
-                            className="w-full max-w-[72px] bg-foreground"
-                            style={{ height: `${Math.max(8, Math.round((p.value / s.best) * 100))}%` }}
+                    <div className="mt-2 text-foreground">
+                      <ResponsiveContainer width="100%" height={56}>
+                        <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                          <XAxis dataKey="date" hide />
+                          <YAxis hide domain={[0, 'dataMax']} />
+                          <Tooltip content={<ChartTooltip unit={UNIT_LABEL[s.unit]} />} />
+                          <Line
+                            type="linear"
+                            dataKey="value"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            dot={{ r: 2.5, fill: 'currentColor', strokeWidth: 0 }}
+                            activeDot={{ r: 4, fill: 'var(--voltage-lime)', stroke: 'var(--ink)' }}
                           />
-                        </div>
-                      ))}
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
                     <div className="label-caps mt-1 text-muted-foreground">
                       {nf.format(s.improvements)} mejoras · {nf.format(s.points.length)} registros

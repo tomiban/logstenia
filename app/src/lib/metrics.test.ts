@@ -7,6 +7,7 @@ import {
   collectMarks,
   bestMarks,
   computeGoals,
+  deriveGoal,
   planDistribution,
   compareSessions,
   exerciseSeries,
@@ -357,5 +358,50 @@ describe('unitForExercise', () => {
 
   it('falls back to reps for an exercise outside the catalog', () => {
     expect(unitForExercise('Ejercicio inventado')).toBe('reps');
+  });
+});
+
+describe('deriveGoal', () => {
+  const entries = collectMarks(
+    [
+      ses('2026-10-01', { sets: [{ exercise: 'Plank', setIndex: 1, value: '45', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+      ses('2026-10-05', { sets: [{ exercise: 'Plank', setIndex: 1, value: '52', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+      ses('2026-10-06', {
+        sets: [{ exercise: 'Nado en suelo (movilidad de hombros)', setIndex: 1, value: '10', unit: 'reps', bloqueOrden: 0, orden: 0 }],
+      }),
+    ],
+    [],
+  );
+
+  it('derives a value goal from the best matching record', () => {
+    const goal = deriveGoal({ name: 'Hold plank', unit: 'sec' }, 'cardio-casa', entries, []);
+    expect(goal).toEqual({ value: 52, source: 'Plank', kind: 'registro' });
+  });
+
+  it('ignores records measured in another unit', () => {
+    const goal = deriveGoal({ name: 'Hold plank', unit: 'reps' }, 'cardio-casa', entries, []);
+    expect(goal.kind).toBe('sin');
+    expect(goal.value).toBe(0);
+  });
+
+  it('does not match an exercise that only mentions the word', () => {
+    const goal = deriveGoal({ name: 'Flexiones', unit: 'reps' }, 'cardio-casa', entries, []);
+    expect(goal.kind).toBe('sin');
+  });
+
+  it('counts the sessions of the program for count goals', () => {
+    const sessions = [
+      ses('2026-10-01', { planId: 'cardio-casa' }),
+      ses('2026-10-02', { planId: 'cardio-casa' }),
+      ses('2026-10-03', { planId: 'otro-plan' }),
+    ];
+    const goal = deriveGoal({ name: 'Completar sesiones', unit: 'reps' }, 'cardio-casa', entries, sessions);
+    expect(goal).toEqual({ value: 2, source: null, kind: 'sesiones' });
+  });
+
+  it('counts the sessions of the program for day goals', () => {
+    const sessions = [ses('2026-10-01', { planId: 'movilidad-general' })];
+    const goal = deriveGoal({ name: 'Días de movilidad', unit: 'reps' }, 'movilidad-general', entries, sessions);
+    expect(goal).toEqual({ value: 1, source: null, kind: 'sesiones' });
   });
 });
