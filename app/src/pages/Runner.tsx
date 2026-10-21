@@ -258,11 +258,13 @@ export default function Runner() {
   const [descansoSegundos, setDescansoSegundos] = useState(0);
   const [descansoEtiqueta, setDescansoEtiqueta] = useState('Descanso');
   const [descansoDestino, setDescansoDestino] = useState<Destino>(null);
+  const [modalOmitir, setModalOmitir] = useState<{ pendientes: number } | null>(null);
   const [segRestantes, setSegRestantes] = useState(0);
   const [borradorCargado, setBorradorCargado] = useState(false);
   const inicioRef = useRef(0);
   const setsRef = useRef<SessionSet[]>([]);
   const finalizarRef = useRef<() => void>(() => {});
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inicioRef.current = Date.now();
@@ -339,6 +341,12 @@ export default function Runner() {
   useEffect(() => {
     finalizarRef.current = () => { void finalizar(); };
   });
+
+  // El modal de series omitidas toma el foco al abrirse.
+  useEffect(() => {
+    if (!modalOmitir) return;
+    modalRef.current?.focus();
+  }, [modalOmitir]);
 
   // Cuenta regresiva del descanso.
   useEffect(() => {
@@ -495,7 +503,8 @@ export default function Runner() {
     });
   };
 
-  const siguiente = () => {
+  /** Confirma lo tipeado y pasa al siguiente ejercicio aplicando el descanso final. */
+  const avanzar = () => {
     confirmarTipeados();
     const esUltimo = idx >= n - 1;
     if (step.restAfterExerciseSec > 0) {
@@ -507,6 +516,15 @@ export default function Runner() {
       return;
     }
     irA(idx + 1);
+  };
+
+  const siguiente = () => {
+    const pendientes = lista.filter((_, k) => !yaRegistrada(k)).length;
+    if (pendientes > 0) {
+      setModalOmitir({ pendientes });
+      return;
+    }
+    avanzar();
   };
 
   return (
@@ -530,6 +548,27 @@ export default function Runner() {
           />
         </div>
       </Card>
+
+      {modalOmitir && (
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-omitir-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4">
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            className="w-full max-w-sm space-y-4 border border-[var(--ink)] bg-[var(--surface)] p-6"
+            onKeyDown={(e) => { if (e.key === 'Escape') setModalOmitir(null); }}
+          >
+            <p id="modal-omitir-title" className="label-caps text-[var(--foreground)]">series sin registrar</p>
+            <p className="text-sm text-[var(--foreground)]">
+              Quedan {modalOmitir.pendientes} {modalOmitir.pendientes === 1 ? 'serie' : 'series'} sin registrar.
+              {' '}Si continuás, {modalOmitir.pendientes === 1 ? 'se omite' : 'se omiten'}.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setModalOmitir(null)}>Cancelar</Button>
+              <Button variant="default" className="flex-1" onClick={() => { setModalOmitir(null); avanzar(); }}>Continuar</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="sticky bottom-0 -mx-4 sm:-mx-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--background)] px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Button variant="outline" disabled={idx === 0 || descansoHasta != null} onClick={() => irA(idx - 1)}>Anterior</Button>

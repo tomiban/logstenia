@@ -17,7 +17,8 @@ no se editan en ningún punto de la app.
 - S4: "en el runnner hay un boton guardar serie que es redundante. la serie se guarda con el boton
   fonrimar y se confirma al dar siguiente para pasar a otro ejercicio" — se elimina "Guardar
   series"; la serie se registra con "confirmar" y al presionar "Siguiente" se confirman los
-  valores tipeados pendientes antes de pasar al siguiente ejercicio.
+  valores tipeados pendientes antes de pasar al siguiente ejercicio. Si quedan series sin
+  registrar, "Siguiente" abre un modal que informa cuántas se omiten antes de continuar.
 - S5: "yo solo quiero esto y asegurarme por ahora que no seane ditables. debias ocultar ese
   seccion con el tiempo de descanso y el toggle para abrir lso sliders. esa data ahora debia
   estar dentro del cotnenedor del ejericio pero sin posibilidad de cambio." — los descansos salen
@@ -88,3 +89,9 @@ no se editan en ningún punto de la app.
   `scripts/output/exercise-videos.json`). Los 4 tests que fallan en `npm test` pertenecen a ese
   trabajo en curso (videos por ejercicio) y no a esta feature: `src/lib/rest.test.ts` y
   `src/lib/steps.test.ts` están en verde.
+- L15: "si le damos siguiente y no hemos compeltados todas las series que menciona la rutina
+  debemos poner un modal diciendo que omitiremos x series"
+- L16: El modal "series sin registrar" aparece al presionar "Siguiente" cuando el ejercicio
+  tiene series sin registrar: "Quedan N series sin registrar. Si continuás, se omiten." con
+  "Cancelar" (quedarse en el ejercicio) y "Continuar" (confirmar lo tipeado, omitir el resto y
+  aplicar el descanso final). Toma el foco al abrirse y se cierra con Escape.

@@ -25,11 +25,33 @@ test('el descanso al finalizar aparece tambien sin descanso entre ejercicios', a
   await expect(page.getByText('descanso final 60s', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
 
   const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
   await expect(descanso).toBeVisible();
   await expect(descanso).toContainText('Descanso al finalizar el ejercicio');
   await expect(descanso).toContainText('descanso configurado: 60s');
+});
+
+test('al pasar de ejercicio se avisa cuántas series se omiten', async ({ page }) => {
+  await page.goto(`/run/${MODELO}`);
+
+  await page.getByPlaceholder('reps').first().fill('12');
+  await page.getByRole('button', { name: 'confirmar' }).first().click();
+  await page.getByRole('button', { name: 'saltar descanso' }).click();
+
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+
+  const modal = page.getByRole('dialog', { name: 'series sin registrar' });
+  await expect(modal).toBeVisible();
+  await expect(modal).toContainText('Quedan 3 series sin registrar');
+  await expect(modal).toContainText('se omiten');
+
+  await page.getByRole('button', { name: 'Continuar' }).click();
+
+  const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
+  await expect(descanso).toBeVisible();
+  await expect(descanso).toContainText('descanso configurado: 120s');
 });
 
 test('el descanso de serie usa el tiempo configurado de la rutina', async ({ page }) => {
@@ -55,6 +77,7 @@ test('al confirmar al pasar de ejercicio se respeta el descanso final', async ({
   await page.getByRole('button', { name: 'saltar descanso' }).click();
 
   await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
 
   const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
   await expect(descanso).toBeVisible();
