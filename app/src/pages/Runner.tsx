@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Cronometro, { desbloquearAudio } from '../components/Cronometro';
+import { elapsedSeconds } from '../lib/session';
 
 const SERIES_POR_DEFECTO = 3;
 
@@ -266,6 +267,11 @@ export default function Runner() {
   const [modalPendientes, setModalPendientes] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const inicioRef = useRef(0);
+
+  useEffect(() => {
+    inicioRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!modalPendientes) return;
@@ -297,6 +303,7 @@ export default function Runner() {
   const [siguientePendiente, setSiguientePendiente] = useState<number | null>(null);
   const [borradorCargado, setBorradorCargado] = useState(false);
   const [allSets, setAllSets] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Load draft
   useEffect(() => {
@@ -415,13 +422,15 @@ export default function Runner() {
         date: new Date().toISOString().slice(0, 10),
         planId: program!.id,
         modelId: model!.id,
-        durationSec: 0,
+        durationSec: elapsedSeconds(inicioRef.current, Date.now()),
         completed: true,
         sets: allSets as any,
       });
       // clear draft
       await db.settings.delete(`borrador:${model!.id}`);
-    } catch (e) { console.error(e); }
+    } catch {
+      setErrorMsg('No se pudo guardar la sesión en este dispositivo.');
+    }
   };
 
   const confirmarPendientes = () => {
@@ -457,7 +466,16 @@ export default function Runner() {
     </div>
   );
 
-  if (fin) return <Fin ses={{ id: model.id, name: model.name }} estado={{ sets: allSets }} onVolver={() => setFin(false)} />;
+  if (fin) return (
+    <>
+      {errorMsg ? (
+        <p role="alert" className="label-caps mb-4 border border-[var(--ink)] bg-[var(--voltage-lime)] px-4 py-3 text-[var(--ink)]">
+          {errorMsg}
+        </p>
+      ) : null}
+      <Fin ses={{ id: model.id, name: model.name }} estado={{ sets: allSets }} onVolver={() => setFin(false)} />
+    </>
+  );
 
   const step = actual;
   const stepKey = clave(step);
