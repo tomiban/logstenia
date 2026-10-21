@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { db, type MarkRecord, type SessionRecord } from '../db';
 import { allPrograms } from '../lib/plans';
@@ -47,7 +48,7 @@ function Panel({
   title: string;
   meta?: string;
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className={cn('border border-border bg-card', className)}>

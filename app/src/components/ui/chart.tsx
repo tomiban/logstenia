@@ -1,5 +1,7 @@
 // Chart primitives shared by the metrics and progress screens.
-// Recharts renders SVG, so colors travel through `currentColor` to stay theme aware.
+// Recharts renders SVG, so colors travel through `currentColor` (or a Tailwind
+// fill-*/stroke-* class) to stay theme aware. Recharts' own props (fill/stroke on
+// dots and bars) take literal colors, so those use the token vars directly.
 
 export interface ChartTooltipEntry {
   value?: number | string;
