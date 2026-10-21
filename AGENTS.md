@@ -28,6 +28,7 @@ npm run dev       # http://localhost:5173
 npm run build     # tsc -b && vite build
 npm run lint      # oxlint
 npm test          # vitest run
+npm run test:e2e  # playwright test (arranca el dev server solo)
 ```
 
 Scripts (from repo root):
@@ -115,7 +116,9 @@ If FAILED, list: `file:line - rule violated - issue`.
 
 - Runner timer logic must be covered by unit tests (`steps.test.ts` pattern).
 - Tests assert observable behavior through the public interface.
-- Run `npm test` and `npm run build` before declaring done.
+- UI verification goes through Playwright (`app/tests/`, `npm run test:e2e`): mobile
+  and desktop projects, dev server autostarted by the config.
+- Run `npm test`, `npm run test:e2e` and `npm run build` before declaring done.
 
 ## Design System
 
