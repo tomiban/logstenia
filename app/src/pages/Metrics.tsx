@@ -248,7 +248,7 @@ export default function Metrics() {
               className={cn(
                 'label-caps h-11 flex-1 px-3 transition-colors md:flex-none',
                 range === o.key
-                  ? 'bg-primary text-primary-foreground dark:bg-[var(--text)] dark:text-[var(--bg)]'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground',
               )}
             >

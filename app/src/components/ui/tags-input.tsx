@@ -74,7 +74,7 @@ export function TagsInput({ targetType, targetId, className, allowAdd = true }: 
         return (
           <span
             key={t}
-            className="inline-flex items-center gap-1 rounded-none border border-[var(--border)] px-1.5 py-0.5 label-status"
+            className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 label-status"
             style={{ backgroundColor: c.bg, color: c.text }}
           >
             {t}
@@ -111,7 +111,7 @@ export function TagsInput({ targetType, targetId, className, allowAdd = true }: 
         >
           <div className="flex gap-2">
             <Input
-              className="h-7 rounded-none"
+              className="h-7"
               placeholder="nueva etiqueta"
               value={value}
               autoFocus
@@ -121,7 +121,7 @@ export function TagsInput({ targetType, targetId, className, allowAdd = true }: 
                 if (e.key === 'Escape') setOpen(false);
               }}
             />
-            <Button variant="outline" size="sm" className="h-7 rounded-none" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}>+</Button>
+            <Button variant="outline" size="sm" className="h-7" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}>+</Button>
           </div>
           {(() => {
             const q = value.trim().toLowerCase();

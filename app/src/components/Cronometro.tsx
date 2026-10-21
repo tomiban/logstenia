@@ -122,7 +122,7 @@ export default function Cronometro({ modo = 'crono', inicio = 60, objetivo, onFi
           </Button>
           <Button variant="ghost" size="sm" onClick={reset}>Reiniciar</Button>
           {onUsar && modo === 'crono' && (
-            <Button variant="default" size="sm" disabled={usarDisabled} onClick={() => onUsar(seg)}>Usar tiempo</Button>
+            <Button variant="accent" size="sm" disabled={usarDisabled} onClick={() => onUsar(seg)}>Usar tiempo</Button>
           )}
         </div>
       </div>

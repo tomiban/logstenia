@@ -279,7 +279,7 @@ export default function Home() {
                 <p className="font-medium truncate">{warmupRoutine.model.name}</p>
                 <p className="label-caps text-[var(--muted)]">{warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento</p>
               </div>
-              <Button variant="default" size="sm" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>Entrenar</Button>
+              <Button variant="accent" size="sm" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>Entrenar</Button>
             </div>
           )}
           {startedPrograms.length === 0 ? (
@@ -293,7 +293,7 @@ export default function Home() {
                       <p className="font-medium truncate">{p.prog.name}</p>
                       <p className="label-caps text-[var(--muted)]">{p.completedModels}/{p.totalModels} modelos · {p.sessions} sesiones</p>
                     </div>
-                    <Button variant="default" size="sm" onClick={() => navigate(`/program/${p.prog.id}`)}>Entrenar</Button>
+                    <Button variant="accent" size="sm" onClick={() => navigate(`/program/${p.prog.id}`)}>Entrenar</Button>
                   </div>
                 </li>
               ))}
@@ -325,19 +325,19 @@ export default function Home() {
                       type="button"
                       disabled={!it}
                       onClick={() => it && navigate(`/routine/${it.modelId}`)}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left hover:bg-[var(--muted-surface)] disabled:opacity-60"
+                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left hover:bg-secondary disabled:opacity-60"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">
+                        <span className="block truncate font-medium text-foreground">
                           {it ? `${it.prog.name}` : h.sesion_id}
                         </span>
                         <span className="label-caps">
-                          <span className="metric text-[var(--foreground)]">{h.series}</span>{' '}
+                          <span className="metric text-foreground">{h.series}</span>{' '}
                           {h.series === 1 ? 'serie' : 'series'}
                         </span>
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="label-status tabular text-[var(--muted)]">{h.fecha}</span>
+                        <span className="label-status tabular text-muted-foreground">{h.fecha}</span>
                         {it && <span className="label-caps text-[var(--foreground)]">→</span>}
                       </span>
                     </button>

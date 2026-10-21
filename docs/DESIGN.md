@@ -196,13 +196,39 @@ redondeada. Si un componente de librería la trae, se anula.
 ## Components
 
 ### Buttons
-- **Shape:** rectángulo, radio 0, borde 1px.
-- **Accent:** relleno Voltage Lime con texto Ink y borde Ink — la acción principal (`Registrar`,
-  `Entrenar`, `Siguiente`). En hover invierte: relleno Ink, texto lima.
-- **Ink (nav activa):** relleno Ink con texto Voltage Lime y texto/label en uppercase mono.
-- **Outline:** fondo transparente, borde Ink, texto Ink; hover relleno Ink con texto blanco.
-- **Ghost:** sin borde ni fondo; texto muted. Para acciones terciarias (`Reiniciar`, `editar`).
-- **States:** `label-caps` en todos; foco visible por `--ring` (Ink).
+Variantes exportadas por `app/src/components/ui/button.tsx` (class-variance-authority). Cada
+variante se aplica con `variant="..."`; el tamaño con `size="..."` (`xs` h-6, `sm` h-8,
+`default` h-9, `lg` h-11 touch de 44px, `icon`/`icon-sm`/`icon-lg`).
+
+- **Shape:** rectángulo, radio 0, borde 1px. Sin sombras, `transition-colors` únicamente.
+- **accent** (alias `default`): relleno Voltage Lime con texto Ink y borde Ink — la acción
+  principal de la pantalla (`Entrenar`, `Siguiente`, `Guardar`, `Crear`, `Agregar`,
+  `Iniciar rutina`, `Continuar`, `Usar tiempo`, `Exportar`). Hover invierte: relleno Ink,
+  texto lima. Es la única señal lima de la vista (Beacon Rule).
+- **ink**: relleno Ink con texto Voltage Lime y borde Ink. Estado activo / selección / nav
+  activa. Hover invierte a lima/ink.
+- **outline**: fondo transparente, borde Ink, texto Ink. Hover relleno Ink, texto lima.
+  Acciones secundarias delineadas (`Anterior`, `Importar`, controles de timer).
+- **ghost**: sin borde ni fondo; texto muted. Acciones terciarias (`Cancelar`, `Reiniciar`,
+  `editar`, `volver`, `+ serie`). Hover relleno Muted Surface.
+- **secondary**: relleno Muted Surface, texto Foreground. Botón relleno de baja jerarquía.
+- **destructive**: texto/borde Alert sobre fondo alert/10. Solo acciones destructivas.
+- **link**: texto primary subrayado. Enlaces con aspecto de botón.
+- **States:** `label-caps` en los botones de acción de texto; foco visible por `--ring` (Ink);
+  deshabilitado con `opacity-50` y `pointer-events-none`.
+
+### Button patterns (raw `<button>`)
+Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
+- **Row button** (Home, sesiones recientes): `<button>` a ancho completo, `min-h-14`,
+  separado por `divide-y`; hover `bg-secondary`. Texto en `text-foreground`, metadatos en
+  `label-caps`/`label-status` con `tabular-nums`.
+- **Segmented control** (Metrics, rango de tiempo): grupo `divide-x border border-border`,
+  cada segmento `label-caps h-11`; activo `bg-primary text-primary-foreground`, inactivo
+  `bg-card text-muted-foreground hover:bg-secondary`.
+- **Chip remove** (tags): botón `×` dentro del chip, `opacity-60 hover:opacity-100`, sin
+  borde propio.
+- **Timer control** (Runner, descanso): `Button variant="outline" size="sm"` para ±10s y
+  `Button variant="accent" size="lg"` para "saltar descanso".
 
 ### Chips / Badges
 - **Style:** fondo Voltage Lime + texto Ink para el dato destacado (PR, énfasis activo); versión

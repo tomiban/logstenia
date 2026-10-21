@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { db } from '../db';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const BACKUP_SHAPE: { key: string; fields: string[] }[] = [
   { key: 'sessions', fields: ['date', 'planId', 'modelId'] },
@@ -41,6 +41,7 @@ export function SettingsMenu() {
   const [importing, setImporting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -139,16 +140,18 @@ export function SettingsMenu() {
 
   return (
     <div ref={rootRef} className="relative shrink-0">
-      <button
+      <Button
         ref={buttonRef}
         type="button"
+        variant="outline"
+        size="lg"
+        className="label-caps"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="label-caps h-11 border border-border bg-card px-3 text-foreground transition-colors hover:bg-secondary"
       >
         tomas
-      </button>
+      </Button>
 
       {open ? (
         <div
@@ -170,13 +173,15 @@ export function SettingsMenu() {
                 onChange={toggleSound}
               />
             </Row>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="lg"
+              className="label-caps w-full justify-start"
               onClick={testSound}
-              className="label-caps h-11 w-full border border-border bg-card px-3 text-left text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
             >
               Probar sonido
-            </button>
+            </Button>
           </div>
 
           <div className="border-t border-border pt-2">
@@ -194,31 +199,36 @@ export function SettingsMenu() {
           <div className="border-t border-border pt-3">
             <p className="label-caps text-muted-foreground">Tus datos viven en este dispositivo</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button
+              <Button
                 type="button"
+                variant="accent"
+                size="lg"
+                className="label-caps"
                 onClick={exportData}
-                className="label-caps h-11 border border-ink bg-accent px-3 text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
               >
                 Exportar
-              </button>
-              <label
-                className={cn(
-                  'label-caps inline-flex h-11 cursor-pointer items-center border border-border bg-card px-3 text-foreground transition-colors hover:bg-primary hover:text-primary-foreground',
-                  importing && 'pointer-events-none opacity-50',
-                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="label-caps"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
               >
                 {importing ? 'Importando…' : 'Importar'}
-                <input
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) importData(file);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) importData(file);
+                  e.target.value = '';
+                }}
+              />
             </div>
             {msg ? (
               <p role="status" className="label-caps mt-2 text-muted-foreground">

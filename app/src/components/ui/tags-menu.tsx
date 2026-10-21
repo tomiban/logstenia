@@ -48,7 +48,7 @@ export function TagsMenu({ targetType, targetId }: TagsMenuProps) {
           {tags.map((t) => {
             const c = tagPastel(t);
             return (
-              <span key={t} className="inline-flex items-center gap-1 border border-[var(--border)] px-1.5 py-0.5 label-status" style={{ backgroundColor: c.bg, color: c.text }}>
+              <span key={t} className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 label-status" style={{ backgroundColor: c.bg, color: c.text }}>
                 {t}
                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(t); }} className="ml-0.5 opacity-60 hover:opacity-100" aria-label={`quitar ${t}`}>×</button>
               </span>
@@ -66,7 +66,7 @@ export function TagsMenu({ targetType, targetId }: TagsMenuProps) {
                 key={t}
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(t); }}
-                className="block w-full text-left px-2 py-1 text-xs text-[var(--foreground)] hover:bg-[var(--muted-surface)]"
+                className="block w-full text-left px-2 py-1 text-xs text-foreground hover:bg-secondary"
               >
                 + {t}
               </button>
