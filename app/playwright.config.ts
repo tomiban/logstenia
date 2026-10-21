@@ -4,7 +4,8 @@ const PORT = 5178;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './e2e',
+  testMatch: '**/*.e2e.ts',
   fullyParallel: true,
   reporter: 'list',
   use: {

@@ -75,7 +75,7 @@ REJECT if:
 REJECT if:
 - `import * as React` → use named imports (`import { useState }`).
 - `var()` or hex colors in className → use Tailwind utilities.
-- `useMemo` / `useCallback` without justification (React 19 Compiler).
+- `useMemo` / `useCallback` without justification (React 19 Compiler). The project enables the React Compiler (`babel-plugin-react-compiler` via `@rolldown/plugin-babel` in `vite.config.ts`); manual memoization is discouraged — prefer plain expressions/derived values and let the compiler memoize. Any retained `useMemo`/`useCallback` must include a profiling justification in a comment.
 - Missing `"use client"` in client components (when applicable).
 - Direct DOM manipulation instead of React state.
 - Mutating state directly instead of immutable updates.
@@ -83,6 +83,7 @@ REJECT if:
 - `key` using array index for dynamic lists.
 
 PREFER:
+- Let the React Compiler handle memoization; write plain derived values instead of `useMemo`/`useCallback`.
 - `cn()` for conditional class merging.
 - Semantic HTML over divs.
 - Named exports over default exports where practical.
