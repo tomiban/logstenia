@@ -8,7 +8,9 @@ const Planes = lazy(() => import('./pages/Planes'));
 const Program = lazy(() => import('./pages/Program'));
 const Routine = lazy(() => import('./pages/Routine'));
 const Runner = lazy(() => import('./pages/Runner'));
+const Metrics = lazy(() => import('./pages/Metrics'));
 const Progress = lazy(() => import('./pages/Progress'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function PageFallback() {
   return <div className="py-8 text-center text-[var(--muted)]">Cargando…</div>;
@@ -25,9 +27,9 @@ export default function App() {
           <Route path="/program/:id" element={<Program />} />
           <Route path="/routine/:id" element={<Routine />} />
           <Route path="/run/:id" element={<Runner />} />
-          <Route path="/metrics" element={<Navigate to="/progress" replace />} />
+          <Route path="/metrics" element={<Metrics />} />
           <Route path="/progress" element={<Progress />} />
-          <Route path="/settings" element={<Navigate to="/progress" replace />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

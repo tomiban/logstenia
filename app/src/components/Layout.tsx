@@ -5,7 +5,9 @@ import { db } from '../db';
 const NAV = [
   { id: 'home', label: 'Hoy', path: '/', icon: 'home' },
   { id: 'planes', label: 'Planes', path: '/planes', icon: 'plans' },
+  { id: 'metrics', label: 'Métricas', path: '/metrics', icon: 'metrics' },
   { id: 'progress', label: 'Progreso', path: '/progress', icon: 'progress' },
+  { id: 'settings', label: 'Ajustes', path: '/settings', icon: 'settings' },
 ];
 
 function Icon({ name }: { name: string }) {
@@ -36,13 +38,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen pb-16 md:pb-0">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:border focus:border-[var(--ink)] focus:bg-[var(--surface)] focus:px-3 focus:py-2 focus:label-caps">Saltar al contenido</a>
-      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:border focus:border-foreground focus:bg-card focus:px-3 focus:py-2 focus:label-caps">Saltar al contenido</a>
+      <header className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
-          <span className="shrink-0 font-heading text-lg font-bold tracking-tight text-[var(--ink)]">
+          <span className="shrink-0 font-heading text-lg font-bold tracking-tight text-foreground">
             Logtenia
           </span>
-          <nav aria-label="Navegación principal" className="hidden md:inline-flex items-center shrink-0 divide-x divide-[var(--border)] overflow-x-auto">
+          <nav aria-label="Navegación principal" className="hidden md:inline-flex items-center shrink-0 divide-x divide-border overflow-x-auto">
             {NAV.map((n) => (
               <NavLink
                 key={n.id}
@@ -50,8 +52,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className={({ isActive }) =>
                   'label-caps h-11 inline-flex items-center justify-center gap-2 px-4 transition-colors ' +
                   (isActive
-                    ? 'bg-[var(--ink)] text-[var(--voltage-lime)]'
-                    : 'bg-[var(--surface)] text-[var(--muted-ink)] hover:bg-[var(--muted-surface)] hover:text-[var(--ink)]')
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground')
                 }
               >
                 <Icon name={n.icon} />
@@ -59,7 +61,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </NavLink>
             ))}
           </nav>
-          <span className="shrink-0 label-caps text-[var(--muted-ink)] md:hidden">
+          <span className="shrink-0 label-caps text-muted-foreground md:hidden">
             {fecha}
           </span>
         </div>
@@ -69,7 +71,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
       <nav
         aria-label="Navegación principal"
-        className="fixed bottom-0 inset-x-0 z-30 border-t border-[var(--border)] bg-[var(--background)] md:hidden"
+        className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background md:hidden"
       >
         <ul className="mx-auto flex max-w-6xl items-stretch justify-around">
           {NAV.map((n) => (
@@ -79,15 +81,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className={({ isActive }) =>
                   'relative flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-1 text-center transition-colors ' +
                   (isActive
-                    ? 'text-[var(--ink)]'
-                    : 'text-[var(--muted-ink)] hover:text-[var(--ink)]')
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <span className={isActive ? 'text-[var(--voltage-lime)]' : ''}><Icon name={n.icon} /></span>
+                    <span className={isActive ? 'text-accent' : ''}><Icon name={n.icon} /></span>
                     <span className="label-status">{n.label}</span>
-                    {isActive && <span className="absolute bottom-0 h-0.5 w-8 bg-[var(--voltage-lime)]" />}
+                    {isActive && <span className="absolute bottom-0 h-0.5 w-8 bg-accent" />}
                   </>
                 )}
               </NavLink>
