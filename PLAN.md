@@ -80,6 +80,10 @@ type Goal = {
 
 Datos en `src/data/plans.json` (generado por script de parsing, versionado).
 
+Los descansos de la rutina viven en el bloque: `restBetweenSetsSec` (descanso entre series) y
+`restBetweenExercisesSec` (descanso entre ejercicios). `app/src/lib/rest.ts` los resuelve y el
+runner los informa y los respeta.
+
 ---
 
 ## 3. Pantallas
@@ -100,7 +104,10 @@ Estados: `idle → countdown(3) → work → rest → (siguiente ejercicio o ser
 
 - Ejercicios por tiempo: countdown automático del tiempo del ejercicio.
 - Ejercicios por reps: pantalla "completado" manual (botón).
-- Descanso: countdown con `+15s / -15s / skip / pausa`.
+- Descansos: salen de la configuración de la rutina, no se editan en el runner. El runner
+  informa el descanso de cada serie y el descanso al finalizar el ejercicio.
+- El timer de descanso solo permite agregar (`+10s`), quitar (`-10s`) u omitir (`saltar
+  descanso`) sobre la duración configurada.
 - Biseries/superseries: ejecutar los ejercicios del bloque en secuencia con descanso intra-ejercicio (si aplica), luego descanso intra-serie entre vueltas.
 - Al finalizar: guardar `Session` (fecha, plan, modelo, duración real, completado).
 - Sonido/vibración al terminar descanso (configurable).

@@ -44,6 +44,9 @@ python3 scripts/build_cardio.py
   `/progress`, `/settings`.
 - Data model: `Category → Program → Model → Block → Exercise` (see
   `app/src/types/index.ts`).
+- Descansos: salen del bloque (`restBetweenSetsSec` = entre series, `restBetweenExercisesSec` =
+  entre ejercicios). `app/src/lib/rest.ts` los resuelve; el runner los informa dentro del
+  ejercicio y no permite editarlos.
 - Persistence: Dexie tables `sessions`, `progress`, `goals`, `settings`
   (`app/src/db/index.ts`).
 - Runner state machine: `idle → countdown(3) → work → rest → done`.
