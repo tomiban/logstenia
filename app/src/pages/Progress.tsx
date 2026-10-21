@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../db';
-import type { MarkRecord, SessionRecord } from '../db';
+import { db, type MarkRecord, type SessionRecord } from '../db';
 import {
   collectMarks,
   compareSessions,
@@ -21,7 +21,7 @@ function Panel({
 }: {
   title: string;
   meta?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="border border-border bg-card">
@@ -90,10 +90,6 @@ export default function Progress() {
   const windowed = comparisons.slice(-SESSIONS_SHOWN);
   const comparable = windowed.filter((c) => c.gained !== null);
   const gained = comparable.filter((c) => c.gained).length;
-  const bestSession = windowed.reduce<SessionComparison | null>(
-    (best, c) => (best === null || c.summary.durationMin > best.summary.durationMin ? c : best),
-    null,
-  );
   const newBests = windowed.reduce((total, c) => total + c.newBests.length, 0);
   const series = exerciseSeries(collectMarks(sessions, marks)).filter((s) => s.points.length > 1);
 
@@ -101,13 +97,17 @@ export default function Progress() {
   const measure = (c: SessionComparison) => (hasDuration ? c.summary.durationMin : c.summary.series);
   const measureUnit = hasDuration ? 'min' : 'series';
   const peak = Math.max(1, ...windowed.map(measure));
+  const bestSession = windowed.reduce<SessionComparison | null>(
+    (best, c) => (best === null || measure(c) > measure(best) ? c : best),
+    null,
+  );
 
   return (
     <div className="space-y-4">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-bold tracking-tight">Progreso</h1>
         <p className="label-caps text-muted-foreground">
-          evolución de tus sesiones · últimas {windowed.length || SESSIONS_SHOWN}
+          {windowed.length > 0 ? `evolución de tus sesiones · últimas ${windowed.length}` : 'evolución de tus sesiones'}
         </p>
       </header>
 

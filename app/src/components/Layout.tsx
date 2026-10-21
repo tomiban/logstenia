@@ -52,7 +52,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className={({ isActive }) =>
                   'label-caps h-11 inline-flex items-center justify-center gap-2 px-4 transition-colors ' +
                   (isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground dark:bg-[var(--text)] dark:text-[var(--bg)]'
                     : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground')
                 }
               >
