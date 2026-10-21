@@ -18,6 +18,20 @@ test('los descansos de la rutina no se editan en el runner', async ({ page }) =>
   await expect(page.getByLabel('Descanso entre ejercicios en segundos')).toHaveCount(0);
 });
 
+// cardio-r1: superseries de 3 vueltas con 60s de descanso y sin descanso entre ejercicios.
+test('el descanso al finalizar aparece tambien sin descanso entre ejercicios', async ({ page }) => {
+  await page.goto('/run/cardio-r1');
+
+  await expect(page.getByText('descanso final 60s', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+
+  const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
+  await expect(descanso).toBeVisible();
+  await expect(descanso).toContainText('Descanso al finalizar el ejercicio');
+  await expect(descanso).toContainText('descanso configurado: 60s');
+});
+
 test('el descanso de serie usa el tiempo configurado de la rutina', async ({ page }) => {
   await page.goto(`/run/${MODELO}`);
 
