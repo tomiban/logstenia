@@ -81,6 +81,7 @@ body {
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-border: var(--border);
+  --color-ink: var(--ink);
   --radius: 0px;
 }
 
