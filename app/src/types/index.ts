@@ -65,6 +65,10 @@ export interface Program {
   models: Model[];
   optional?: boolean;
   tags?: string[];
+  /** Id of a program that is easier than this one (predecessor in a progression). */
+  easierProgramId?: string;
+  /** Id of a program that is harder than this one (successor in a progression). */
+  harderProgramId?: string;
 }
 
 export interface Category {

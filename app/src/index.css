@@ -8,13 +8,14 @@
   color-scheme: light;
   --voltage-lime: #ccff00;
   --ink: #111111;
-  --paper: #f8f9fa;
+  --paper: #f0f0f0;
   --surface: #ffffff;
   --foreground: #191c1d;
   --muted-surface: #f3f4f5;
   --muted-ink: #555555;
-  --hairline: #e2e4e8;
+  --hairline: #d0d0d0;
   --alert: #ba1a1a;
+  --warning: #b45309;
 
   --bg: var(--paper);
   --text: var(--foreground);
@@ -49,7 +50,7 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-html, body, #root { height: 100%; }
+html, body, #root { height: 100%; max-width: 100%; overflow-x: hidden; }
 body {
   margin: 0;
   background: var(--bg);
@@ -79,6 +80,7 @@ body {
   --color-accent: var(--accent-shadcn);
   --color-accent-foreground: var(--accent-foreground-shadcn);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-border: var(--border);
@@ -110,6 +112,21 @@ body {
   --accent-foreground-shadcn: #111111;
   --input: #2a2a2a;
   --ring: var(--voltage-lime);
+  --warning: #fbbf24;
+}
+
+/* Sliders: use palette accent instead of browser default (blue). */
+input[type="range"] {
+  accent-color: var(--ink);
+}
+.dark input[type="range"] {
+  accent-color: var(--voltage-lime);
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--muted-surface);
+}
+input[type="range"]::-moz-range-track {
+  background: var(--muted-surface);
 }
 
 @layer base {

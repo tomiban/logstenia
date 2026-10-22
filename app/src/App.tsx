@@ -2,16 +2,16 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 
-const Home = lazy(() => import('./pages/Home'));
-const Skill = lazy(() => import('./pages/Skill'));
-const Planes = lazy(() => import('./pages/Planes'));
-const Program = lazy(() => import('./pages/Program'));
-const Routine = lazy(() => import('./pages/Routine'));
-const Runner = lazy(() => import('./pages/Runner'));
-const Metrics = lazy(() => import('./pages/Metrics'));
+const Home = lazy(() => import('./features/home/Home'));
+const Skill = lazy(() => import('./features/progress/Skill'));
+const Planes = lazy(() => import('./features/plans/Planes'));
+const Program = lazy(() => import('./features/plans/Program'));
+const Routine = lazy(() => import('./features/plans/Routine'));
+const Runner = lazy(() => import('./features/runner/Runner'));
+const Metrics = lazy(() => import('./features/metrics/Metrics'));
 
 function PageFallback() {
-  return <div className="py-8 text-center text-[var(--muted)]">Cargando…</div>;
+  return <div className="py-8 text-center text-muted-foreground">Cargando…</div>;
 }
 
 export default function App() {

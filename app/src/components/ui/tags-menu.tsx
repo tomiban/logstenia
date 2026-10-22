@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { addTag, removeTag, getTags, getSuggestedTags, allTags, tagPastel } from '../../lib/tags';
 import type { TagTargetType } from '../../lib/tags';
 import { Input } from './input';
-import { Button } from './button';
+import {
+  ContextMenuCheckboxItem,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from './context-menu';
 
 export interface TagsMenuProps {
   targetType: TagTargetType;
   targetId: string;
 }
+
+const norm = (t: string) => t.trim().toLowerCase();
 
 export function TagsMenu({ targetType, targetId }: TagsMenuProps) {
   const [tags, setTags] = useState<string[]>([]);
@@ -31,48 +38,88 @@ export function TagsMenu({ targetType, targetId }: TagsMenuProps) {
     await reload();
   };
 
-  const availableSuggested = suggested.filter((t) => !tags.includes(t));
+  const applied = new Set(tags.map(norm));
   const q = value.trim().toLowerCase();
-  const matches = allTagsList.filter((t) => !tags.includes(t) && (q === '' || t.includes(q)));
+  const candidates = allTagsList
+    .filter((t) => !applied.has(norm(t)))
+    .filter((t) => q === '' || norm(t).includes(q));
+  const deduped = Array.from(new Map(candidates.map((t) => [norm(t), t])).values());
+  const availableSuggested = suggested
+    .filter((t) => !applied.has(norm(t)))
+    .filter((t) => q === '' || norm(t).includes(q));
+
+  const showCreate = value.trim() !== '' && !allTagsList.some((t) => norm(t) === q);
+  const visibleTags = value.trim() === '' ? availableSuggested : deduped;
+  const addOrRemove = (tag: string, checked: boolean) => {
+    if (checked) {
+      void onAdd(tag);
+    } else {
+      void onRemove(tag);
+    }
+  };
 
   return (
-    <div className="w-56 space-y-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-      <p className="label-caps text-[var(--muted)] px-1">Etiquetas</p>
-      <div className="flex gap-1">
-        <Input className="h-7 text-xs" placeholder="nueva etiqueta" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }} />
-        <Button size="sm" className="h-7 px-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}>+</Button>
-      </div>
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {tags.map((t) => {
-            const c = tagPastel(t);
-            return (
-              <span key={t} className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 label-status" style={{ backgroundColor: c.bg, color: c.text }}>
-                {t}
-                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(t); }} className="ml-0.5 opacity-60 hover:opacity-100" aria-label={`quitar ${t}`}>×</button>
-              </span>
-            );
-          })}
-        </div>
+    <div className="w-64 p-1.5">
+      <Input
+        aria-label="Buscar o crear etiqueta"
+        className="h-8 text-sm"
+        placeholder="Buscar o crear etiqueta"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void onAdd();
+          }
+        }}
+      />
+      {showCreate && (
+        <ContextMenuItem
+          className="mt-1"
+          onClick={(e) => {
+            e.preventDefault();
+            void onAdd(value.trim());
+          }}
+        >
+          Crear &ldquo;{value.trim()}&rdquo;
+        </ContextMenuItem>
       )}
 
-      {(matches.length > 0 || availableSuggested.length > 0) && (
-        <div className="border-t border-[var(--border)] pt-2">
-          <p className="label-caps text-[var(--muted)] px-1 mb-1">Sugerencias</p>
-          <div className="max-h-40 overflow-auto space-y-0.5">
-            {(value.trim() === '' ? availableSuggested : matches).slice(0, 12).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(t); }}
-                className="block w-full text-left px-2 py-1 text-xs text-foreground hover:bg-secondary"
-              >
-                + {t}
-              </button>
-            ))}
-          </div>
-        </div>
+      {tags.length > 0 && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuLabel className="py-0.5 text-[10px] label-caps">Aplicadas</ContextMenuLabel>
+          {tags.map((tag) => (
+            <ContextMenuCheckboxItem
+              key={tag}
+              checked
+              className="h-6 min-h-6 gap-1 px-1.5 py-0 text-xs label-status focus-visible:ring-1 focus-visible:ring-foreground"
+              style={{ backgroundColor: tagPastel(tag).bg, color: tagPastel(tag).text }}
+              onCheckedChange={(checked) => addOrRemove(tag, checked)}
+            >
+              {tag}
+            </ContextMenuCheckboxItem>
+          ))}
+        </>
+      )}
+
+      {visibleTags.length > 0 && (
+        <>
+          {tags.length > 0 && <ContextMenuSeparator />}
+          <ContextMenuLabel className="py-0.5 text-[10px] label-caps">{tags.length > 0 ? 'Disponibles' : 'Sugeridas'}</ContextMenuLabel>
+          {visibleTags.slice(0, 24).map((tag) => (
+            <ContextMenuCheckboxItem
+              key={tag}
+              checked={false}
+              className="h-6 min-h-6 gap-1 px-1.5 py-0 text-xs label-status focus-visible:ring-1 focus-visible:ring-foreground"
+              style={{ backgroundColor: tagPastel(tag).bg, color: tagPastel(tag).text }}
+              onCheckedChange={(checked) => addOrRemove(tag, checked)}
+            >
+              {tag}
+            </ContextMenuCheckboxItem>
+          ))}
+        </>
       )}
     </div>
   );

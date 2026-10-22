@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "react-composition-2026": {
+      "source": "PatternsDev/skills",
+      "sourceType": "github",
+      "skillPath": "react/react-composition-2026/SKILL.md",
+      "computedHash": "e89ba214136fd59f8cd627f6488782c5f13b13bc6b6f9d1a5f7643d8a1874404"
+    },
+    "react-render-optimization": {
+      "source": "PatternsDev/skills",
+      "sourceType": "github",
+      "skillPath": "react/react-render-optimization/SKILL.md",
+      "computedHash": "7e7ffc7be56531d9571a5c489a4a3d7a406ce63f9ad739d2e7f8b8de875a6cd8"
+    }
+  }
+}

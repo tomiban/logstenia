@@ -2,8 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { db } from '../db';
-import { migrateMarksToIds } from '../lib/marks';
-import { SettingsMenu } from './SettingsMenu';
+import { migrateMarksToIds } from '@/features/progress/marks';
+import { SettingsMenu } from '@/features/settings/SettingsMenu';
 
 const NAV = [
   { id: 'home', label: 'Hoy', path: '/', icon: 'home' },
@@ -30,7 +30,6 @@ function Icon({ name }: { name: string }) {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const fecha = new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' });
   useEffect(() => {
     db.settings.get('theme').then(s => {
       if (s?.value === 'dark') document.documentElement.classList.add('dark');
@@ -39,11 +38,12 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="min-h-screen pb-20 md:pb-0 overflow-x-hidden">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:border focus:border-foreground focus:bg-card focus:px-3 focus:py-2 focus:label-caps">Saltar al contenido</a>
       <header className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
-          <span className="shrink-0 font-heading text-lg font-bold tracking-tight text-foreground">
+          <span className="shrink-0 inline-flex items-center gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
+            <img src="/favicon.svg" width="24" height="24" alt="" aria-hidden="true" className="shrink-0" />
             Logtenia
           </span>
           <nav aria-label="Navegación principal" className="hidden md:inline-flex items-center shrink-0 divide-x divide-border overflow-x-auto">
@@ -54,7 +54,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 className={({ isActive }) =>
                   'label-caps h-11 inline-flex items-center justify-center gap-2 px-4 transition-colors ' +
                   (isActive
-                    ? 'bg-primary text-primary-foreground dark:bg-[var(--text)] dark:text-[var(--bg)]'
+                    ? 'bg-primary text-primary-foreground dark:bg-foreground dark:text-background'
                     : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground')
                 }
               >
@@ -63,11 +63,10 @@ export default function Layout({ children }: { children: ReactNode }) {
               </NavLink>
             ))}
           </nav>
-          <span className="shrink-0 label-caps text-muted-foreground md:hidden">{fecha}</span>
           <SettingsMenu />
         </div>
       </header>
-      <main id="main" className="mx-auto max-w-6xl space-y-4 px-4 py-6 sm:px-6">
+      <main id="main" className="mx-auto max-w-6xl space-y-4 px-6 py-6 sm:px-6 w-full max-w-full">
         {children ?? <Outlet />}
       </main>
       <nav
@@ -88,9 +87,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               >
                 {({ isActive }) => (
                   <>
-                    <span className={isActive ? 'text-accent' : ''}><Icon name={n.icon} /></span>
+                    <span className={isActive ? 'text-foreground' : ''}><Icon name={n.icon} /></span>
                     <span className="label-status">{n.label}</span>
-                    {isActive && <span className="absolute bottom-0 h-0.5 w-8 bg-accent" />}
+                    {isActive && <span className="absolute bottom-0 h-1 w-8 bg-accent" />}
                   </>
                 )}
               </NavLink>

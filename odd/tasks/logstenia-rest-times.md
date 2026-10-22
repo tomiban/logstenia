@@ -95,6 +95,7 @@ no se editan en ningún punto de la app.
   tiene series sin registrar: "Quedan N series sin registrar. Si continuás, se omiten." con
   "Cancelar" (quedarse en el ejercicio) y "Continuar" (confirmar lo tipeado, omitir el resto y
   aplicar el descanso final). Toma el foco al abrirse y se cierra con Escape.
+- L18: "la anotacion de la biserie debe tener los dos ejercicios juntos en el runner no separados" — un paso por bloque: los ejercicios de una biserie/superserie se muestran juntos en una sola pantalla del runner (secciones independientes por ejercicio), en lugar de pasos separados. `buildSteps` ahora devuelve un paso por bloque; `Runner` renderiza una sección por ejercicio del bloque. Tests y e2e actualizados.
 - L17: "completá la serie anteriordescanso 105s no hace falta ni poenrr ese timepode d escanso
   porque esa informacuion ya figura en otra pate ni lo de completa porquye esta deshabiltiado no
   seamos redundante evittemos epetir info" — se saca el texto "completá la serie anterior" (el

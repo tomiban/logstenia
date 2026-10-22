@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { addTag, removeTag, getTags, getSuggestedTags, allTags, tagPastel } from '../../lib/tags';
+import { useEffect, useRef, useState } from 'react';
+import { tagPastel } from '../../lib/tags';
+import { useTags } from '../../hooks/useTags';
 import type { TagTargetType } from '../../lib/tags';
 import { Button } from './button';
-import { Input } from './input';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 export interface TagsInputProps {
   targetType: TagTargetType;
@@ -14,154 +13,138 @@ export interface TagsInputProps {
 }
 
 export function TagsInput({ targetType, targetId, className, allowAdd = true }: TagsInputProps) {
-  const [tags, setTags] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
-  const [suggested, setSuggested] = useState<string[]>([]);
-  const [allTagsList, setAllTagsList] = useState<string[]>([]);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  const reload = async () => setTags(await getTags(targetType, targetId));
-  useEffect(() => { getSuggestedTags().then(setSuggested).catch(() => {}); allTags().then(setAllTagsList).catch(() => {}); }, []);
-  useEffect(() => { reload(); }, [targetType, targetId]);
-
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    const width = 256;
-    setPos({ top: r.bottom + 4, left: Math.max(8, r.right - width) });
-  }, [open]);
+  const { tags, suggested, allTagsList, add, remove } = useTags(targetType, targetId);
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (triggerRef.current?.contains(t)) return;
-      if (popoverRef.current?.contains(t)) return;
-      setOpen(false);
+    const onDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  const onAdd = async (t?: string) => {
-    const tag = (t ?? value).trim();
-    if (!tag) return;
-    await addTag(targetType, targetId, tag);
+  const onAdd = async (tag = value) => {
+    const trimmed = tag.trim().replace(/,$/, '');
+    if (!trimmed || tags.some((existing) => existing.toLowerCase() === trimmed.toLowerCase())) {
+      setValue('');
+      return;
+    }
+    await add(trimmed);
     setValue('');
-    await reload();
   };
 
-  const onRemove = async (t: string) => {
-    await removeTag(targetType, targetId, t);
-    await reload();
-  };
-
-  const availableSuggested = suggested.filter((t) => !tags.includes(t));
+  const query = value.trim().toLowerCase();
+  const availableTags = Array.from(
+    new Map(
+      [...allTagsList, ...suggested]
+        .filter((tag) => !tags.some((applied) => applied.toLowerCase() === tag.toLowerCase()))
+        .filter((tag) => query === '' || tag.toLowerCase().includes(query))
+        .map((tag) => [tag.toLowerCase(), tag]),
+    ).values(),
+  ).slice(0, 8);
+  const canCreate = query !== '' && !availableTags.some((tag) => tag.toLowerCase() === query);
 
   return (
-    <div ref={rootRef} className={cn('relative inline-flex flex-wrap items-center gap-1.5', className)} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-      {tags.map((t) => {
-        const c = tagPastel(t);
-        return (
-          <span
-            key={t}
-            className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 label-status"
-            style={{ backgroundColor: c.bg, color: c.text }}
-          >
-            {t}
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(t); }}
-              className="ml-0.5 opacity-60 hover:opacity-100"
-              aria-label={`quitar ${t}`}
+    <div
+      ref={rootRef}
+      className={cn('relative min-w-0', className)}
+      onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
+    >
+      <div className="flex min-h-9 flex-wrap items-center gap-1.5 border border-input bg-card px-2 py-1 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+        {tags.map((tag) => {
+          const color = tagPastel(tag);
+          return (
+            <span
+              key={tag}
+              className="inline-flex h-6 items-center gap-1 border border-border px-1.5 label-status"
+              style={{ backgroundColor: color.bg, color: color.text }}
             >
-              ×
-            </button>
-          </span>
-        );
-      })}
-
-      {allowAdd && (
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
-          className="inline-flex h-5 w-5 items-center justify-center border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--ink)] hover:border-[var(--ink)] label-status"
-          aria-label="Agregar etiqueta"
-          aria-expanded={open}
-        >
-          ⋯
-        </button>
-      )}
-
-      {open && allowAdd && pos && createPortal(
-        <div
-          ref={popoverRef}
-          className="fixed z-50 w-64 border border-[var(--border)] bg-[var(--surface)] p-2"
-          style={{ top: pos.top, left: pos.left }}
-        >
-          <div className="flex gap-2">
-            <Input
-              className="h-7"
-              placeholder="nueva etiqueta"
-              value={value}
-              autoFocus
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); onAdd(); }
-                if (e.key === 'Escape') setOpen(false);
-              }}
-            />
-            <Button variant="outline" size="sm" className="h-7" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}>+</Button>
-          </div>
-          {(() => {
-            const q = value.trim().toLowerCase();
-            const matches = allTagsList.filter((t) => !tags.includes(t) && (q === '' || t.includes(q)));
-            if (matches.length === 0) return null;
-            return (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {matches.slice(0, 12).map((t) => (
-                  <Button
-                    key={t}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 rounded-none label-caps"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(t); }}
-                  >
-                    + {t}
-                  </Button>
-                ))}
-              </div>
-            );
-          })()}
-          {availableSuggested.length > 0 && value.trim() === '' && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {availableSuggested.map((t) => (
-                <Button
-                  key={t}
+              {tag}
+              {allowAdd && (
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 rounded-none label-caps"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(t); }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void remove(tag);
+                  }}
+                  className="opacity-60 hover:opacity-100"
+                  aria-label={`Quitar etiqueta ${tag}`}
                 >
-                  + {t}
-                </Button>
-              ))}
-            </div>
+                  ×
+                </button>
+              )}
+            </span>
+          );
+        })}
+
+        {allowAdd && (
+          <input
+            value={value}
+            onFocus={() => setOpen(true)}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                void onAdd();
+              } else if (event.key === 'Backspace' && value === '' && tags.length > 0) {
+                void remove(tags[tags.length - 1]);
+              } else if (event.key === 'Escape') {
+                setOpen(false);
+              }
+            }}
+            className="h-7 min-w-28 flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+            placeholder={tags.length ? 'Agregar etiqueta…' : 'Escribir una etiqueta…'}
+            aria-label="Agregar etiqueta"
+            aria-expanded={open}
+            autoComplete="off"
+          />
+        )}
+      </div>
+
+      {open && allowAdd && (availableTags.length > 0 || canCreate) && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full border border-border bg-card p-2 shadow-none">
+          {availableTags.length > 0 && (
+            <>
+              <p className="label-status mb-1.5 text-muted-foreground">Sugerencias</p>
+              <div className="flex flex-wrap gap-1">
+                {availableTags.map((tag) => {
+                  const color = tagPastel(tag);
+                  return (
+                    <Button
+                      key={tag}
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 min-h-6 border border-border px-1.5 py-0 text-[10px] label-status hover:opacity-80"
+                      style={{ backgroundColor: color.bg, color: color.text }}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => { void onAdd(tag); }}
+                    >
+                      {tag}
+                    </Button>
+                  );
+                })}
+              </div>
+            </>
           )}
-        </div>,
-        document.body
+          {canCreate && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-7 min-h-7 w-full justify-start px-2 text-sm"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => { void onAdd(); }}
+            >
+              Agregar “{value.trim()}”
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

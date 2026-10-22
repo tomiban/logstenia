@@ -1,6 +1,13 @@
 import { db, type TagRecord } from '../db';
 
 export type TagTargetType = 'exercise' | 'routine' | 'program';
+export const TAGS_CHANGED_EVENT = 'logstenia:tags-changed';
+
+function notifyTagsChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(TAGS_CHANGED_EVENT));
+  }
+}
 
 export async function getTags(targetType: TagTargetType, targetId: string): Promise<string[]> {
   const rows = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).toArray();
@@ -13,14 +20,22 @@ export async function addTag(targetType: TagTargetType, targetId: string, tag: s
   const exists = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).and((r) => r.tag === t).count();
   if (exists > 0) return;
   await db.tags.add({ targetType, targetId, tag: t } as TagRecord);
+  notifyTagsChanged();
 }
 
 export async function removeTag(targetType: TagTargetType, targetId: string, tag: string): Promise<void> {
   const rows = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).and((r) => r.tag === tag).toArray();
-  for (const r of rows) if (r.id != null) await db.tags.delete(r.id);
+  let removed = false;
+  for (const r of rows) {
+    if (r.id != null) {
+      await db.tags.delete(r.id);
+      removed = true;
+    }
+  }
+  if (removed) notifyTagsChanged();
 }
 
-export const DEFAULT_SUGGESTED_TAGS: string[] = ['empuje', 'tirón', 'movilidad', 'flexibilidad', 'calentamiento', 'intensidad-1', 'intensidad-2', 'intensidad-3'];
+export const DEFAULT_SUGGESTED_TAGS: string[] = ['empuje', 'tirón', 'movilidad', 'flexibilidad', 'calentamiento'];
 
 export async function getSuggestedTags(): Promise<string[]> {
   const r = await db.settings.get('tags.suggested');

@@ -17,11 +17,17 @@ test('los descansos de la rutina no se editan en el runner', async ({ page }) =>
   await expect(page.getByLabel('Descanso entre ejercicios en segundos')).toHaveCount(0);
 });
 
+test('el slider de tiempo permite registrar hasta 20 segundos', async ({ page }) => {
+  await page.goto('/run/pl-r2');
+
+  await expect(page.getByLabel('Segundos serie 1')).toHaveAttribute('max', '20');
+});
+
 // cardio-r1: superseries de 3 vueltas con 60s de descanso y sin descanso entre ejercicios.
 test('el descanso al finalizar aparece tambien sin descanso entre ejercicios', async ({ page }) => {
   await page.goto('/run/cardio-r1');
 
-  await expect(page.getByText('descanso final 60s')).toBeVisible();
+  await expect(page.getByText('descanso final 60s').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Siguiente' }).click();
   await page.getByRole('button', { name: 'Continuar' }).click();
