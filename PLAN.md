@@ -78,7 +78,8 @@ type Goal = {
 };
 ```
 
-Datos en `src/data/plans.json` (generado por script de parsing, versionado).
+Datos en `src/data/plans.json` (curado a mano, versionado). No hay pipeline de parsing en el
+repo: los PDFs de origen se usaron una vez y su resultado vive en el JSON.
 
 Los descansos de la rutina viven en el bloque: `restBetweenSetsSec` (descanso entre series) y
 `restBetweenExercisesSec` (descanso entre ejercicios). `app/src/lib/rest.ts` los resuelve y el
@@ -145,7 +146,7 @@ Tablas:
 ## 8. Plan de acción por fases
 
 - **F0 — Setup**: repo, Vite+React+TS, ESLint, PWA base, tema oscuro minimalista.
-- **F1 — Datos**: script de parsing PDF→JSON (pdftotext + regex), validar muestra, `plans.json`.
+- **F1 — Datos**: `plans.json` curado (base inicial provista una vez desde los PDFs).
 - **F2 — Navegación y listado**: Home, Programa, Rutina (detalle) sin timer.
 - **F3 — Runner/timer**: estados, controles, persistencia de sesión.
 - **F4 — Videos**: iframe + toggle.
@@ -175,7 +176,7 @@ Tablas:
 - Plataforma: Web PWA.
 - Stack: React + Vite + TypeScript.
 - Persistencia: IndexedDB (Dexie).
-- Datos: parseo único PDF→JSON.
+- Datos: JSON estático versionado (`plans.json` + `exercise-videos.json`), sin scripts de parsing en el repo.
 - Videos: iframe YouTube con búsqueda + toggle ocultar.
 - Timer: countdown automático + `+15s/-15s/skip/pausa`.
 - Niveles/intensidades seleccionables antes de arrancar.

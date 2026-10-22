@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import plansJson from './plans.json';
-import raw from '../../../scripts/output/exercise-videos.json';
+import raw from './exercise-videos.json';
 import type { Exercise, PlanData } from '../types';
 
 interface RawEntry {

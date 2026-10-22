@@ -7,8 +7,8 @@ Pro-gress plans, with an interactive timer, metrics and embedded videos.
 Single user, no auth, local data (IndexedDB via Dexie). UI in Spanish.
 
 - `app/` — application (React + Vite + TS).
-- `scripts/` — PDF parsing (`parse_pdfs.py`) and data builder (`build_cardio.py`).
 - `app/src/data/plans.json` — curated plan data.
+- `app/src/data/exercise-videos.json` — raw video data per exercise (source of `Exercise.video`).
 - `odd/tasks/logstenia.md` — ODD tracking.
 - `PLAN.md` — full specification.
 
@@ -17,7 +17,6 @@ Single user, no auth, local data (IndexedDB via Dexie). UI in Spanish.
 - React 19, React Router 7, Vite 8, TypeScript ~6
 - Tailwind CSS 4, oxlint, vitest
 - Dexie (IndexedDB), vite-plugin-pwa, recharts
-- Python 3 (scripts)
 
 ## Commands
 
@@ -31,12 +30,7 @@ npm test          # vitest run
 npm run test:e2e  # playwright test (arranca el dev server solo)
 ```
 
-Scripts (from repo root):
-
-```bash
-python3 scripts/parse_pdfs.py
-python3 scripts/build_cardio.py
-```
+No Python/scripts pipeline: the plan data is static JSON committed in the repo.
 
 ## Architecture
 
@@ -67,7 +61,7 @@ python3 scripts/build_cardio.py
 
 REJECT if:
 - Hardcoded secrets or credentials.
-- `any` type (TS) or missing type hints (Python).
+- `any` type (TS) or missing type annotations.
 - Empty catch blocks (silent error handling).
 - Code duplication (violates DRY).
 - `console.log` / `print()` in production code.
@@ -100,12 +94,12 @@ REJECT if:
 - Storing non-serializable values.
 - Missing error handling on DB operations.
 
-### Python (scripts)
+### Data files (JSON)
 
 REJECT if:
-- Missing type hints on public functions.
-- Bare `except:` without specific exception.
-- `print()` instead of `logger`.
+- `plans.json` / `exercise-videos.json` edited with inconsistent shapes or drifted
+  `Exercise.video` projections (`plansVideo.test.ts` pins the consistency).
+- Storing non-serializable values.
 
 ### Response Format (GGA)
 
