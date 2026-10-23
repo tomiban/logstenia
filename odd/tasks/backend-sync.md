@@ -174,3 +174,32 @@ docs side (`docs/DEPLOY.md`, README) stayed with the session that wrote it. Coor
 the rest of the feature: one owner per surface (T6 = app/, T7 docs = the other session),
 and `git commit <pathspec>` instead of `git add -A` while both sessions share one index.
 Next slice: T8 only, so the next commit starts fresh well under the 400-line unit.
+
+L13 — 2026-10-23: independent verification of the T4/T5/T6 slice (`gentle-ai-verify`,
+read-only, on a scratch copy) returned PASS for S5, S6 (one clause), S7 (two interactions),
+S8, S9, and found three defects. All three were confirmed by reading the code, then fixed
+test-first, one commit each:
+
+- `5d8fddd` (S2, S6) — the JSON backup export shipped every settings row, `sync.cursor`
+  included; restoring it on the second device would copy the first device's cursor and the
+  pull would skip rows. Export was the only one of the three outbound paths that never
+  consulted the denylist. `exportableSettings` now owns that rule.
+- `a6060d0` (S5, S7) — the flush batch was capped by count only (100 entries ≈ 300 KB with
+  30-set sessions) against the worker's 256 KB cap, and a 413 maps to a non-retryable
+  `failed`, so any device with ≳86 unflushed sessions stopped syncing for good.
+  `batchWithinBudget` bounds the batch at 200 KB and keeps room for the envelope; a single
+  oversized row is still sent alone so it fails visibly instead of wedging the queue.
+- `c8ac051` (S7) — `flush()` deleted sent entries by `seq`, but `enqueueOutbox` coalesces in
+  place on that same `seq`, so an edit made during the push was deleted with the snapshot
+  already sent and the devices diverged until the next edit. `deleteFlushedEntries` now
+  deletes only while the stored entry still matches the sent snapshot.
+
+Verification after the fixes: app 172/172 unit (17 files), 32/32 e2e, worker 26/26, tsc 0 in
+both packages, build ok, lint at baseline (20 pre-existing warnings, none in sync/ or
+settings/). The verifier could not run Playwright, real D1/miniflare or a live Access JWT;
+Playwright was re-run here, the other two belong to T8.
+
+Open follow-ups recorded, not fixed: `enqueueOutbox` reads the whole outbox inside every
+write transaction (quadratic on a large backup import, correctness unaffected); an unknown
+entity name is skipped while the cursor still advances, so an older client would permanently
+skip rows written by a newer one; and the S9 `Sesión: <email>` gap from L11.
