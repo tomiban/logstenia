@@ -85,7 +85,7 @@ T4 — sync engine flush/pull/run, single flight, backoff, opaqueredirect→auth
 T5 — `worker/` Hono + D1 + Access JWT verification + SQL [S4, S5, S10] route: worker — commit:
 T6 — Ajustes → Sincronización UI [S9] route: inline — commit:
 T7 — deploy wiring wrangler.toml + Access + README (needs user Cloudflare setup) [S10]
-     route: inline — commit:
+     route: inline — commit: ec8e7c0 (docs) + gate landed inside ecaa45f
 T8 — two-device e2e + final verification [S11] route: verify — commit:
 
 ## Log
@@ -120,3 +120,19 @@ versionchange transaction does not await promises — keep the migration body sy
 Known deferrals to T4/T6: settings rows are not yet stamped with sync fields on write
 (store preserved legacy shape); settings-only writes go through put() which stamps
 updatedAt but the outbox enqueue for settings is T4's single write chokepoint.
+
+L9 — 2026-10-23: T7 landed. Deploy gate: `worker/scripts/preflight.mjs`
+(+ 7 tests in `worker/test/preflight.test.ts`) aborts `npm run deploy` while `database_id`
+is the all-zero placeholder or `CF_ACCESS_TEAM`/`CF_ACCESS_AUD` are the shipped samples;
+`docs/DEPLOY.md` carries the D1 -> migrations -> Access -> vars -> Workers Builds path
+(commit ec8e7c0). The code of the gate landed inside `ecaa45f`: a sibling Pi session shared
+this worktree and ran a broad `git add` while this slice was uncommitted, so the T5 commit
+also carries `worker/scripts/preflight.*`, `worker/test/preflight.test.ts` and the
+`package.json`/`wrangler.toml` diffs. Nothing was lost; attribution is off. Deploy facts
+pinned: the target is a Worker with static assets (`../app/dist`, `run_worker_first:
+["/api/*"]`), not Pages (Access needs an active zone and `*.pages.dev` is not one); wrangler
+resolves `[assets] directory` relative to the config file, so `-c worker/wrangler.toml` from
+the repo root works; Workers Builds needs root directory `worker` and watch paths that
+include `app/*`, otherwise UI changes never rebuild `app/dist`. Slice boundary recorded:
+T4 (`13b94c9`) + T5/T7 (`ecaa45f`, `ec8e7c0`) close the 4.623-line slice since `main`;
+T6 and T8 start the next one.
