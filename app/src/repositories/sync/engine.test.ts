@@ -7,6 +7,7 @@ type EngineModule = typeof import('./engine');
 type OutboxModule = typeof import('./outbox');
 type RepositoriesModule = typeof import('@/repositories');
 type SyncTriggerTargets = import('./engine').SyncTriggerTargets;
+type PendingOutboxEntry = import('./outbox').PendingOutboxEntry;
 
 const STORES = ['sessions', 'progress', 'goals', 'settings', 'marks', 'tags', 'outbox'];
 const BASE_URL = 'https://sync.test/api';
@@ -337,6 +338,63 @@ describe('state — sync status for Settings (§9)', () => {
     const stamp = await engine.lastSyncAt();
     expect(stamp).not.toBeNull();
     expect(Number.isNaN(Date.parse(stamp ?? ''))).toBe(false);
+  });
+});
+
+describe('flush — body budget (§5, §7)', () => {
+  const entryOf = (seq: number, padding: number): PendingOutboxEntry => ({
+    seq,
+    entity: 'sessions',
+    id: `s${seq}`,
+    updatedAt: T_BASE,
+    deletedAt: null,
+    row: { id: `s${seq}`, padding: 'x'.repeat(padding) },
+  });
+
+  it('trims a batch to what fits the body cap instead of sending all of it', () => {
+    const batch = engine.batchWithinBudget(
+      [entryOf(1, 90_000), entryOf(2, 90_000), entryOf(3, 90_000)],
+      200_000,
+    );
+
+    expect(batch.map((entry) => entry.seq)).toEqual([1, 2]);
+  });
+
+  it('still sends a single entry larger than the budget instead of stalling silently', () => {
+    const batch = engine.batchWithinBudget([entryOf(1, 300_000)], 200_000);
+
+    expect(batch.map((entry) => entry.seq)).toEqual([1]);
+  });
+
+  it('drains a backlog whose full batch would exceed the 256 KB body cap', async () => {
+    const sessions = repositories.createSessionRepository();
+    const sets = Array.from({ length: 30 }, (_, index) => ({
+      exercise: 'dominadas',
+      setIndex: index,
+      value: '10',
+      unit: 'reps' as const,
+      bloqueOrden: 1,
+      orden: index + 1,
+    }));
+    for (let index = 0; index < 101; index += 1) {
+      await sessions.put(sessionInput(`s${index}`, { sets }));
+    }
+
+    const bodySizes: number[] = [];
+    stubFetch((_url, init) => {
+      if (init?.method !== 'POST') return jsonResponse(page(1, false, []));
+      const size = new TextEncoder().encode(String(init.body)).length;
+      bodySizes.push(size);
+      if (size > 262_144) return jsonResponse({ error: 'payload_too_large' }, 413);
+      return jsonResponse({ rev: 1, applied: [], rejected: [] });
+    });
+
+    for (let attempt = 0; attempt < 5 && (await outbox.pendingCount()) > 0; attempt += 1) {
+      await engine.flush();
+    }
+
+    expect(await outbox.pendingCount()).toBe(0);
+    expect(bodySizes.every((size) => size <= 262_144)).toBe(true);
   });
 });
 

@@ -14,6 +14,7 @@ import {
   isLocalOnlySettingKey,
   onOutboxWrite,
   pendingOutboxEntries,
+  type PendingOutboxEntry,
 } from './outbox';
 import {
   syncKeyField,
@@ -26,6 +27,7 @@ import {
 } from './types';
 
 const FLUSH_BATCH_SIZE = 100;
+const FLUSH_BODY_BUDGET_BYTES = 200_000;
 const PULL_PAGE_SIZE = 200;
 const RETRY_BASE_MS = 2_000;
 const RETRY_MAX_MS = 60_000;
@@ -89,7 +91,7 @@ function apiBase(): string {
 
 /** Push up to one bounded batch of pending entries, then drop the accepted ones. */
 export async function flush(): Promise<FlushResult> {
-  const entries = await pendingOutboxEntries(FLUSH_BATCH_SIZE);
+  const entries = batchWithinBudget(await pendingOutboxEntries(FLUSH_BATCH_SIZE));
   if (entries.length === 0) return { status: 'empty' };
 
   const deviceId = await deviceIdValue();
@@ -112,6 +114,33 @@ export async function flush(): Promise<FlushResult> {
   if (rejectedRefs.length > 0) await recordConflict(rejectedRefs);
 
   return { status: 'ok', pushed: entries.length, rejected: rejectedRefs.length };
+}
+
+/**
+ * Trims the oldest pending entries to a batch that fits the worker's 256 KB body cap.
+ *
+ * The cap is enforced server-side with a 413, which is a non-retryable failure: a 100-entry
+ * batch of large rows would answer 413 on every attempt and the outbox would never drain.
+ * The size budget therefore owns the batch boundary, not only the entry count. A single
+ * row larger than the budget is still sent alone, so the failure stays visible instead of
+ * stalling the queue silently.
+ */
+export function batchWithinBudget(
+  entries: readonly PendingOutboxEntry[],
+  budgetBytes: number = FLUSH_BODY_BUDGET_BYTES,
+): PendingOutboxEntry[] {
+  const encoder = new TextEncoder();
+  const batch: PendingOutboxEntry[] = [];
+  let size = 0;
+
+  for (const entry of entries) {
+    const entrySize = encoder.encode(JSON.stringify(toMutation(entry))).length + 1;
+    if (batch.length > 0 && size + entrySize > budgetBytes) break;
+    batch.push(entry);
+    size += entrySize;
+  }
+
+  return batch;
 }
 
 /** Apply every page the server has after the local cursor, persisting it page by page. */
