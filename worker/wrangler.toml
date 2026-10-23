@@ -11,14 +11,13 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "logstenia-sync"
-# TODO(user): replace with the `database_id` printed by `npx wrangler d1 create logstenia-sync`.
-# `npm run deploy` refuses to run while this is the all-zero placeholder (scripts/preflight.mjs).
-database_id = "00000000-0000-0000-0000-000000000000"
+# Created with `npx wrangler d1 create logstenia-sync`; `npm run preflight` refuses to deploy
+# while this is the all-zero placeholder (scripts/preflight.mjs).
+database_id = "0e7f4518-9303-4edb-8f95-8c64b11560a9"
 
 [vars]
-# TODO(user): Zero Trust -> Settings -> Team domain, prefix only (the part before
-# `.cloudflareaccess.com`), and Zero Trust -> Access -> Applications -> your app ->
-# Overview -> Application Audience (AUD) Tag. See docs/DEPLOY.md.
-# `npm run deploy` refuses to run while these are the shipped samples.
-CF_ACCESS_TEAM = "your-team"
-CF_ACCESS_AUD = "your-access-application-aud"
+# Zero Trust -> Settings -> Team domain, prefix only (before `.cloudflareaccess.com`), and
+# the Access application's Application Audience (AUD) Tag. `npm run deploy` refuses to run
+# while either value is still a shipped sample (scripts/preflight.mjs). See docs/DEPLOY.md.
+CF_ACCESS_TEAM = "blue-block-5811"
+CF_ACCESS_AUD = "f5979721b059b516079f2607497f44ac1523ec14659df9bb77ed429a6014f382"
