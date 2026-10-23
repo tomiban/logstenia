@@ -10,7 +10,7 @@ import { ENTITY_NAMES, withWrite, type EntityName } from '@/db';
 import { createSettingsRepository } from '../factory';
 import { resolvePullRow } from './merge';
 import {
-  deleteOutboxEntries,
+  deleteFlushedEntries,
   isLocalOnlySettingKey,
   onOutboxWrite,
   pendingOutboxEntries,
@@ -106,7 +106,7 @@ export async function flush(): Promise<FlushResult> {
   if (!payload.ok) return payload.failure;
   if (!isPushResult(payload.value)) return { status: 'failed', message: 'invalid push response' };
 
-  await deleteOutboxEntries(entries.map((entry) => entry.seq));
+  await deleteFlushedEntries(entries);
 
   const rejectedRefs = payload.value.rejected
     .map((rejection) => rejection.ref)

@@ -71,15 +71,36 @@ export async function pendingCount(): Promise<number> {
   return db.count(OUTBOX_STORE);
 }
 
-/** Drops the entries the server accepted (applied or rejected) after a successful push. */
-export async function deleteOutboxEntries(seqs: readonly number[]): Promise<void> {
-  if (seqs.length === 0) return;
+/**
+ * Drops the entries the server accepted, and only while they still hold the snapshot that
+ * was sent. A write that coalesced into the same `seq` while the push was in flight stays
+ * pending: the server holds the older snapshot, so deleting it would drop the newer edit
+ * and the pull would then skip it as older, leaving the devices diverged for good.
+ */
+export async function deleteFlushedEntries(
+  sent: readonly PendingOutboxEntry[],
+): Promise<void> {
+  if (sent.length === 0) return;
   const db = await getDB();
   const tx = db.transaction(OUTBOX_STORE, 'readwrite');
-  for (const seq of seqs) {
-    await tx.store.delete(seq);
+
+  for (const entry of sent) {
+    const current = (await tx.store.get(entry.seq)) as PendingOutboxEntry | undefined;
+    if (!current || !isSameSnapshot(current, entry)) continue;
+    await tx.store.delete(entry.seq);
   }
+
   await tx.done;
+}
+
+function isSameSnapshot(current: PendingOutboxEntry, sent: PendingOutboxEntry): boolean {
+  return (
+    current.entity === sent.entity &&
+    current.id === sent.id &&
+    current.updatedAt === sent.updatedAt &&
+    (current.deletedAt ?? null) === (sent.deletedAt ?? null) &&
+    JSON.stringify(current.row) === JSON.stringify(sent.row)
+  );
 }
 
 function outboxStore(tx: WriteTransaction) {

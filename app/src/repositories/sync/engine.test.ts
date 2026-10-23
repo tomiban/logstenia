@@ -398,6 +398,27 @@ describe('flush — body budget (§5, §7)', () => {
   });
 });
 
+describe('flush — in-flight writes (§7)', () => {
+  it('keeps a newer edit of the same row that lands while the push is in flight', async () => {
+    const settings = repositories.createSettingsRepository();
+    await settings.put({ key: 'theme', value: 'dark' });
+
+    const sent: { mutations: { row: { value: string } }[] }[] = [];
+    stubFetch(async (_url, init) => {
+      if (init?.method !== 'POST') return jsonResponse(page(1, false, []));
+      sent.push(JSON.parse(String(init.body)) as { mutations: { row: { value: string } }[] });
+      await settings.put({ key: 'theme', value: 'light' });
+      return jsonResponse({ rev: 3, applied: ['settings/theme'], rejected: [] });
+    });
+
+    await engine.flush();
+
+    expect(sent[0]?.mutations[0]?.row.value).toBe('dark');
+    expect((await settings.get('theme'))?.value).toBe('light');
+    expect(await outbox.pendingCount()).toBe(1);
+  });
+});
+
 describe('run — auth, backoff and single flight (§7)', () => {
   it('sends a manual redirect fetch and disables retry on 401, keeping the outbox', async () => {
     const sessions = repositories.createSessionRepository();

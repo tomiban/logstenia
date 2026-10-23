@@ -10,6 +10,7 @@ import {
 } from '@/repositories';
 import { flush } from './engine';
 import {
+  deleteFlushedEntries,
   isLocalOnlySettingKey,
   onOutboxWrite,
   pendingCount,
@@ -291,5 +292,29 @@ describe('flush (§7)', () => {
     const conflict = await settings.get('sync.lastConflict');
     expect(conflict?.value).toMatchObject({ refs: ['settings/theme'] });
     expect(await pendingCount()).toBe(0);
+  });
+});
+
+describe('deleteFlushedEntries (§7)', () => {
+  it('drops the accepted snapshot when nothing changed during the push', async () => {
+    const settings = createSettingsRepository();
+    await settings.put({ key: 'theme', value: 'dark' });
+    const [sent] = await pendingOutboxEntries(10);
+
+    await deleteFlushedEntries([sent!]);
+
+    expect(await pendingCount()).toBe(0);
+  });
+
+  it('keeps the newer edit that coalesced into the same seq while the push was in flight', async () => {
+    const settings = createSettingsRepository();
+    await settings.put({ key: 'theme', value: 'dark' });
+    const [sent] = await pendingOutboxEntries(10);
+
+    await settings.put({ key: 'theme', value: 'light' });
+    await deleteFlushedEntries([sent!]);
+
+    const pending = await pendingOutboxEntries(10);
+    expect(pending.map((entry) => (entry.row as { value: string }).value)).toEqual(['light']);
   });
 });
