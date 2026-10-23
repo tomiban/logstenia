@@ -47,8 +47,27 @@ export interface SessionSet {
   bloqueOrden: number;
   orden: number;
 }
-export interface SessionRecord {
-  id?: number;
+/**
+ * Sync metadata added to every synced row by schema v1004 (design §3). `updatedAt`
+ * is the client-clock LWW key; `deletedAt` is the tombstone marker (null when live).
+ */
+export interface SyncFields {
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+/** One pending push entry; `seq` is assigned by the store's autoincrement key. */
+export interface OutboxRecord {
+  seq?: number;
+  entity: string;
+  id: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  row: unknown;
+}
+
+export interface SessionRecord extends SyncFields {
+  id: string;
   date: string;
   planId: string;
   modelId: string;
@@ -56,25 +75,24 @@ export interface SessionRecord {
   completed: boolean;
   sets?: SessionSet[];
 }
-export interface ProgressRecord {
-  id?: number;
+export interface ProgressRecord extends SyncFields {
+  id: string;
   exerciseId: string;
   week: string; // S1..S8
   value: number;
   date: string;
 }
-export interface GoalRecord {
-  id?: number;
+export interface GoalRecord extends SyncFields {
+  id: string;
   goalId: string;
   current: number;
-  updatedAt: string;
 }
-export interface SettingRecord {
+export interface SettingRecord extends SyncFields {
   key: string;
   value: any;
 }
-export interface MarkRecord {
-  id?: number;
+export interface MarkRecord extends SyncFields {
+  id: string;
   exercise: string; // display name
   exerciseId?: string; // stable id (preferred for queries)
   unit: 'sec' | 'reps';
@@ -82,8 +100,8 @@ export interface MarkRecord {
   mesoInicio: string;
   date: string;
 }
-export interface TagRecord {
-  id?: number;
+export interface TagRecord extends SyncFields {
+  id: string;
   targetType: 'exercise' | 'routine' | 'program';
   targetId: string;
   tag: string;

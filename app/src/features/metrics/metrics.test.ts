@@ -19,6 +19,8 @@ import {
 import type { SessionRecord } from '@/db';
 
 const ses = (date: string, over: Partial<SessionRecord> = {}): SessionRecord => ({
+  id: over.id ?? 'ses-mock',
+  updatedAt: over.updatedAt ?? '2026-10-20T12:00:00.000Z',
   date,
   planId: 'p1',
   modelId: 'm1',
@@ -150,7 +152,7 @@ describe('marks', () => {
 
   it('collects explicit marks', () => {
     const marks = collectMarks([], [
-      { exercise: 'Flexiones', unit: 'reps', value: 20, date: '2026-10-15', mesoInicio: '2026-10-01' },
+      { id: 'mark-mock', updatedAt: '2026-10-15T12:00:00.000Z', exercise: 'Flexiones', unit: 'reps', value: 20, date: '2026-10-15', mesoInicio: '2026-10-01' },
     ]);
     expect(marks[0]).toMatchObject({ exercise: 'Flexiones', value: 20, unit: 'reps', source: 'marca', date: '2026-10-15' });
   });

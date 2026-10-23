@@ -1,4 +1,4 @@
-import type {
+import type { SyncFields,
   GoalRecord,
   MarkRecord,
   ProgressRecord,
@@ -26,13 +26,18 @@ export interface IRepository<T> {
   list(): Promise<T[]>;
   get(key: string | number): Promise<T | undefined>;
   listWhere(index: string, value: unknown): Promise<T[]>;
-  put(row: T): Promise<void>;
-  add(row: T): Promise<void>;
+  /**
+   * Write-side signatures accept rows without the v1004 sync fields: the repository
+   * chokepoint stamps `id` (UUID), `updatedAt` and `deletedAt` on every write, and
+   * preserves values the caller already set (backups, server rows).
+   */
+  put(row: Omit<T, 'updatedAt' | 'deletedAt'> & Partial<Pick<SyncFields, 'updatedAt' | 'deletedAt'>>): Promise<void>;
+  add(row: Omit<T, 'id' | 'updatedAt' | 'deletedAt'> & { id?: string }): Promise<void>;
   bulkPut(rows: T[]): Promise<void>;
   /**
-   * Tombstone delete (design §2, §6). Schema v1003 has no `deletedAt` field yet, so
-   * this still performs the previous hard delete; the v1004 schema (T3) turns it
-   * into a lápida write without changing call sites.
+   * Tombstone delete (design §2, §6). Since schema v1004 this writes `deletedAt` +
+   * a bumped `updatedAt` instead of removing the row; tombstoned rows stay out of
+   * every read path.
    */
   softDelete(key: string | number): Promise<void>;
 }

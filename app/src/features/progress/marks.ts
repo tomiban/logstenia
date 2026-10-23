@@ -45,12 +45,13 @@ export async function getMarksByExercise(exerciseId: string, mesoInicio?: string
   });
 }
 
-export async function saveMark(m: Omit<MarkRecord, 'id'>): Promise<void> {
-  const record: MarkRecord = {
+export async function saveMark(
+  m: Omit<MarkRecord, 'id' | 'updatedAt' | 'deletedAt'>,
+): Promise<void> {
+  await markRepository.add({
     ...m,
     exerciseId: m.exerciseId ?? exerciseIdFor(m.exercise),
-  };
-  await markRepository.add(record);
+  });
 }
 
 export async function hasMark(exercise: string, mesoInicio: string, date: string): Promise<boolean> {
