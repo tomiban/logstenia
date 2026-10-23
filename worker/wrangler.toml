@@ -1,0 +1,24 @@
+name = "logstenia-sync"
+main = "src/index.ts"
+compatibility_date = "2026-10-23"
+
+# One Worker serves the built SPA and owns /api/*; only API routes invoke the script.
+[assets]
+directory = "../app/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "logstenia-sync"
+# TODO(user): replace with the `database_id` printed by `npx wrangler d1 create logstenia-sync`.
+# `npm run deploy` refuses to run while this is the all-zero placeholder (scripts/preflight.mjs).
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[vars]
+# TODO(user): Zero Trust -> Settings -> Team domain, prefix only (the part before
+# `.cloudflareaccess.com`), and Zero Trust -> Access -> Applications -> your app ->
+# Overview -> Application Audience (AUD) Tag. See docs/DEPLOY.md.
+# `npm run deploy` refuses to run while these are the shipped samples.
+CF_ACCESS_TEAM = "your-team"
+CF_ACCESS_AUD = "your-access-application-aud"
