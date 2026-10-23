@@ -260,3 +260,11 @@ function readRevValue(record: { value?: number } | null | undefined): number {
   if (!record || typeof record.value !== 'number') throw new Error('meta rev counter is missing');
   return record.value;
 }
+
+/**
+ * Module Worker entry for `wrangler.toml`'s `main`. Without it the runtime never dispatches
+ * to Hono: `wrangler dev` and the deployed Worker hang on every `/api/*` request while
+ * static assets keep working, and the unit tests cannot notice because they call
+ * `app.request(...)` directly.
+ */
+export default { fetch: app.fetch };
