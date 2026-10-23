@@ -1,5 +1,8 @@
 export * from './types';
 export * from './factory';
+export * from './sync/engine';
+export * from './sync/outbox';
+export * from './sync/types';
 export { DexieRepository } from './dexie/baseRepository';
 export { DexieGoalRepository } from './dexie/goalRepository';
 export { DexieMarkRepository } from './dexie/markRepository';

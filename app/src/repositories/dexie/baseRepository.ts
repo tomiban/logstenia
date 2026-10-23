@@ -1,4 +1,6 @@
-import { db, withWrite, type EntityName } from '@/db';
+import { db, withWrite, type EntityName, type WriteTransaction } from '@/db';
+import { enqueueOutbox, isLocalOnlySettingKey, withOutboxWrite } from '../sync/outbox';
+import { syncKeyField, type SyncMutation } from '../sync/types';
 
 type LegacyRow = Record<string, unknown>;
 
@@ -7,17 +9,37 @@ function nowISO(): string {
 }
 
 /**
- * Fill the v1004 row identity: UUID string `id`, client-clock `updatedAt`, live
- * `deletedAt`. Existing values are preserved so backups and server rows keep their
- * timestamps (design §3, §5).
+ * Fill the v1004 row identity: key string, client-clock `updatedAt`, live `deletedAt`.
+ * Existing values are preserved so backups and server rows keep their timestamps
+ * (design §3, §5).
  */
-function normalizeSyncRow(row: unknown): LegacyRow {
+function normalizeSyncRow(entity: EntityName, row: unknown): LegacyRow {
   const source = (row ?? {}) as LegacyRow;
-  return {
+  const normalized: LegacyRow = {
     ...source,
-    id: typeof source.id === 'string' ? source.id : crypto.randomUUID(),
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : nowISO(),
     deletedAt: source.deletedAt ?? null,
+  };
+
+  if (syncKeyField(entity) === 'id') {
+    normalized.id = typeof source.id === 'string' ? source.id : crypto.randomUUID();
+  }
+
+  return normalized;
+}
+
+/** The outbox entry for a stored row, or `null` for rows that must never leave the device. */
+function mutationOf(entity: EntityName, row: LegacyRow): SyncMutation | null {
+  const key = row[syncKeyField(entity)];
+  if (typeof key !== 'string') return null;
+  if (entity === 'settings' && isLocalOnlySettingKey(key)) return null;
+
+  return {
+    entity,
+    id: key,
+    updatedAt: String(row.updatedAt),
+    deletedAt: typeof row.deletedAt === 'string' ? row.deletedAt : null,
+    row,
   };
 }
 
@@ -30,8 +52,9 @@ function isLive(row: unknown): boolean {
 /**
  * Shared query + write surface for the idb-backed entity repositories.
  *
- * Reads go through the `db` shim (tombstones filtered out); writes go through
- * `withWrite` so a row and its outbox entry can share one transaction (design §3).
+ * Reads go through the `db` shim (tombstones filtered out); writes share one transaction
+ * with their outbox entry, so a row never exists without its pending push and vice versa
+ * (design §3, §7).
  */
 export abstract class DexieRepository<T> {
   protected abstract readonly entity: EntityName;
@@ -52,25 +75,28 @@ export abstract class DexieRepository<T> {
   }
 
   async put(row: T): Promise<void> {
-    const normalized = normalizeSyncRow(row);
-    await withWrite([this.entity], async (tx) => {
+    const normalized = normalizeSyncRow(this.entity, row);
+    await withOutboxWrite(this.entity, async (tx) => {
       await tx.objectStore(this.entity).put(normalized);
+      await this.enqueue(tx, normalized);
     });
   }
 
   async add(row: Omit<T, 'id' | 'updatedAt' | 'deletedAt'> & { id?: string }): Promise<void> {
-    const normalized = normalizeSyncRow(row);
-    await withWrite([this.entity], async (tx) => {
+    const normalized = normalizeSyncRow(this.entity, row);
+    await withOutboxWrite(this.entity, async (tx) => {
       await tx.objectStore(this.entity).add(normalized);
+      await this.enqueue(tx, normalized);
     });
   }
 
   async bulkPut(rows: T[]): Promise<void> {
-    const normalized = rows.map(normalizeSyncRow);
-    await withWrite([this.entity], async (tx) => {
+    const normalized = rows.map((row) => normalizeSyncRow(this.entity, row));
+    await withOutboxWrite(this.entity, async (tx) => {
       const store = tx.objectStore(this.entity);
       for (const row of normalized) {
         await store.put(row);
+        await this.enqueue(tx, row);
       }
     });
   }
@@ -80,12 +106,14 @@ export abstract class DexieRepository<T> {
    * a bumped `updatedAt`, so the deletion wins last-write-wins on the next push.
    */
   async softDelete(key: string | number): Promise<void> {
-    await withWrite([this.entity], async (tx) => {
+    await withOutboxWrite(this.entity, async (tx) => {
       const store = tx.objectStore(this.entity);
       const row = (await store.get(key)) as LegacyRow | undefined;
       if (!row || row.deletedAt != null) return;
       const deletedAt = nowISO();
-      await store.put({ ...row, updatedAt: deletedAt, deletedAt });
+      const tombstone = { ...row, updatedAt: deletedAt, deletedAt };
+      await store.put(tombstone);
+      await this.enqueue(tx, tombstone);
     });
   }
 
@@ -94,5 +122,10 @@ export abstract class DexieRepository<T> {
     await withWrite([this.entity], async (tx) => {
       await tx.objectStore(this.entity).delete(key);
     });
+  }
+
+  private async enqueue(tx: WriteTransaction, row: LegacyRow): Promise<void> {
+    const mutation = mutationOf(this.entity, row);
+    if (mutation) await enqueueOutbox(tx, mutation);
   }
 }

@@ -28,3 +28,52 @@ export type PullDecision = 'insert' | 'update' | 'skip';
 
 /** What the client must do with one local mutation: always write locally first (§6). */
 export type MutationDecision = 'write';
+
+/** One entry of `POST /sync` (§5): envelope metadata plus the opaque row payload. */
+export interface SyncMutation extends SyncRowMeta {
+  entity: string;
+  id: string;
+  row: unknown;
+}
+
+/** One mutation the server refused to apply because its own copy is newer (§5). */
+export interface SyncRejection {
+  ref: string;
+  reason: string;
+}
+
+/** Body of a `POST /sync` response (§5). */
+export interface SyncPushResult {
+  rev: number;
+  applied: string[];
+  rejected: SyncRejection[];
+}
+
+/** One change of a `GET /sync` page: the merge payload plus its server identity (§5). */
+export interface PulledChange extends PullChange {
+  entity: string;
+  id: string;
+  rev: number;
+}
+
+/** Body of a `GET /sync` response; `more` asks the client for the next page (§5). */
+export interface PullPage {
+  rev: number;
+  more: boolean;
+  now?: string;
+  changes: PulledChange[];
+}
+
+/**
+ * Why the engine stopped and asked for a session: an Access login redirect, a rejected
+ * JWT, or an HTML login page where JSON was expected (§7).
+ */
+export type AuthRequiredReason = 'redirect' | 'unauthorized' | 'non_json';
+
+/**
+ * Dexie primary-key field of a synced entity: `settings` keeps its natural `key`, every
+ * other table stores a UUID under `id` (§2).
+ */
+export function syncKeyField(entity: string): 'id' | 'key' {
+  return entity === 'settings' ? 'key' : 'id';
+}

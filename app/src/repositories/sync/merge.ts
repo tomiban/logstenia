@@ -8,7 +8,13 @@
  * never a shortcut before it: a `deletedAt` check up front would let an older tombstone
  * overwrite a newer local edit.
  */
-import type { MutationDecision, PullChange, PullDecision, SyncRowMeta } from './types';
+import type {
+  MutationDecision,
+  PullChange,
+  PullDecision,
+  PulledChange,
+  SyncRowMeta,
+} from './types';
 
 /**
  * Decides what to do with one change pulled from the server.
@@ -57,4 +63,54 @@ function isIncomingNewer(local: SyncRowMeta, incoming: SyncRowMeta): boolean {
   if (Number.isNaN(localTime) || Number.isNaN(incomingTime)) return false;
 
   return incomingTime > localTime;
+}
+
+/** Dexie primary-key field carrying the change identity: `settings` keeps `key`. */
+export type IdentityField = 'id' | 'key';
+
+/**
+ * Resolves the row Dexie has to store for one pulled change, applying the same §6 rules
+ * as `applyPull` to the payload:
+ *
+ * - `insert` stores the incoming payload, or a tombstone-only row when the change carries
+ *   no payload (so the deletion survives even when the row is unknown locally)
+ * - `update` with a tombstone keeps the local payload and only marks the row deleted
+ * - `update` with a live row replaces the payload
+ * - `skip` stores nothing
+ *
+ * Returns `null` when nothing has to be written. The caller supplies the identity field,
+ * so this stays free of repository or entity knowledge.
+ */
+export function resolvePullRow(
+  localRow: SyncRowMeta | null | undefined,
+  incoming: PulledChange,
+  identityField: IdentityField = 'id',
+): Record<string, unknown> | null {
+  const decision = applyPull(localRow, incoming);
+  if (decision === 'skip') return null;
+
+  const identity = { [identityField]: incoming.id };
+  const deletedAt = incoming.deletedAt ?? null;
+
+  if (decision === 'insert') {
+    return { ...payloadOf(incoming.row), ...identity, updatedAt: incoming.updatedAt, deletedAt };
+  }
+
+  if (deletedAt != null) {
+    return { ...(localRow ? asRow(localRow) : {}), updatedAt: incoming.updatedAt, deletedAt };
+  }
+
+  return { ...payloadOf(incoming.row), ...identity, updatedAt: incoming.updatedAt, deletedAt: null };
+}
+
+function payloadOf(payload: unknown): Record<string, unknown> {
+  return typeof payload === 'object' && payload !== null ? asRow(payload) : {};
+}
+
+function asRow(value: object): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const [field, entry] of Object.entries(value)) {
+    row[field] = entry;
+  }
+  return row;
 }
