@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:sync": "playwright test --config playwright.sync.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
