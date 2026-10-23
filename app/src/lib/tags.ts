@@ -1,7 +1,10 @@
-import { db, type TagRecord } from '../db';
+import { createSettingsRepository, createTagRepository } from '@/repositories';
 
 export type TagTargetType = 'exercise' | 'routine' | 'program';
 export const TAGS_CHANGED_EVENT = 'logstenia:tags-changed';
+
+const tagRepository = createTagRepository();
+const settingsRepository = createSettingsRepository();
 
 function notifyTagsChanged(): void {
   if (typeof window !== 'undefined') {
@@ -10,27 +13,26 @@ function notifyTagsChanged(): void {
 }
 
 export async function getTags(targetType: TagTargetType, targetId: string): Promise<string[]> {
-  const rows = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).toArray();
+  const rows = await tagRepository.listWhere('[targetType+targetId]', [targetType, targetId]);
   return [...new Set(rows.map((r) => r.tag))];
 }
 
 export async function addTag(targetType: TagTargetType, targetId: string, tag: string): Promise<void> {
   const t = tag.trim().toLowerCase();
   if (!t) return;
-  const exists = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).and((r) => r.tag === t).count();
-  if (exists > 0) return;
-  await db.tags.add({ targetType, targetId, tag: t } as TagRecord);
+  const rows = await tagRepository.listWhere('[targetType+targetId]', [targetType, targetId]);
+  if (rows.some((r) => r.tag === t)) return;
+  await tagRepository.add({ targetType, targetId, tag: t });
   notifyTagsChanged();
 }
 
 export async function removeTag(targetType: TagTargetType, targetId: string, tag: string): Promise<void> {
-  const rows = await db.tags.where('[targetType+targetId]').equals([targetType, targetId]).and((r) => r.tag === tag).toArray();
+  const rows = await tagRepository.listWhere('[targetType+targetId]', [targetType, targetId]);
   let removed = false;
   for (const r of rows) {
-    if (r.id != null) {
-      await db.tags.delete(r.id);
-      removed = true;
-    }
+    if (r.tag !== tag || r.id == null) continue;
+    await tagRepository.softDelete(r.id);
+    removed = true;
   }
   if (removed) notifyTagsChanged();
 }
@@ -38,7 +40,7 @@ export async function removeTag(targetType: TagTargetType, targetId: string, tag
 export const DEFAULT_SUGGESTED_TAGS: string[] = ['empuje', 'tirón', 'movilidad', 'flexibilidad', 'calentamiento'];
 
 export async function getSuggestedTags(): Promise<string[]> {
-  const r = await db.settings.get('tags.suggested');
+  const r = await settingsRepository.get('tags.suggested');
   const stored = (r?.value as string[]) || [];
   return [...new Set([...DEFAULT_SUGGESTED_TAGS, ...stored])].sort();
 }
@@ -48,19 +50,18 @@ export async function addSuggestedTag(tag: string): Promise<void> {
   if (!t) return;
   const cur = await getSuggestedTags();
   if (cur.includes(t)) return;
-  const r = await db.settings.get('tags.suggested');
+  const r = await settingsRepository.get('tags.suggested');
   const stored = (r?.value as string[]) || [];
-  await db.settings.put({ key: 'tags.suggested', value: [...stored, t] });
+  await settingsRepository.put({ key: 'tags.suggested', value: [...stored, t] });
 }
 
 export async function allTags(): Promise<string[]> {
-  const rows = await db.tags.toArray();
+  const rows = await tagRepository.list();
   return [...new Set(rows.map((r) => r.tag))].sort();
 }
 
 export async function targetsByTag(tag: string, targetType?: TagTargetType): Promise<string[]> {
-  let q = db.tags.where('tag').equals(tag);
-  const rows = await q.toArray();
+  const rows = await tagRepository.listWhere('tag', tag);
   return rows.filter((r) => (targetType ? r.targetType === targetType : true)).map((r) => r.targetId);
 }
 

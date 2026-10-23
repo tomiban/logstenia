@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getModel } from '@/features/plans/plans';
-import type { SessionSet } from '@/db';
+import type { SessionSet } from '@/repositories';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
 import { elapsedSeconds } from './session';
 import { buildSteps, type WorkoutStep } from './steps';

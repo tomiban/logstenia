@@ -24,9 +24,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { TagsMenu } from '@/components/ui/tags-menu';
 import { MoreHorizontal } from 'lucide-react';
-import { db, type MarkRecord } from '@/db';
+import { createMarkRepository, createSettingsRepository } from '@/repositories';
+import type { MarkRecord } from '@/repositories';
 import { tagPastel } from '@/lib/tags';
 import { useTags } from '@/hooks/useTags';
+
+const settingsRepository = createSettingsRepository();
+const markRepository = createMarkRepository();
 
 function RoutineTags({ routineId }: { routineId: string }) {
   const { tags } = useTags('routine', routineId);
@@ -77,10 +81,10 @@ export default function Program() {
     isUnlocked(p.id).then(setUnlocked);
     unlockedReason(p.id).then(setLockReason);
     (async () => {
-      const r = await db.settings.get('startedPlans');
+      const r = await settingsRepository.get('startedPlans');
       const arr = (r?.value as string[]) || [];
       setStarted(arr.includes(p.id));
-      setMarks(await db.marks.toArray());
+      setMarks(await markRepository.list());
       setChallengeAnchors(await anchorsFor(p.id));
     })();
   }, [p]);
@@ -232,10 +236,10 @@ export default function Program() {
         <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
           <span className="label-caps text-ink">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
           <Button variant="ink" size="sm" disabled={!unlocked} onClick={async () => {
-            const r = await db.settings.get('startedPlans');
+            const r = await settingsRepository.get('startedPlans');
             const arr = (r?.value as string[]) || [];
             if (!arr.includes(p.id)) {
-              await db.settings.put({ key: 'startedPlans', value: [...arr, p.id] });
+              await settingsRepository.put({ key: 'startedPlans', value: [...arr, p.id] });
             }
             setStarted(true);
           }}>{unlocked ? 'Empezar plan' : 'Bloqueado'}</Button>

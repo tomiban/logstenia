@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '@/hooks/usePlans';
 import type { Category, Program } from '@/types';
-import { db, type SessionRecord, type ProgressRecord, type MarkRecord } from '@/db';
+import { createProgressRepository, createSessionRepository, createSettingsRepository } from '@/repositories';
+import type { MarkRecord, ProgressRecord, SessionRecord } from '@/repositories';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,10 @@ import { useNow } from '@/hooks/useNow';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+const settingsRepository = createSettingsRepository();
+const sessionRepository = createSessionRepository();
+const progressRepository = createProgressRepository();
+
 export default function Home() {
   const navigate = useNavigate();
   const cats = useCategories();
@@ -41,9 +46,9 @@ export default function Home() {
       try {
         setMesoInicioState(await getMesoInicio());
         setWarmupState(await getWarmup());
-        setSessions(await db.sessions.toArray());
-        setProgress(await db.progress.toArray());
-        const sp = await db.settings.get('startedPlans');
+        setSessions(await sessionRepository.list());
+        setProgress(await progressRepository.list());
+        const sp = await settingsRepository.get('startedPlans');
         setStartedPlanIds((sp?.value as string[]) || []);
       } catch {
       } finally {

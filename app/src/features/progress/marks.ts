@@ -1,5 +1,8 @@
-import { db, type MarkRecord } from '@/db';
+import { createMarkRepository } from '@/repositories';
+import type { MarkRecord } from '@/repositories';
 import plansData from '@/data/plans.json';
+
+const markRepository = createMarkRepository();
 
 export const ANCLAS: { ejercicio: string; match?: string; ejercicioId?: string; unidad: 'sec' | 'reps'; objetivo: number }[] = [
   { ejercicio: 'Tuck planche', ejercicioId: 'tuck-planche', unidad: 'sec', objetivo: 10 },
@@ -29,11 +32,11 @@ export function exerciseIdFor(name: string): string | undefined {
 }
 
 export async function getMarks(mesoInicio: string): Promise<MarkRecord[]> {
-  return db.marks.where('mesoInicio').equals(mesoInicio).toArray();
+  return markRepository.listWhere('mesoInicio', mesoInicio);
 }
 
 export async function getMarksByExercise(exerciseId: string, mesoInicio?: string): Promise<MarkRecord[]> {
-  const all = await db.marks.toArray();
+  const all = await markRepository.list();
   return all.filter((m: MarkRecord) => {
     const id = m.exerciseId ?? exerciseIdFor(m.exercise);
     if (id !== exerciseId) return false;
@@ -47,12 +50,12 @@ export async function saveMark(m: Omit<MarkRecord, 'id'>): Promise<void> {
     ...m,
     exerciseId: m.exerciseId ?? exerciseIdFor(m.exercise),
   };
-  await db.marks.add(record as MarkRecord);
+  await markRepository.add(record);
 }
 
 export async function hasMark(exercise: string, mesoInicio: string, date: string): Promise<boolean> {
   const id = exerciseIdFor(exercise);
-  const all = await db.marks.where('mesoInicio').equals(mesoInicio).toArray();
+  const all = await markRepository.listWhere('mesoInicio', mesoInicio);
   return all.some((m: MarkRecord) => {
     const mid = m.exerciseId ?? exerciseIdFor(m.exercise);
     return (id ? mid === id : m.exercise === exercise) && m.date === date;
@@ -61,12 +64,5 @@ export async function hasMark(exercise: string, mesoInicio: string, date: string
 
 // One-time migration: fill exerciseId on marks that lack it.
 export async function migrateMarksToIds(): Promise<void> {
-  const all: MarkRecord[] = await db.marks.toArray();
-  for (const m of all) {
-    if (m.exerciseId) continue;
-    const id = exerciseIdFor(m.exercise);
-    if (!id) continue;
-    if (m.id == null) continue;
-    await db.marks.put({ ...m, exerciseId: id });
-  }
+  await markRepository.migrateExerciseIds(exerciseIdFor);
 }

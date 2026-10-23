@@ -1,5 +1,9 @@
-import { db } from '@/db';
+import { createMarkRepository, createSessionRepository, createSettingsRepository } from '@/repositories';
 import { getProgram, getCategory } from './plans';
+
+const settingsRepository = createSettingsRepository();
+const sessionRepository = createSessionRepository();
+const markRepository = createMarkRepository();
 
 export const PROGRESSION_CHAINS: Record<string, string[]> = {
   planche: ['planche-tuck', 'planche-tuckadv', 'planche-straddle', 'planche-full'],
@@ -125,7 +129,7 @@ export function isBenchmark(modelId: string, modelName?: string): boolean {
 
 export async function getProgressionIndex(programId: string): Promise<number> {
   const key = `progression:${programId}`;
-  const rec = await db.settings.get(key);
+  const rec = await settingsRepository.get(key);
   if (rec) return Number(rec.value) || 0;
   const chain = chainFor(programId);
   if (!chain) return 0;
@@ -133,7 +137,7 @@ export async function getProgressionIndex(programId: string): Promise<number> {
 }
 
 export async function setProgressionIndex(programId: string, index: number): Promise<void> {
-  await db.settings.put({ key: `progression:${programId}`, value: index });
+  await settingsRepository.put({ key: `progression:${programId}`, value: index });
 }
 
 export async function advanceProgression(programId: string): Promise<{ advanced: boolean; next?: string }> {
@@ -166,13 +170,13 @@ export async function isProgramCompleted(programId: string): Promise<boolean> {
   const p = getProgram(programId);
   if (!p) return true;
   if (!p.models || p.models.length === 0) {
-    const r = await db.settings.get('startedPlans');
+    const r = await settingsRepository.get('startedPlans');
     const arr = (r?.value as string[]) || [];
     return arr.includes(programId);
   }
-  const sessions = await db.sessions.toArray();
+  const sessions = await sessionRepository.list();
   const completed = new Set(
-    sessions.filter((s: any) => s.completed && s.planId === programId).map((s: any) => s.modelId),
+    sessions.filter((s) => s.completed && s.planId === programId).map((s) => s.modelId),
   );
   return p.models.every((m) => completed.has(m.id));
 }
@@ -180,7 +184,7 @@ export async function isProgramCompleted(programId: string): Promise<boolean> {
 export async function isUnlocked(programId: string): Promise<boolean> {
   const anchors = await anchorsFor(programId);
   if (anchors.length > 0) {
-    const marks = await db.marks.toArray();
+    const marks = await markRepository.list();
     return anchors.every((a) => {
       const best = marks.filter((m) => m.exercise === a.ejercicio).reduce((acc, m) => Math.max(acc, m.value), 0);
       return best >= a.objetivo;
@@ -205,7 +209,7 @@ export async function unlockedReason(programId: string): Promise<string | null> 
   if (unlocked) return null;
   const anchors = await anchorsFor(programId);
   if (anchors.length > 0) {
-    const marks = await db.marks.toArray();
+    const marks = await markRepository.list();
     const missing = anchors
       .filter((a) => {
         const best = marks.filter((m) => m.exercise === a.ejercicio).reduce((acc, m) => Math.max(acc, m.value), 0);

@@ -1,9 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { db } from '../db';
+import { createSettingsRepository } from '@/repositories';
 import { migrateMarksToIds } from '@/features/progress/marks';
 import { SettingsMenu } from '@/features/settings/SettingsMenu';
+
+const settingsRepository = createSettingsRepository();
 
 const NAV = [
   { id: 'home', label: 'Hoy', path: '/', icon: 'home' },
@@ -31,7 +33,7 @@ function Icon({ name }: { name: string }) {
 
 export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
-    db.settings.get('theme').then(s => {
+    settingsRepository.get('theme').then(s => {
       if (s?.value === 'dark') document.documentElement.classList.add('dark');
     }).catch(() => {});
     migrateMarksToIds().catch(() => {});

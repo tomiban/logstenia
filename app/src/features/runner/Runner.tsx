@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Cronometro from './Cronometro';
-import type { SessionSet } from '@/db';
+import type { SessionSet } from '@/repositories';
 import { createSessionRepository } from '@/repositories';
 import { num } from './runnerLogic';
 import { type WorkoutStep } from './steps';

@@ -1,4 +1,4 @@
-import type { SessionSet } from '@/db';
+import type { SessionSet } from '@/repositories';
 
 /** Coerce an unknown value to a number (NaN if not parseable). */
 export function num(v: unknown): number {

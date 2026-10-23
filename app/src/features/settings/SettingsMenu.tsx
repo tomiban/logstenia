@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { db } from '@/db';
+import {
+  createGoalRepository,
+  createMarkRepository,
+  createProgressRepository,
+  createSessionRepository,
+  createSettingsRepository,
+  createTagRepository,
+} from '@/repositories';
 import { toISOTimestamp } from '@/lib/date';
 import { Button } from '@/components/ui/button';
+
+const sessionRepository = createSessionRepository();
+const progressRepository = createProgressRepository();
+const goalRepository = createGoalRepository();
+const settingsRepository = createSettingsRepository();
+const markRepository = createMarkRepository();
+const tagRepository = createTagRepository();
 
 const BACKUP_SHAPE: { key: string; fields: string[] }[] = [
   { key: 'sessions', fields: ['date', 'planId', 'modelId'] },
@@ -46,9 +60,9 @@ export function SettingsMenu() {
 
   useEffect(() => {
     (async () => {
-      const s = await db.settings.get('sound');
+      const s = await settingsRepository.get('sound');
       if (s) setSound(!!s.value);
-      const t = await db.settings.get('theme');
+      const t = await settingsRepository.get('theme');
       if (t) setDark(t.value === 'dark');
     })();
   }, []);
@@ -75,13 +89,13 @@ export function SettingsMenu() {
   const toggleSound = async () => {
     const value = !sound;
     setSound(value);
-    await db.settings.put({ key: 'sound', value });
+    await settingsRepository.put({ key: 'sound', value });
   };
 
   const toggleTheme = async () => {
     const value = !dark;
     setDark(value);
-    await db.settings.put({ key: 'theme', value: value ? 'dark' : 'light' });
+    await settingsRepository.put({ key: 'theme', value: value ? 'dark' : 'light' });
     document.documentElement.classList.toggle('dark', value);
   };
 
@@ -93,12 +107,12 @@ export function SettingsMenu() {
   const exportData = async () => {
     try {
       const data = {
-        sessions: await db.sessions.toArray(),
-        progress: await db.progress.toArray(),
-        goals: await db.goals.toArray(),
-        settings: await db.settings.toArray(),
-        marks: await db.marks.toArray(),
-        tags: await db.tags.toArray(),
+        sessions: await sessionRepository.list(),
+        progress: await progressRepository.list(),
+        goals: await goalRepository.list(),
+        settings: await settingsRepository.list(),
+        marks: await markRepository.list(),
+        tags: await tagRepository.list(),
         exportedAt: toISOTimestamp(),
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -125,12 +139,12 @@ export function SettingsMenu() {
         if (value === undefined) continue;
         if (!hasFields(value, fields)) throw new Error('formato');
       }
-      if (Array.isArray(data.sessions)) await db.sessions.bulkPut(data.sessions);
-      if (Array.isArray(data.progress)) await db.progress.bulkPut(data.progress);
-      if (Array.isArray(data.goals)) await db.goals.bulkPut(data.goals);
-      if (Array.isArray(data.settings)) await db.settings.bulkPut(data.settings);
-      if (Array.isArray(data.marks)) await db.marks.bulkPut(data.marks);
-      if (Array.isArray(data.tags)) await db.tags.bulkPut(data.tags);
+      if (Array.isArray(data.sessions)) await sessionRepository.bulkPut(data.sessions);
+      if (Array.isArray(data.progress)) await progressRepository.bulkPut(data.progress);
+      if (Array.isArray(data.goals)) await goalRepository.bulkPut(data.goals);
+      if (Array.isArray(data.settings)) await settingsRepository.bulkPut(data.settings);
+      if (Array.isArray(data.marks)) await markRepository.bulkPut(data.marks);
+      if (Array.isArray(data.tags)) await tagRepository.bulkPut(data.tags);
       setMsg('Importación completada.');
     } catch {
       setMsg('No se pudo leer el archivo. Revisá que sea un backup de Logstenia.');

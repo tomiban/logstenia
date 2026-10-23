@@ -3,7 +3,7 @@
 
 import { clasificar, type Grupo, type Subgrupo } from '@/features/progress/clasificar';
 import { allModels, getProgram } from '@/features/plans/plans';
-import type { SessionRecord, MarkRecord } from '@/db';
+import type { SessionRecord, MarkRecord } from '@/repositories';
 import type { Goal } from '@/types';
 
 export type RangeKey = '7d' | '30d' | '90d' | 'all';

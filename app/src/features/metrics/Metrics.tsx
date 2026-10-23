@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { toISODate } from '@/lib/date';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { db, type MarkRecord, type SessionRecord } from '@/db';
+import { createMarkRepository, createSessionRepository } from '@/repositories';
+import type { MarkRecord, SessionRecord } from '@/repositories';
 import {
   RANGE_OPTIONS,
   anchorProgress,
@@ -30,6 +31,8 @@ const nf = new Intl.NumberFormat('es-AR');
 const WEEKS_SHOWN = 8;
 const SESSIONS_SHOWN = 12;
 const ANCHORS = dedupeAnchors(ANCLAS);
+const sessionRepository = createSessionRepository();
+const markRepository = createMarkRepository();
 
 function todayIso(): string {
   return toISODate();
@@ -139,7 +142,7 @@ export default function Metrics() {
     let cancelled = false;
     (async () => {
       try {
-        const [s, m] = await Promise.all([db.sessions.toArray(), db.marks.toArray()]);
+        const [s, m] = await Promise.all([sessionRepository.list(), markRepository.list()]);
         if (cancelled) return;
         setSessions(s);
         setMarks(m);
