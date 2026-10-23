@@ -313,6 +313,33 @@ describe('pull — paginated and crash safe (§5, §7)', () => {
   });
 });
 
+describe('state — sync status for Settings (§9)', () => {
+  it('notifies subscribers every time a run finishes', async () => {
+    const seen: boolean[] = [];
+    const unsubscribe = engine.onSyncStateChange(() => {
+      seen.push(engine.getSyncState().authRequired);
+    });
+    stubFetch(() => jsonResponse({ error: 'unauthorized' }, 401));
+
+    await engine.run();
+    unsubscribe();
+    await engine.run();
+
+    expect(seen).toEqual([true]);
+  });
+
+  it('exposes the timestamp of the last successful sync', async () => {
+    stubEmptySync();
+    expect(await engine.lastSyncAt()).toBeNull();
+
+    await engine.run();
+
+    const stamp = await engine.lastSyncAt();
+    expect(stamp).not.toBeNull();
+    expect(Number.isNaN(Date.parse(stamp ?? ''))).toBe(false);
+  });
+});
+
 describe('run — auth, backoff and single flight (§7)', () => {
   it('sends a manual redirect fetch and disables retry on 401, keeping the outbox', async () => {
     const sessions = repositories.createSessionRepository();

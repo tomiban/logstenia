@@ -24,6 +24,18 @@ test('ajustes se abre desde el nombre del navbar y se cierra con Escape', async 
   await expect(dialog).toBeHidden();
 });
 
+test('ajustes muestra el estado de sincronización y el disparo manual', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'tomas' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog.getByText('Sincronización', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Última sincronización:');
+  await expect(dialog.getByRole('button', { name: 'Sincronizar ahora' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Exportar' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Importar' })).toBeVisible();
+});
+
 test('las pantallas de progreso y de ajustes ya no existen', async ({ page }) => {
   await page.goto('/progress');
   await expect(page).toHaveURL('/');

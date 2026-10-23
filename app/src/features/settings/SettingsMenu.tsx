@@ -9,6 +9,7 @@ import {
 } from '@/repositories';
 import { toISOTimestamp } from '@/lib/date';
 import { Button } from '@/components/ui/button';
+import { useSyncStatus } from './useSyncStatus';
 
 const sessionRepository = createSessionRepository();
 const progressRepository = createProgressRepository();
@@ -57,6 +58,7 @@ export function SettingsMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sync = useSyncStatus();
 
   useEffect(() => {
     (async () => {
@@ -209,6 +211,39 @@ export function SettingsMenu() {
                 onChange={toggleTheme}
               />
             </Row>
+          </div>
+
+          <div className="border-t border-border pt-3">
+            <p className="label-caps text-muted-foreground">Sincronización</p>
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
+              {sync.statusLine}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="label-caps mt-2 w-full justify-start"
+              disabled={sync.syncing}
+              onClick={sync.syncNow}
+            >
+              {sync.syncing ? 'Sincronizando…' : 'Sincronizar ahora'}
+            </Button>
+            {sync.sessionExpired ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="lg"
+                className="label-caps mt-2 w-full justify-start"
+                onClick={() => window.location.reload()}
+              >
+                {sync.sessionLine}
+              </Button>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">{sync.sessionLine}</p>
+            )}
+            {sync.clockWarning ? (
+              <p className="mt-2 text-xs text-warning">{sync.clockWarning}</p>
+            ) : null}
           </div>
 
           <div className="border-t border-border pt-3">

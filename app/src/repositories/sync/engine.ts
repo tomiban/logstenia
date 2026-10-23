@@ -75,6 +75,7 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryAttempt = 0;
 let authRequired = false;
 let serverClockSkewMs: number | null = null;
+const stateListeners = new Set<() => void>();
 
 function settings() {
   return createSettingsRepository();
@@ -149,14 +150,37 @@ export function run(): Promise<SyncRunResult> {
     .catch((error: unknown): SyncRunResult => ({ status: 'failed', message: messageOf(error) }))
     .finally(() => {
       inFlight = null;
+      notifyStateChange();
     });
 
   inFlight = attempt;
   return attempt;
 }
 
+/**
+ * Notifies after a run finishes so Settings can redraw its status line, pending count and
+ * expired-session banner (§9).
+ */
+export function onSyncStateChange(listener: () => void): () => void {
+  stateListeners.add(listener);
+  return () => {
+    stateListeners.delete(listener);
+  };
+}
+
+function notifyStateChange(): void {
+  for (const listener of stateListeners) listener();
+}
+
 export function getSyncState(): SyncState {
   return { authRequired, retryAttempt, serverClockSkewMs };
+}
+
+/** ISO timestamp of the last successful sync, or `null` when it never ran (§9). */
+export async function lastSyncAt(): Promise<string | null> {
+  const row = await settings().get(LAST_SYNC_KEY);
+  const value: unknown = row?.value;
+  return typeof value === 'string' ? value : null;
 }
 
 /**
