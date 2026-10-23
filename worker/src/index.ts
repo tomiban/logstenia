@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
-import { verifyAccessJwt } from './access';
+import { isDevAuthBypass, verifyAccessJwt } from './access';
 
 export interface Env {
   DB: D1Database;
   CF_ACCESS_TEAM: string;
   CF_ACCESS_AUD: string;
+  /** Local development only; see `isDevAuthBypass`. */
+  SYNC_DEV_NO_AUTH?: string;
 }
 
 const MAX_BODY_BYTES = 256 * 1024;
@@ -69,10 +71,13 @@ interface PushBody {
 
 export const app = new Hono<{ Bindings: Env }>();
 
-app.get('/api/health', (c) => c.json({ ok: true }));
+app.get('/api/health', (c) =>
+  isDevAuthBypass(c.req.raw, c.env) ? c.json({ ok: true, devAuthBypass: true }) : c.json({ ok: true }),
+);
 
 app.use('/api/sync', async (c, next) => {
-  if (!(await verifyAccessJwt(c.req.raw, c.env))) {
+  const authorized = isDevAuthBypass(c.req.raw, c.env) || (await verifyAccessJwt(c.req.raw, c.env));
+  if (!authorized) {
     return c.json({ error: 'unauthorized' }, 401);
   }
   await next();

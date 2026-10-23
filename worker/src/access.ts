@@ -16,6 +16,24 @@ const ALLOWED_ALGORITHM = 'RS256';
 export interface AccessEnv {
   CF_ACCESS_TEAM: string;
   CF_ACCESS_AUD: string;
+  /** Only `npm run dev` sets this; a deployed Worker never carries it. */
+  SYNC_DEV_NO_AUTH?: string;
+}
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+/**
+ * Local development escape hatch (`worker/README.md`).
+ *
+ * `npm run dev` passes `--var SYNC_DEV_NO_AUTH:true`, so a loopback request skips Access
+ * verification and the client can be exercised against `wrangler dev` without a Cloudflare
+ * session. Two conditions are required on purpose: the exact flag and a loopback host. A
+ * deployed Worker has neither (the flag is not in `wrangler.toml`, and its hostname is not
+ * loopback), so it keeps failing closed.
+ */
+export function isDevAuthBypass(request: Request, env: AccessEnv): boolean {
+  if (env.SYNC_DEV_NO_AUTH !== 'true') return false;
+  return LOOPBACK_HOSTS.has(new URL(request.url).hostname);
 }
 
 interface AccessClaims {

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --var SYNC_DEV_NO_AUTH:true",
     "preflight": "node scripts/preflight.mjs",
     "deploy": "npm run preflight && wrangler deploy",
     "lint": "oxlint src test scripts",

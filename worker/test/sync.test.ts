@@ -375,6 +375,50 @@ describe('access verification', () => {
     expect(cache.size).toBe(1);
   });
 
+  describe('local development bypass', () => {
+    const withDevFlag = (flag?: string) => ({
+      ...envFor(db),
+      ...(flag === undefined ? {} : { SYNC_DEV_NO_AUTH: flag }),
+    });
+
+    it('serves the API on loopback without a token when the dev flag is exactly true', async () => {
+      const response = await app.request('/api/sync', { method: 'GET' }, withDevFlag('true'));
+
+      expect(response.status).toBe(200);
+      expect(fetchCalls).toEqual([]);
+    });
+
+    it('keeps failing closed on loopback when the dev flag is absent', async () => {
+      const response = await app.request('/api/sync', { method: 'GET' }, withDevFlag());
+
+      expect(response.status).toBe(401);
+    });
+
+    it('ignores a dev flag that is not exactly true', async () => {
+      expect((await app.request('/api/sync', { method: 'GET' }, withDevFlag('1'))).status).toBe(401);
+      expect((await app.request('/api/sync', { method: 'GET' }, withDevFlag('yes'))).status).toBe(401);
+    });
+
+    it('keeps the bypass off a non-loopback host even with the dev flag set', async () => {
+      const response = await app.request(
+        'https://logstenia-sync.example.workers.dev/api/sync',
+        { method: 'GET' },
+        withDevFlag('true'),
+      );
+
+      expect(response.status).toBe(401);
+      expect(fetchCalls).toEqual([]);
+    });
+
+    it('announces the bypass on health only while it is active', async () => {
+      const devHealth = await app.request('/api/health', { method: 'GET' }, withDevFlag('true'));
+      const plainHealth = await app.request('/api/health', { method: 'GET' }, withDevFlag());
+
+      expect(await devHealth.json()).toEqual({ ok: true, devAuthBypass: true });
+      expect(await plainHealth.json()).toEqual({ ok: true });
+    });
+  });
+
   it('serves health without an Access session', async () => {
     const response = await app.request('/api/health', { method: 'GET' }, envFor(db));
 
