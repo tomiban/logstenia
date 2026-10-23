@@ -203,3 +203,43 @@ Open follow-ups recorded, not fixed: `enqueueOutbox` reads the whole outbox insi
 write transaction (quadratic on a large backup import, correctness unaffected); an unknown
 entity name is skipped while the cursor still advances, so an older client would permanently
 skip rows written by a newer one; and the S9 `Sesión: <email>` gap from L11.
+
+L14 — 2026-10-23: T8 landed. The suite runs one command (`npm run test:e2e:sync`,
+`4067af8`): `playwright.sync.config.ts` starts the real Worker on 127.0.0.1:8787 (own D1 under
+a mktemp dir via `app/scripts/dev-worker.sh`, loopback Access bypass) and Vite on 5179, and
+`e2e-sync/sync.sync.e2e.ts` drives two browser contexts as two devices in both directions.
+Path deviation from S11, which named `e2e/sync.spec.ts`: the spec lives in `e2e-sync/` behind
+its own config so `npm run test:e2e` stays fast and independent of wrangler.
+
+Three things the first real run exposed, all fixed:
+
+- `0cfef93` (blocker, T5): `worker/src/index.ts` never exported a default Worker entry, so
+  the runtime never dispatched to Hono — static assets served while every `/api/*` request
+  hung with zero bytes, in `wrangler dev` and in a deployed Worker alike. The unit tests
+  could not see it because they call `app.request(...)` directly. `worker/test/entry.test.ts`
+  now pins a callable default fetch and sends a request through it.
+- `bb87f7f` (S9): the settings popover read `sound`/`theme` once on mount and the engine wrote
+  pulled rows without notifying anyone, so a device that pulled a newer theme kept rendering
+  the old one. `onPulledRows(entities)` now fires after a page is committed and the popover
+  re-reads, applying `html.dark`.
+- the spec itself had a race: it waited on the settings status line, which only refreshes when
+  a run finishes, so it acknowledged a push its own debounce had not sent yet and device A
+  synced too early. The waits now poll the Worker for the pushed value.
+
+Verification after the fixes: app 174/174 unit (17 files), 32/32 default e2e, worker 33/33,
+two-device e2e 1 passed (10 s, exit 0, run independently), tsc 0 in both packages, build ok,
+lint at the 20-warning baseline. Slice boundary: `4067af8` closes the 5.661-line total; the
+code units since `main` are T4 (1.463), T5+T7 gate (1.259 code), T6 (394), three fixes (208),
+bypass (128) and T8 (127), each one concern with its tests.
+
+Follow-ups left open, in order of user impact: the status line still shows the previous
+pending count until a run finishes (a write made while the popover is open is not counted
+until the 3 s debounce fires); each device seeds its own local `tags` rows, so the mirror ends
+up with duplicate tag rows per device (union semantics, harmless but noisy); `enqueueOutbox`
+reads the whole outbox inside every write transaction (quadratic on a large backup import);
+an unknown entity name is skipped while the cursor advances (an older client would skip rows
+from a newer one); and S9's `Sesión: <email>` still needs a `user` field on the pull page.
+
+Remaining for a real deploy, all user-owned: create the D1 and the Access application, fill
+`worker/wrangler.toml`, run `npm run deploy` from `worker/`, then verify on two real devices
+(`docs/DEPLOY.md` has the path; the preflight refuses placeholders).
