@@ -341,6 +341,37 @@ describe('state — sync status for Settings (§9)', () => {
   });
 });
 
+describe('onPulledRows (§9)', () => {
+  it('names the entities a pull wrote so cached views can re-read them', async () => {
+    const seen: string[][] = [];
+    const unsubscribe = engine.onPulledRows((entities) => seen.push([...entities]));
+    stubFetch(() =>
+      jsonResponse(
+        page(4, false, [
+          liveChange('settings', 'theme', 4, T_NEW, { key: 'theme', value: 'dark' }),
+          liveChange('sessions', 'a', 4, T_NEW),
+        ]),
+      ),
+    );
+
+    await engine.pull();
+    unsubscribe();
+
+    expect(seen).toEqual([['settings', 'sessions']]);
+  });
+
+  it('stays silent when the pull had nothing to apply', async () => {
+    const seen: string[][] = [];
+    const unsubscribe = engine.onPulledRows((entities) => seen.push([...entities]));
+    stubFetch(() => jsonResponse(page(1, false, [])));
+
+    await engine.pull();
+    unsubscribe();
+
+    expect(seen).toEqual([]);
+  });
+});
+
 describe('flush — body budget (§5, §7)', () => {
   const entryOf = (seq: number, padding: number): PendingOutboxEntry => ({
     seq,

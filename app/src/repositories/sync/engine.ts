@@ -78,6 +78,7 @@ let retryAttempt = 0;
 let authRequired = false;
 let serverClockSkewMs: number | null = null;
 const stateListeners = new Set<() => void>();
+const pulledListeners = new Set<(entities: readonly EntityName[]) => void>();
 
 function settings() {
   return createSettingsRepository();
@@ -156,7 +157,9 @@ export async function pull(): Promise<PullResult> {
     }
 
     const { changes, more } = response.value;
-    pulled += await applyChanges(changes);
+    const outcome = await applyChanges(changes);
+    pulled += outcome.applied;
+    if (outcome.entities.length > 0) notifyPulledRows(outcome.entities);
     recordServerClock(response.value.now);
 
     // §5: the next `since` is the last received change rev, so a page watermark pointing
@@ -199,6 +202,21 @@ export function onSyncStateChange(listener: () => void): () => void {
 
 function notifyStateChange(): void {
   for (const listener of stateListeners) listener();
+}
+
+/**
+ * Notifies after pulled rows are written, naming the entities that changed (§9): a view that
+ * cached local state on mount re-reads it here instead of staying stale until a reload.
+ */
+export function onPulledRows(listener: (entities: readonly EntityName[]) => void): () => void {
+  pulledListeners.add(listener);
+  return () => {
+    pulledListeners.delete(listener);
+  };
+}
+
+function notifyPulledRows(entities: readonly EntityName[]): void {
+  for (const listener of pulledListeners) listener(entities);
 }
 
 export function getSyncState(): SyncState {
@@ -297,7 +315,9 @@ function cancelRetry(): void {
   }
 }
 
-async function applyChanges(changes: readonly PulledChange[]): Promise<number> {
+async function applyChanges(
+  changes: readonly PulledChange[],
+): Promise<{ applied: number; entities: EntityName[] }> {
   const grouped = new Map<EntityName, PulledChange[]>();
 
   for (const change of changes) {
@@ -328,7 +348,7 @@ async function applyChanges(changes: readonly PulledChange[]): Promise<number> {
     });
   }
 
-  return applied;
+  return { applied, entities: [...grouped.keys()] };
 }
 
 async function requestJson(path: string, init?: RequestInit): Promise<Step<unknown>> {

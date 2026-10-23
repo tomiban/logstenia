@@ -7,6 +7,7 @@ import {
   createSettingsRepository,
   createTagRepository,
   exportableSettings,
+  onPulledRows,
 } from '@/repositories';
 import { toISOTimestamp } from '@/lib/date';
 import { Button } from '@/components/ui/button';
@@ -62,12 +63,27 @@ export function SettingsMenu() {
   const sync = useSyncStatus();
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    const loadStoredSettings = async () => {
       const s = await settingsRepository.get('sound');
-      if (s) setSound(!!s.value);
       const t = await settingsRepository.get('theme');
-      if (t) setDark(t.value === 'dark');
-    })();
+      if (cancelled) return;
+      if (s) setSound(!!s.value);
+      if (t) {
+        const isDark = t.value === 'dark';
+        setDark(isDark);
+        document.documentElement.classList.toggle('dark', isDark);
+      }
+    };
+
+    void loadStoredSettings();
+    const unsubscribe = onPulledRows(() => void loadStoredSettings());
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
