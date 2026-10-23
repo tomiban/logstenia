@@ -74,16 +74,19 @@ review on work-unit commits only.
 ## Tasks
 
 T1 — repositories for 5 remaining tables + `withWrite`; remove direct `@/db` imports
-[S8] route: worker — commit:
+[S8] route: worker — commit: 629f293
 T2 — `merge.ts` pure functions, tests first (RED→GREEN) [S6, S11] route: worker — commit:
      4073141 (tie rule: strict `>` per §6 pseudocode; push wins on tie via §5 `>=`, pull
      skips ties to keep re-applied pages idempotent — accepted 2026-10-23)
 T3 — schema v1004 migration + outbox store + fixture test [S3] route: verify, High risk
      (stored data) — commit: 7ccda69
 T4 — sync engine flush/pull/run, single flight, backoff, opaqueredirect→auth_required
-     [S7] route: worker — commit:
+     [S7] route: worker — commit: 13b94c9 (pull cursor fix, clock skew and the app-start
+     trigger ride in the same commit; see L10)
 T5 — `worker/` Hono + D1 + Access JWT verification + SQL [S4, S5, S10] route: worker — commit:
-T6 — Ajustes → Sincronización UI [S9] route: inline — commit:
+     ecaa45f (also carries the T7 deploy gate, see L9)
+T6 — Ajustes → Sincronización UI [S9] route: inline — commit: e98107a (session line without
+     email, see L11)
 T7 — deploy wiring wrangler.toml + Access + README (needs user Cloudflare setup) [S10]
      route: inline — commit: ec8e7c0 (docs) + gate landed inside ecaa45f
 T8 — two-device e2e + final verification [S11] route: verify — commit:
@@ -136,3 +139,38 @@ the repo root works; Workers Builds needs root directory `worker` and watch path
 include `app/*`, otherwise UI changes never rebuild `app/dist`. Slice boundary recorded:
 T4 (`13b94c9`) + T5/T7 (`ecaa45f`, `ec8e7c0`) close the 4.623-line slice since `main`;
 T6 and T8 start the next one.
+
+L10 — 2026-10-23: T4 landed as `13b94c9` (1.463 lines: engine 441L + outbox 88L + 736L of
+behavior tests, the write chokepoint in `dexie/baseRepository.ts`, `main.tsx` trigger
+registration). Two defects found while auditing the uncommitted engine, both fixed
+test-first: (a) `pull()` persisted the page-level `rev` (the global `meta.rev` watermark)
+as the cursor, so a page with `more: true` jumped `since` past the rows it never returned —
+250 rows at limit 200 lost 50 permanently; RED showed `pulled: 200`, the fix uses the last
+change rev per §5 and falls back to the current cursor when a page does not advance.
+(b) the engine ignored `page.now`, so §9's skew warning had no source; `getSyncState()`
+now reports `serverClockSkewMs`. Also wired `registerSyncTriggers()` in `app/src/main.tsx`:
+S7's app-start trigger existed but nothing called it, so the engine never ran in the real
+app. Evidence: 144/144 unit, 30/30 e2e, tsc 0, lint at baseline (20 pre-existing warnings,
+none in new code), build ok. GGA hook still down (L5) → `--no-verify` after parent
+verification. Slice note: 1.463 lines exceed the ~400-line unit, mitigated by single
+concern (engine + outbox + its tests) and by native RDD review on this commit alone.
+
+L11 — 2026-10-23: T6 landed as `e98107a` (394 lines: `syncStatus.ts` pure copy + 19 tests,
+`useSyncStatus` hook, the popover block, one e2e). Engine additions in the same commit:
+`lastSyncAt()` and `onSyncStateChange()` (the popover redraws after each run instead of
+polling), both with tests. Deviation from S9: the session line reads `Sesión: activa` /
+`Sesión vencida — tocá para volver a entrar` instead of `Sesión: <email>`, because
+`/api/sync` exposes no user field and the Access JWT is verified at the edge without
+surfacing claims. Closing that needs a Worker-side `user` on the pull page; recorded as the
+remaining S9 gap. Evidence: 165/165 unit (16 files), 32/32 e2e, tsc 0, build ok, lint at
+baseline.
+
+L12 — Attribution correction to L9: the T5 commit did not pick up the deploy gate through a
+stray broad `git add`. This session staged `worker/scripts/preflight.*`,
+`worker/test/preflight.test.ts` and the `package.json`/`wrangler.toml` diffs on purpose,
+because `package.json`'s `deploy` script references the gate: committing the core without
+them would have left a commit whose own `npm run deploy` pointed at a missing file. The
+docs side (`docs/DEPLOY.md`, README) stayed with the session that wrote it. Coordination for
+the rest of the feature: one owner per surface (T6 = app/, T7 docs = the other session),
+and `git commit <pathspec>` instead of `git add -A` while both sessions share one index.
+Next slice: T8 only, so the next commit starts fresh well under the 400-line unit.
