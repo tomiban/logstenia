@@ -79,7 +79,7 @@ T2 — `merge.ts` pure functions, tests first (RED→GREEN) [S6, S11] route: wor
      4073141 (tie rule: strict `>` per §6 pseudocode; push wins on tie via §5 `>=`, pull
      skips ties to keep re-applied pages idempotent — accepted 2026-10-23)
 T3 — schema v1004 migration + outbox store + fixture test [S3] route: verify, High risk
-     (stored data) — commit:
+     (stored data) — commit: 7ccda69
 T4 — sync engine flush/pull/run, single flight, backoff, opaqueredirect→auth_required
      [S7] route: worker — commit:
 T5 — `worker/` Hono + D1 + Access JWT verification + SQL [S4, S5, S10] route: worker — commit:
@@ -108,3 +108,15 @@ was unassessable while T1 untracked files exist).
 L6 — Slice boundary: commits c61aad7 + d990a8f (docs) + 4073141 (code) = 787 authored
 lines since main. Code slice so far 261 lines; next code commits (T3+) start the next
 slice.
+L7 — 2026-10-23: T1 landed as `629f293` (DexieRepository base + 4 entity repos + withWrite
++ all feature-layer `@/db` imports removed; differential base-vs-change: 95/95 tests,
+lint identical). Parent ran the missing Playwright differential: 30/30 e2e passed.
+L8 — 2026-10-23: T3 landed as `7ccda69` (178L open.ts sync event-driven migration,
+169L fixture test with fake-indexeddb, records tightened to SyncFields; write-side
+repository signatures widened so the chokepoint stamps id/updatedAt/deletedAt;
+suite 113/113, tsc 0 errors, lint baseline, build ok). Gotchas pinned: idb upgrade
+callback proxies need unwrap; fresh install must create the settings store; the
+versionchange transaction does not await promises — keep the migration body sync.
+Known deferrals to T4/T6: settings rows are not yet stamped with sync fields on write
+(store preserved legacy shape); settings-only writes go through put() which stamps
+updatedAt but the outbox enqueue for settings is T4's single write chokepoint.
