@@ -1,6 +1,7 @@
 export * from './types';
 export * from './factory';
 export * from './sync/engine';
+export * from './sync/export';
 export * from './sync/outbox';
 export * from './sync/types';
 export { DexieRepository } from './dexie/baseRepository';

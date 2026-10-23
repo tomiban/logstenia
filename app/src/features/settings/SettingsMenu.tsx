@@ -6,6 +6,7 @@ import {
   createSessionRepository,
   createSettingsRepository,
   createTagRepository,
+  exportableSettings,
 } from '@/repositories';
 import { toISOTimestamp } from '@/lib/date';
 import { Button } from '@/components/ui/button';
@@ -112,7 +113,7 @@ export function SettingsMenu() {
         sessions: await sessionRepository.list(),
         progress: await progressRepository.list(),
         goals: await goalRepository.list(),
-        settings: await settingsRepository.list(),
+        settings: exportableSettings(await settingsRepository.list()),
         marks: await markRepository.list(),
         tags: await tagRepository.list(),
         exportedAt: toISOTimestamp(),
