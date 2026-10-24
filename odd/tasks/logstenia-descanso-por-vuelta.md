@@ -21,13 +21,13 @@ de un ejercicio no cambia.
 
 - T1 [S1,S2] Helper puro en `app/src/features/runner/runnerLogic.ts` (`rondaCompleta`,
   `esUltimaVuelta`) + tests unitarios en `runnerLogic.test.ts` (primero en rojo). Route: inline.
-  Commit: `fe1c94d`.
+  Commit: `7a93888`.
 - T2 [S1,S2] Mover el disparo del descanso de serie de `Runner.tsx` (`Paso`) a `useRunner.ts`:
   registra la serie y solo inicia el descanso si la vuelta quedó completa. Route: inline.
-  Commit: `fe1c94d`.
+  Commit: `7a93888`.
 - T3 [S1,S3] e2e en `app/e2e/runner.e2e.ts`: en un modelo de superseries confirmar un ejercicio
   no abre el temporizador y confirmar el último de la vuelta sí; el caso de un solo ejercicio
-  sigue en verde. Route: inline. Commit: `fe1c94d`.
+  sigue en verde. Route: inline. Commit: `7a93888`.
 - T4 [S1,S2,S3] Verificación (`npm test`, `npm run test:e2e`, `npm run lint`, `npm run build`).
   Route: inline. Commit: ninguno (verificación).
 
@@ -67,7 +67,15 @@ de un ejercicio no cambia.
   rebaseada encima. El único conflicto fue `docs/DEPLOY.md` (§6 y la tabla de problemas, que las
   dos ramas reescribieron): quedó la versión de `main` más la sección "Desarrollo local" y los dos
   diagnósticos de Access de esta rama. El commit `wip(...)` de otra sesión se partió en cuatro
-  unidades con su verificación: `fe1c94d` (T1-T3, 182 líneas), `3bdc0c6` (pass de diseño
-  claro/oscuro + tokens fijos `on-accent`/`on-ink`, 226), `0c0e741` (proxy `/api` de Vite + doc de
-  desarrollo local, 52) y `1a98ee4` (borrado de `PLAN.md` + referencias en README/AGENTS, 197).
-  Límite de slice: `3bdc0c6`, con 408 líneas autoradas entre `main` y ese commit.
+  unidades con su verificación: `7a93888` (T1-T3, 182 líneas), `408117d` (pass de diseño
+  claro/oscuro + tokens fijos `on-accent`/`on-ink`, 226), `f3b4642` (proxy `/api` de Vite + doc de
+  desarrollo local, 52) y `42d047a` (borrado de `PLAN.md` + referencias en README/AGENTS, 197).
+  Límite de slice: `408117d`, con 408 líneas autoradas entre `main` y ese commit.
+- L11: Publicación: como la rama ya estaba pusheada, en vez de force-pushear se subió la historia
+  dividida como `feature/descanso-por-vuelta-v2`, se mergeó con PR #1 (`--rebase`, así que `main`
+  ganó los cinco commits lineales `7a93888`, `408117d`, `f3b4642`, `42d047a`, `cd8d98e`) y después
+  se borraron las ramas locales y remotas, incluida `backend`. `main` verificado después del
+  merge: 200/200 unit, build ok. Los SHAs de L10 cambiaron por ese rebase; esta entrada tiene los
+  definitivos. La revisión nativa del candidato (lineage `review-eb228b4a22c7b5cd`) quedó sin
+  veredicto: el relay del host falla con `reviewer-config-invalid` porque no hay modelo asignado al
+  lens `review-readability`; el candidato y sus dos slots siguen intactos y reanudables.
