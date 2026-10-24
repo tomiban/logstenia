@@ -3,9 +3,11 @@
  *
  * Variants (see docs/DESIGN.md "Components > Buttons"):
  *   - `accent` (default): Voltage Lime fill, Ink text, Ink border. The primary
- *     action on a screen (Entrenar, Siguiente, Guardar, ...). Hover inverts to
- *     Ink fill / Lime text. Lime is scarce (Beacon Rule): one per view.
- *   - `ink`: Ink fill, Lime text. Active/selected state and nav toggle.
+ *     action on a screen (Entrenar, Siguiente, Guardar, ...). Hover drops the
+ *     fill and keeps a Lime border (Lime text in dark, Ink text in light).
+ *     Lime is scarce (Beacon Rule): one per view.
+ *   - `ink`: Ink fill, Lime text. Active/selected state and nav toggle. In dark
+ *     the ink fill inverts to paper and the text turns Ink.
  *   - `outline`: transparent, Ink border/text. Hover fills Ink / Lime text.
  *   - `ghost`: no border, Muted text. Tertiary actions (Cancelar, Reiniciar).
  *   - `secondary`: Muted Surface fill. Low-emphasis filled button.
@@ -27,11 +29,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-accent text-ink border-ink hover:bg-ink hover:text-accent",
-        accent: "bg-accent text-ink border-ink hover:bg-ink hover:text-accent",
-        ink: "bg-ink text-accent border-ink hover:bg-accent hover:text-ink",
+        default: "bg-accent text-on-accent border-ink hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent",
+        accent: "bg-accent text-on-accent border-ink hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent",
+        ink: "bg-ink text-on-ink border-ink hover:bg-accent hover:text-on-accent",
         outline:
-          "bg-transparent text-ink border-ink hover:bg-ink hover:text-accent",
+          "bg-transparent text-ink border-ink hover:bg-ink hover:text-on-ink",
         secondary:
           "bg-secondary text-foreground border-border hover:bg-muted hover:text-foreground",
         ghost:

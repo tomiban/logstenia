@@ -218,7 +218,7 @@ export default function Home() {
                 {semana > MESO.total ? (
                   <p className="label-caps text-muted-foreground">mesociclo terminado (semana {semana})</p>
                 ) : semana === MESO.total ? (
-                  <Badge className="label-status border border-ink bg-accent text-ink">
+                  <Badge className="label-status border border-ink bg-accent text-on-accent">
                     descarga · última semana
                   </Badge>
                 ) : (
@@ -245,21 +245,23 @@ export default function Home() {
                   key={d.iso}
                   className={
                     'border p-2 text-center ' +
-                    (d.iso === hoyIso ? 'border-ink bg-accent/10' : 'border-border')
+                    (d.iso === hoyIso
+                      ? 'border-ink bg-accent/10 dark:border-accent dark:bg-accent/20'
+                      : 'border-border')
                   }
                 >
                   <div className="label-caps">{d.dia}</div>
-                  <div className={'metric text-base ' + (d.iso === hoyIso ? 'text-ink' : '')}>{d.num}</div>
+                  <div className={'metric text-base ' + (d.iso === hoyIso ? 'text-ink dark:text-accent' : '')}>{d.num}</div>
                   {d.marcas ? (
-                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-ink" aria-hidden="true">
+                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
                       M
                     </span>
                   ) : d.entreno ? (
-                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-ink" aria-hidden="true">
+                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
                       ✓
                     </span>
                   ) : (
-                    <span className="mx-auto mt-1 inline-block h-2 w-2 bg-secondary" aria-hidden="true" />
+                    <span className="mx-auto mt-1 inline-block h-2 w-2 bg-secondary dark:bg-border" aria-hidden="true" />
                   )}
                   <span className="sr-only">{d.marcas ? 'toma de marcas' : d.entreno ? 'entrenado' : 'sin entrenar'}</span>
                 </div>

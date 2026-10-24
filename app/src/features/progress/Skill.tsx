@@ -220,7 +220,7 @@ export default function Skill() {
               <div className="flex flex-wrap items-center gap-2">
               {chain.map((pid, idx) => (
                 <span key={pid} className="flex items-center gap-2">
-                  <Link to={`/program/${pid}`} className="px-3 py-2 border border-ink bg-accent text-ink text-sm font-semibold hover:opacity-90">
+                  <Link to={`/program/${pid}`} className="px-3 py-2 border border-ink bg-accent text-on-accent text-sm font-semibold hover:opacity-90">
                     {getProgram(pid)?.name ?? pid}
                     <span className="ml-2 label-caps">{LEVEL_LABEL[getProgram(pid)?.level ?? ''] ?? getProgram(pid)?.level}</span>
                   </Link>
@@ -250,7 +250,7 @@ export default function Skill() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Badge variant="default">{p.models.length} rutinas</Badge>
                       {tagChainsForCategory(cat.id).some(({ chain }) => chain.includes(p.id)) && (
-                        <Badge variant="secondary" className="bg-accent text-ink border-ink">En cadena</Badge>
+                        <Badge variant="secondary" className="bg-accent text-on-accent border-ink">En cadena</Badge>
                       )}
                     </div>
                   </Link>
