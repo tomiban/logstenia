@@ -106,13 +106,15 @@ Detalles que hacen fallar la configuración:
 
 ## 6. Verificar
 
-Primer control, sin sesión: Access tiene que interceptar **antes** del Worker.
+Primer control, sin sesión: Access protege el **hostname completo**, así que intercepta
+**antes** del Worker y un `curl` sin sesión no llega a la API: toma un `302` al login.
 
 ```bash
 curl -sI https://logstenia-sync.<tu-subdominio>.workers.dev/api/health | head -3
 ```
 
-Esperado: `HTTP/2 302` con `location:` apuntando a `<team>.cloudflareaccess.com/cdn-cgi/access/login/...`.
+Esperado: `HTTP/2 302` con `location:` apuntando a
+`<team>.cloudflareaccess.com/cdn-cgi/access/login/...`.
 Si en cambio ves `200`, Access no está aplicado (revisá §3: la app self-hosted no sirve para
 `*.workers.dev`).
 
@@ -121,7 +123,11 @@ Network → `api/health` responde `200 {"ok":true}`. Por último *Ajustes* → *
 tiene que mostrar `Sesión: activa` y `Última sincronización: hace unos segundos · sin cambios
 pendientes`.
 
-Tercer control, punta a punta y repetible:
+Tercer control, la defensa del Worker (no la de Access): un request que llega al Worker sin
+JWT válido recibe `401`. Se prueba localmente (ver *Desarrollo local*); en producción sólo se
+ve si la política de Access está mal o si alguien pega directo al borde.
+
+Cuarto control, punta a punta y repetible:
 
 ```bash
 cd app && npm run test:e2e:sync
@@ -130,10 +136,48 @@ cd app && npm run test:e2e:sync
 Levanta el Worker real con una D1 aislada y dos navegadores como dos dispositivos: A cambia un
 ajuste, B lo recibe, B lo cambia y A recibe el valor nuevo.
 
+## Desarrollo local
+
+Dos modos, ambos con D1 local en `worker/.wrangler/state`:
+
+```bash
+cd worker
+npx wrangler d1 migrations apply logstenia-sync --local   # una vez
+npm run dev                                               # http://localhost:8787
+```
+
+`wrangler dev` sirve `app/dist` **y** `/api/*` en el mismo origen, igual que producción.
+
+Con HMR de Vite para la UI:
+
+```bash
+cd app && npm run dev    # http://localhost:5173
+```
+
+`app/vite.config.ts` proxea `/api` a `http://localhost:8787`, así que el cliente sigue usando
+`/api` relativo y **no** necesitás `VITE_SYNC_URL`. Sin ese proxy, Vite responde con su
+`index.html` a `/api/sync`, el motor recibe algo que no es JSON y cae en `auth_required`.
+
+Access no existe en desarrollo, así que `/api/sync` responde `401` a propósito (es la defensa
+del Worker, y confirma que el JWT no se valida a ciegas). Para ejercitar el sync contra el
+Worker local, pegá un JWT real de tu sesión del navegador:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8787/api/sync \
+  -H "Cf-Access-Jwt-Assertion: $JWT" -H 'Content-Type: application/json' \
+  -d '{"deviceId":"dev","mutations":[]}'
+```
+
+El token sale de la cookie `CF_Authorization` de la sesión de Access en producción, y para
+validarlo `CF_ACCESS_TEAM`/`CF_ACCESS_AUD` en `wrangler.toml` tienen que ser los reales (el
+JWKS se baja del team domain).
+
 ## Problemas típicos
 
 | Síntoma | Causa | Arreglo |
 | --- | --- | --- |
+| `302` al login en cada request a `/api/*` | No hay sesión de Access en ese cliente (esperado en `curl`) | Entrar por el navegador, o mandar `Cf-Access-Jwt-Assertion` |
+| `200` en `/api/health` sin sesión | Access no está aplicado al hostname | Revisar la aplicación de Access y su dominio |
 | `401` en `/api/sync` con sesión válida | `CF_ACCESS_AUD` de otra aplicación, o team con `.cloudflareaccess.com` | Copiar el AUD de esta app; team sin dominio |
 | La app queda en "Sesión vencida" | Origen distinto (SPA servido por Pages) o sesión de Access caída | Servir el SPA desde este mismo Worker; volver a entrar |
 | `429` en `/api/*` | Cuota diaria del plan Free agotada (100k requests con `run_worker_first`) | Esperar el reset diario |
@@ -141,5 +185,4 @@ ajuste, B lo recibe, B lo cambia y A recibe el valor nuevo.
 | Build verde pero la app responde 401 siempre | Se deployó con placeholders | `npm run preflight` antes de deployar |
 | `database not found` en el deploy | `database_id` placeholder o de otra cuenta | Repetir el paso 1 |
 | Build falla: root directory inexistente | `worker/` no está en la branch de producción | Mergear esa branch a `main` |
-
 | Chrome no ofrece instalar la PWA ("no se puede instalar esta app") | El manifest o el `sw.js` llegan con un `302` al login de Access, o el service worker quedó registrado contra esa respuesta | DevTools → Application → Manifest (*Installability*) dice el motivo exacto. Para separar causas, serví el mismo build en local sin Access (`cd worker && npm run dev`) y probá instalar desde `http://localhost:8787`: si ahí instala, el problema es Access y no el manifest |
