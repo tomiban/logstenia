@@ -9,8 +9,8 @@ Single user, no auth, local data (IndexedDB via Dexie). UI in Spanish.
 - `app/` — application (React + Vite + TS).
 - `app/src/data/plans.json` — curated plan data.
 - `app/src/data/exercise-videos.json` — raw video data per exercise (source of `Exercise.video`).
-- `odd/tasks/logstenia.md` — ODD tracking.
-- `PLAN.md` — full specification.
+- `odd/tasks/` — per-feature ODD specs and tracking (`logstenia.md` is the project one).
+- `design-plans/` — design records for the larger features.
 
 ## Stack
 

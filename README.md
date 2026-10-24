@@ -9,8 +9,8 @@ Pro-gress, con timer interactivo, métricas y videos embebidos.
 - `app/src/data/plans.json` — datos curados de los planes (Cardio, Movilidad, Handstand, Hefesto, Back Lever, Front Lever, Planche, Fuerza).
 - `app/src/data/exercise-videos.json` — dato crudo de videos por ejercicio (base de la que se proyecta `Exercise.video`).
 - `worker/` — Worker de sincronización (Hono + D1) que también sirve el SPA compilado.
-- `odd/tasks/logstenia.md` — tracking ODD del proyecto.
-- `PLAN.md` — plan de acción.
+- `odd/tasks/` — specs y tracking ODD por feature (`logstenia.md` es el del proyecto).
+- `design-plans/` — registros de diseño de las features grandes.
 - `docs/DEPLOY.md` — deploy del Worker (D1, Access, Workers Builds).
 
 ## Desarrollo
