@@ -173,13 +173,22 @@ export function useRunner(): RunnerState {
     }).catch(() => {});
   }, [i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino, borradorCargado, model?.id]);
 
+  /** The level notice is cosmetic: a failed progression read must never cost the session. */
+  const leerProgreso = async () => {
+    try {
+      return await progressionReportFor(program!.id);
+    } catch {
+      return null;
+    }
+  };
+
   const finalizar = async () => {
     setFin(true);
     setI(0);
     setVals({});
     setDescansoHasta(null);
+    const antes = await leerProgreso();
     try {
-      const antes = await progressionReportFor(program!.id);
       await sessionRepo.add({
         date: toISODate(),
         planId: program!.id,
@@ -189,17 +198,19 @@ export function useRunner(): RunnerState {
         sets: setsRef.current as any,
       });
       await settingsRepo.delete(`borrador:${model!.id}`);
-      const despues = await progressionReportFor(program!.id);
-      setProgreso({
-        report: despues,
-        avanzó: despues.next?.unlocked === true && antes.next?.unlocked === false,
-        completo: despues.completed && !antes.completed,
-        tocoCriterios: touchedAnchors(despues.anchors, setsRef.current),
-      });
       inicioRef.current = Date.now();
     } catch {
       setErrorMsg('No se pudo guardar la sesión en este dispositivo.');
+      return;
     }
+    const despues = await leerProgreso();
+    if (!antes || !despues) return;
+    setProgreso({
+      report: despues,
+      avanzó: despues.next?.unlocked === true && antes.next?.unlocked === false,
+      completo: despues.completed && !antes.completed,
+      tocoCriterios: touchedAnchors(despues.anchors, setsRef.current),
+    });
   };
 
   useEffect(() => {
