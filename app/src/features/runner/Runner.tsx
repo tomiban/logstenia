@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import type { SessionSet } from '@/repositories';
 import { createSessionRepository } from '@/repositories';
 import { num } from './runnerLogic';
 import { type WorkoutStep } from './steps';
-import { useRunner, type Marca, type SerieValor } from './useRunner';
+import { useRunner, type Marca, type RunnerProgression, type SerieValor } from './useRunner';
 
 type PasoProps = {
   step: WorkoutStep;
@@ -136,7 +137,85 @@ function Paso({
   );
 }
 
-function Fin({ estado, onVolver }: { ses?: { id: string; name: string }; estado: { sets: SessionSet[] }; onVolver: () => void }) {
+function CriteriosLista({ anchors }: { anchors: RunnerProgression['report']['anchors'] }) {
+  return (
+    <ul className="space-y-1">
+      {anchors.map((a, i) => (
+        <li key={i} className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="metric text-foreground">{a.objetivo}</span>
+          <span className="text-muted-foreground">{a.unidad === 'sec' ? 'seg' : 'reps'}</span>
+          <span className="text-foreground">{a.ejercicio}</span>
+          {a.mejor > 0 && <span className="label-caps text-muted-foreground">(mejor: {a.mejor})</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Avisa si el entrenamiento abrió el nivel siguiente y ofrece ir a su rutina. */
+function BloqueNivel({ progreso }: { progreso: RunnerProgression | null }) {
+  const navigate = useNavigate();
+  const [oculto, setOculto] = useState(false);
+  if (!progreso || oculto) return null;
+  const { report, avanzó, completo, tocoCriterios } = progreso;
+
+  const completado = completo ? (
+    <div className="border border-ink bg-card px-3 py-2">
+      <p className="label-caps text-foreground">Nivel completado: {report.name}</p>
+    </div>
+  ) : null;
+
+  if (avanzó && report.next) {
+    return (
+      <div className="space-y-2">
+        {completado}
+        <div className="space-y-2 border border-ink bg-accent p-3">
+          <p className="label-caps text-on-accent">Nivel desbloqueado</p>
+          <p className="font-heading text-xl font-bold text-on-accent">{report.next.name}</p>
+          <p className="text-sm text-on-accent">¿Querés ir al siguiente nivel?</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ink" size="sm" onClick={() => navigate(`/program/${report.next!.id}`)}>
+              Ir al siguiente nivel
+            </Button>
+            <Button variant="ghost" size="sm" className="label-caps text-on-accent" onClick={() => setOculto(true)}>
+              Ahora no
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (report.next && !report.next.unlocked) {
+    if (!tocoCriterios) return completado;
+    return (
+      <div className="space-y-2">
+        {completado}
+        <div className="space-y-2 border border-border bg-secondary p-3">
+          <p className="label-caps text-foreground">Todavía no desbloqueás {report.next.name}</p>
+          <CriteriosLista anchors={report.missing} />
+          <p className="label-caps text-muted-foreground">Volvé a tomar las marcas cuando las superes.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report.next) return completado;
+
+  return (
+    <div className="space-y-2">
+      {completado}
+      <div className="flex flex-wrap items-center justify-between gap-2 border border-border bg-card p-3">
+        <p className="label-caps text-muted-foreground">
+          Siguiente nivel desbloqueado: <span className="text-foreground">{report.next.name}</span>
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/program/${report.next!.id}`)}>Ir</Button>
+      </div>
+    </div>
+  );
+}
+
+function Fin({ estado, onVolver, progreso }: { estado: { sets: SessionSet[] }; onVolver: () => void; progreso: RunnerProgression | null }) {
   const [prevMap, setPrevMap] = useState<Record<string, number[]>>({});
   useEffect(() => {
     (async () => {
@@ -175,6 +254,7 @@ function Fin({ estado, onVolver }: { ses?: { id: string; name: string }; estado:
         <Button variant="ghost" size="sm" onClick={onVolver}>volver</Button>
       </div>
       <div className="p-4 space-y-3">
+        <BloqueNivel progreso={progreso} />
         {filas.length === 0 ? (
           <p className="label-caps">no registraste series en este entrenamiento</p>
         ) : (
@@ -230,7 +310,7 @@ export default function Runner() {
           {r.errorMsg}
         </p>
       ) : null}
-      <Fin ses={{ id: r.model.id, name: r.model.name }} estado={{ sets: r.allSets }} onVolver={() => r.setFin(false)} />
+      <Fin estado={{ sets: r.allSets }} onVolver={() => r.setFin(false)} progreso={r.progreso} />
     </>
   );
 

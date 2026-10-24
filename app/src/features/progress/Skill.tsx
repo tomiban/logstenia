@@ -4,6 +4,7 @@ import { BackLink } from '@/components/BackLink';
 import { useCategories } from '@/hooks/usePlans';
 import { createProgram, updateProgram, deleteProgram, updateCategory } from '@/features/plans/plans';
 import { tagChainsForCategory } from '@/features/plans/progression';
+import { useProgression } from '@/hooks/useProgression';
 import { getProgram } from '@/features/plans/plans';
 import { TagListInput } from '@/components/ui/tag-list-input';
 import { LineListInput } from '@/components/ui/line-list-input';
@@ -48,6 +49,7 @@ export default function Skill() {
   const { id } = useParams();
   const cats = useCategories();
   const cat = cats.find((c) => c.id === id);
+  const progression = useProgression();
 
   const [catEditOpen, setCatEditOpen] = useState(false);
   const [catForm, setCatForm] = useState({ name: '', desc: '' });
@@ -218,15 +220,19 @@ export default function Skill() {
             <div key={ci} className="space-y-1">
               <span className="label-caps text-muted-foreground">{tag}</span>
               <div className="flex flex-wrap items-center gap-2">
-              {chain.map((pid, idx) => (
+              {chain.map((pid, idx) => {
+                const level = progression.reportFor(pid)?.levels.find((l) => l.id === pid) ?? null;
+                return (
                 <span key={pid} className="flex items-center gap-2">
                   <Link to={`/program/${pid}`} className="px-3 py-2 border border-ink bg-accent text-on-accent text-sm font-semibold hover:opacity-90">
                     {getProgram(pid)?.name ?? pid}
                     <span className="ml-2 label-caps">{LEVEL_LABEL[getProgram(pid)?.level ?? ''] ?? getProgram(pid)?.level}</span>
+                    {level?.completed && <span className="ml-2 label-caps">completado</span>}
                   </Link>
                   {idx < chain.length - 1 && <span className="text-muted-foreground">→</span>}
                 </span>
-              ))}
+                );
+              })}
             </div>
             </div>
           ))}
@@ -251,6 +257,12 @@ export default function Skill() {
                       <Badge variant="default">{p.models.length} rutinas</Badge>
                       {tagChainsForCategory(cat.id).some(({ chain }) => chain.includes(p.id)) && (
                         <Badge variant="secondary" className="bg-accent text-on-accent border-ink">En cadena</Badge>
+                      )}
+                      {progression.reportFor(p.id)?.completed && (
+                        <Badge className="border-ink bg-accent text-on-accent label-status">completado</Badge>
+                      )}
+                      {progression.reportFor(p.id)?.unlocked === false && (
+                        <Badge variant="outline" className="label-status">bloqueado</Badge>
                       )}
                     </div>
                   </Link>

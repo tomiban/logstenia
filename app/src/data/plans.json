@@ -2693,6 +2693,72 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "handstand-principiante-benchmark",
+              "name": "Desafío",
+              "intensity": 1,
+              "totalTimeMin": 5,
+              "blocks": [
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Plancha en T dinámica",
+                      "timeSec": 20,
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "plancha-en-t-dinamica",
+                      "video": {
+                        "id": "Be6Zm3tKv6M",
+                        "title": "rotacion T dinamica",
+                        "channel": "Neddy Masterfit",
+                        "url": "https://www.youtube.com/watch?v=Be6Zm3tKv6M",
+                        "thumbnail": "https://i.ytimg.com/vi/Be6Zm3tKv6M/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Flexiones en pica (buscando profundidad)",
+                      "reps": "8",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "flexiones-en-pica-buscando-profundidad",
+                      "video": {
+                        "id": "PqRi9H2fcAc",
+                        "title": "Flexiones en Pica desde Cajón - Box Pike Push Up. ENTRENAMIENTO CLARAF.IT",
+                        "channel": "CLARA FLORINDO | ASESORÍAS ONLINE",
+                        "url": "https://www.youtube.com/watch?v=PqRi9H2fcAc",
+                        "thumbnail": "https://i.ytimg.com/vi/PqRi9H2fcAc/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Empujes de pino con cadencia 5-3 (banda)",
+                      "reps": "3",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "empujes-de-pino-con-cadencia-5-3-banda"
+                    }
+                  ]
+                }
+              ],
+              "benchmark": true,
+              "tags": []
             }
           ]
         },
@@ -2936,6 +3002,72 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "handstand-intermedio-benchmark",
+              "name": "Desafío",
+              "intensity": 1,
+              "totalTimeMin": 5,
+              "blocks": [
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Aguantes de pino en pared",
+                      "timeSec": 35,
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "aguantes-de-pino-en-pared"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Flexiones en pino parciales (pared)",
+                      "reps": "8",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "flexiones-en-pino-parciales-pared",
+                      "video": {
+                        "id": "NlGt4unfx6M",
+                        "title": "Cómo hacer flexiones en pica (fuerza en los hombros para flexiones de pino)",
+                        "channel": "GYM-22",
+                        "url": "https://www.youtube.com/watch?v=NlGt4unfx6M",
+                        "thumbnail": "https://i.ytimg.com/vi/NlGt4unfx6M/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Intentar pino desde la pared",
+                      "reps": "10",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "intentar-pino-desde-la-pared",
+                      "video": {
+                        "id": "9_MSXSsZqEc",
+                        "title": "Pino sin Apoyo de Pared",
+                        "channel": "HIJAS DE SAN JOSÉ ZARAGOZA",
+                        "url": "https://www.youtube.com/watch?v=9_MSXSsZqEc",
+                        "thumbnail": "https://i.ytimg.com/vi/9_MSXSsZqEc/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "benchmark": true,
+              "tags": []
             }
           ]
         },
@@ -3335,7 +3467,7 @@
             },
             {
               "id": "handstand-benchmark",
-              "name": "Toma de marcas",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -3363,7 +3495,8 @@
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         }
@@ -3658,7 +3791,7 @@
             },
             {
               "id": "hefesto-principiantes-benchmark",
-              "name": "Desbloquear",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -3668,25 +3801,56 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Registrar marca (max hold)",
-                      "reps": "max",
+                      "name": "Hefestos (max reps hasta fallo técnico)",
+                      "reps": "3",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "registrar-marca-max-hold",
+                      "id": "hefestos-max-reps-hasta-fallo-tecnico"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Korean dips (agarre supino)",
+                      "reps": "12",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "korean-dips-agarre-supino",
                       "video": {
-                        "id": "Eab73s3s0Gg",
-                        "title": "2020 ¿Por qué debo de registrar mi marca? (para empresas que operan o desean operar en Guatemala)",
-                        "channel": "abogadossm",
-                        "url": "https://www.youtube.com/watch?v=Eab73s3s0Gg",
-                        "thumbnail": "https://i.ytimg.com/vi/Eab73s3s0Gg/hqdefault.jpg"
+                        "id": "CrVlzMBaT7A",
+                        "title": "KOREAN DIPS (Supinated) | Fondos Koreanos (Supino) - HAZLO DE ESTA MANERA! Calistenia",
+                        "channel": "Olwyn Kubebarz",
+                        "url": "https://www.youtube.com/watch?v=CrVlzMBaT7A",
+                        "thumbnail": "https://i.ytimg.com/vi/CrVlzMBaT7A/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Skin the cat (supino)",
+                      "reps": "7",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "skin-the-cat-supino",
+                      "video": {
+                        "id": "-E7cpIUCMgE",
+                        "title": "SKIN THE CAT ⚡ Los mejores trucos de CALISTENIA en 1 minuto",
+                        "channel": "Kranos Calistenia",
+                        "url": "https://www.youtube.com/watch?v=-E7cpIUCMgE",
+                        "thumbnail": "https://i.ytimg.com/vi/-E7cpIUCMgE/hqdefault.jpg"
                       }
                     }
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         },
@@ -4084,7 +4248,7 @@
             },
             {
               "id": "backlever-hefesto-benchmark",
-              "name": "Desbloquear",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -4094,25 +4258,42 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Registrar marca (max hold)",
-                      "reps": "max",
+                      "name": "Hefesto (45° o mayor inclinación)",
+                      "reps": "1",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "registrar-marca-max-hold",
-                      "video": {
-                        "id": "Eab73s3s0Gg",
-                        "title": "2020 ¿Por qué debo de registrar mi marca? (para empresas que operan o desean operar en Guatemala)",
-                        "channel": "abogadossm",
-                        "url": "https://www.youtube.com/watch?v=Eab73s3s0Gg",
-                        "thumbnail": "https://i.ytimg.com/vi/Eab73s3s0Gg/hqdefault.jpg"
-                      }
+                      "id": "hefesto-45-o-mayor-inclinacion"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Isométrico Hefesto touch (full/half lay BL)",
+                      "timeSec": 3,
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "isometrico-hefesto-touch-full-half-lay-bl"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Hefesto hasta la cadera (un pie asistido)",
+                      "reps": "8",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "hefesto-hasta-la-cadera-un-pie-asistido"
                     }
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         }
@@ -4615,7 +4796,7 @@
             },
             {
               "id": "semi-benchmark",
-              "name": "Toma de marcas",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -4683,7 +4864,8 @@
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ],
           "optional": true
@@ -4708,57 +4890,73 @@
           "models": [
             {
               "id": "full-r1",
-              "name": "Full Front R1",
+              "name": "Full Planche R1",
               "intensity": 2,
               "totalTimeMin": 20,
               "blocks": [
                 {
                   "type": "single",
-                  "sets": 2,
+                  "sets": 4,
                   "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "Intentos Front Lever full (banda)",
-                      "reps": "max",
-                      "notes": "max seg",
-                      "id": "intentos-front-lever-full-banda",
+                      "name": "De tuck a full y volver",
+                      "timeSec": 20,
+                      "notes": "15-20s",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "de-tuck-a-full-y-volver"
+                    }
+                  ]
+                },
+                {
+                  "type": "biseries",
+                  "sets": 3,
+                  "restBetweenSetsSec": 240,
+                  "exercises": [
+                    {
+                      "name": "Flexiones tuck adv explosivas",
+                      "reps": "5-7",
+                      "id": "flexiones-tuck-adv-explosivas"
+                    },
+                    {
+                      "name": "Hold tuck advanced",
+                      "timeSec": 10,
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "hold-tuck-advanced",
                       "video": {
-                        "id": "CwZA09PNxPE",
-                        "title": "Progresando  Front- Lever e intento a Full- Planche",
-                        "channel": "Sebastian Lino Hurtado",
-                        "url": "https://www.youtube.com/watch?v=CwZA09PNxPE",
-                        "thumbnail": "https://i.ytimg.com/vi/CwZA09PNxPE/hqdefault.jpg"
+                        "id": "nSCKsKvsfjQ",
+                        "title": "Como hacer el PRESS DE DRAGON FLAG EN TUCK ADVANCED - CALISTENIA | Tutorial en 1 minuto",
+                        "channel": "Kranos Calistenia",
+                        "url": "https://www.youtube.com/watch?v=nSCKsKvsfjQ",
+                        "thumbnail": "https://i.ytimg.com/vi/nSCKsKvsfjQ/hqdefault.jpg"
                       }
                     }
                   ]
                 },
                 {
-                  "type": "single",
+                  "type": "biseries",
                   "sets": 4,
-                  "restBetweenSetsSec": 240,
+                  "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "Presses tuck adv + negativa en full (banda)",
-                      "reps": "2-6",
-                      "id": "presses-tuck-adv-negativa-en-full-banda"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 5,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
+                      "name": "Flex supina método de choque (2s iso)",
+                      "reps": "5-8",
+                      "id": "flex-supina-metodo-de-choque-2s-iso"
+                    },
                     {
-                      "name": "Pull up tuck adv explosiva (banda en cadera)",
-                      "reps": "5-10",
-                      "id": "pull-up-tuck-adv-explosiva-banda-en-cadera",
+                      "name": "Flexiones en pica 90°",
+                      "reps": "5",
+                      "id": "flexiones-en-pica-90",
                       "video": {
-                        "id": "4DZPaCOfJOI",
-                        "title": "Cómo hacer un Advanced Tuck Front Lever Pull Up - 3 consejos INCREÍBLES (Calistenia)",
-                        "channel": "Ashton Fitness",
-                        "url": "https://www.youtube.com/watch?v=4DZPaCOfJOI",
-                        "thumbnail": "https://i.ytimg.com/vi/4DZPaCOfJOI/hqdefault.jpg"
+                        "id": "VkB9S3Bp334",
+                        "title": "Flexiones en pica 90",
+                        "channel": "Enlace proporcionado por el usuario",
+                        "url": "https://www.youtube.com/watch?v=VkB9S3Bp334",
+                        "thumbnail": "https://i.ytimg.com/vi/VkB9S3Bp334/hqdefault.jpg"
                       }
                     }
                   ]
@@ -4766,53 +4964,33 @@
                 {
                   "type": "biseries",
                   "sets": 3,
-                  "restBetweenSetsSec": 210,
+                  "restBetweenSetsSec": 120,
                   "exercises": [
                     {
-                      "name": "De L sit a tuck adv FL",
-                      "reps": "4",
-                      "id": "de-l-sit-a-tuck-adv-fl",
+                      "name": "Fondos en paralelas",
+                      "reps": "10-12",
+                      "id": "fondos-en-paralelas",
                       "video": {
-                        "id": "DOJQz00C7Eo",
-                        "title": "Adv Tuck FL rows → L-sit FL rows",
-                        "channel": "笹塚 ",
-                        "url": "https://www.youtube.com/watch?v=DOJQz00C7Eo",
-                        "thumbnail": "https://i.ytimg.com/vi/DOJQz00C7Eo/hqdefault.jpg"
+                        "id": "KQwrMw00eEY",
+                        "title": "COMO HACER FONDOS EN PARALELAS DE FORMA CORRECTA | HOW TO DO DIPS",
+                        "channel": "KASS Calistenia",
+                        "url": "https://www.youtube.com/watch?v=KQwrMw00eEY",
+                        "thumbnail": "https://i.ytimg.com/vi/KQwrMw00eEY/hqdefault.jpg"
                       }
                     },
                     {
-                      "name": "Hold en tuck/adv FL",
-                      "reps": "max",
-                      "notes": "max seg",
+                      "name": "Lean planche",
+                      "timeSec": 15,
                       "tags": [
                         "isometricos"
                       ],
-                      "id": "hold-en-tuck-adv-fl",
+                      "id": "lean-planche",
                       "video": {
-                        "id": "BQXsRxfYOUQ",
-                        "title": "How to Perform the Tuck Front Lever Hold",
-                        "channel": "Chalk Fitness",
-                        "url": "https://www.youtube.com/watch?v=BQXsRxfYOUQ",
-                        "thumbnail": "https://i.ytimg.com/vi/BQXsRxfYOUQ/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 3,
-                  "restBetweenSetsSec": 150,
-                  "exercises": [
-                    {
-                      "name": "Dominadas de bíceps",
-                      "reps": "10",
-                      "id": "dominadas-de-biceps",
-                      "video": {
-                        "id": "CbsyGN1yDJI",
-                        "title": "Bíceps | Dominadas para bíceps",
-                        "channel": "Garagegym Spain",
-                        "url": "https://www.youtube.com/watch?v=CbsyGN1yDJI",
-                        "thumbnail": "https://i.ytimg.com/vi/CbsyGN1yDJI/hqdefault.jpg"
+                        "id": "d6O_dppZYTI",
+                        "title": "LEAN PLANCHE  | Plancha Lean - HAZLO DE ESTA MANERA! Calistenia",
+                        "channel": "Olwyn Kubebarz",
+                        "url": "https://www.youtube.com/watch?v=d6O_dppZYTI",
+                        "thumbnail": "https://i.ytimg.com/vi/d6O_dppZYTI/hqdefault.jpg"
                       }
                     }
                   ]
@@ -4821,56 +4999,29 @@
             },
             {
               "id": "full-r2",
-              "name": "Full Front R2",
+              "name": "Full Planche R2",
               "intensity": 2,
               "totalTimeMin": 20,
               "blocks": [
                 {
                   "type": "single",
-                  "sets": 3,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
-                    {
-                      "name": "Presses en full Fl desde pica (neg+pos, banda)",
-                      "reps": "3-5",
-                      "id": "presses-en-full-fl-desde-pica-neg-pos-banda"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
                   "sets": 4,
                   "restBetweenSetsSec": 210,
                   "exercises": [
                     {
-                      "name": "De tuck Fl a full Fl (banda en pies)",
-                      "reps": "2-4",
-                      "id": "de-tuck-fl-a-full-fl-banda-en-pies",
+                      "name": "Max Hold full planche (banda fina)",
+                      "reps": "max",
+                      "notes": "max seg",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "max-hold-full-planche-banda-fina",
                       "video": {
-                        "id": "5GWETCLmq5M",
-                        "title": "Open Planche Kickouts, Bent arm Work, Front Lever Negative, Tuck FL work, RTO Dips",
-                        "channel": "Pointsman",
-                        "url": "https://www.youtube.com/watch?v=5GWETCLmq5M",
-                        "thumbnail": "https://i.ytimg.com/vi/5GWETCLmq5M/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 4,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
-                    {
-                      "name": "Tuck adv pull ups explosivas",
-                      "reps": "4-8",
-                      "id": "tuck-adv-pull-ups-explosivas",
-                      "video": {
-                        "id": "ybQfYuaDa0E",
-                        "title": "How To Advance Tuck Front Lever Pull Ups | Unlock Full Range Of Motion",
-                        "channel": "Abdullah Ascends",
-                        "url": "https://www.youtube.com/watch?v=ybQfYuaDa0E",
-                        "thumbnail": "https://i.ytimg.com/vi/ybQfYuaDa0E/hqdefault.jpg"
+                        "id": "NudOTF8Us4Q",
+                        "title": "How to do a Full Planche Hold on Pararell Bars - Advanced Fitness Tutorial",
+                        "channel": "Freddie's Modern Kung Fu",
+                        "url": "https://www.youtube.com/watch?v=NudOTF8Us4Q",
+                        "thumbnail": "https://i.ytimg.com/vi/NudOTF8Us4Q/hqdefault.jpg"
                       }
                     }
                   ]
@@ -4878,24 +5029,50 @@
                 {
                   "type": "single",
                   "sets": 3,
-                  "restBetweenSetsSec": 210,
+                  "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "De L a tuck adv + press a pica en full Fl",
-                      "reps": "2-4",
-                      "id": "de-l-a-tuck-adv-press-a-pica-en-full-fl"
+                      "name": "Lean rodillas en suelo (tirando 1 pierna atrás)",
+                      "timeSec": 20,
+                      "notes": "15-20s",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "lean-rodillas-en-suelo-tirando-1-pierna-atras"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 3,
+                  "restBetweenSetsSec": 180,
+                  "exercises": [
+                    {
+                      "name": "De pica a tuck advanced + hold 3s",
+                      "reps": "4-6",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "de-pica-a-tuck-advanced-hold-3s"
                     }
                   ]
                 },
                 {
                   "type": "single",
                   "sets": 4,
-                  "restBetweenSetsSec": 150,
+                  "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "Dominada explosiva supina (hasta cadera)",
-                      "reps": "5-8",
-                      "id": "dominada-explosiva-supina-hasta-cadera"
+                      "name": "Flexiones en pino",
+                      "reps": "8-14",
+                      "id": "flexiones-en-pino",
+                      "video": {
+                        "id": "T5E-qvzBjYc",
+                        "title": "HSPU: Flexiones de pino - ¿Como conseguir realizarlas? - Progresión.",
+                        "channel": "mistermarkinos | Fitness y Ejercicio Físico",
+                        "url": "https://www.youtube.com/watch?v=T5E-qvzBjYc",
+                        "thumbnail": "https://i.ytimg.com/vi/T5E-qvzBjYc/hqdefault.jpg"
+                      }
                     }
                   ]
                 }
@@ -4903,117 +5080,88 @@
             },
             {
               "id": "full-r3",
-              "name": "Full Front R3",
-              "intensity": 2,
+              "name": "Full Planche R3",
+              "intensity": 3,
               "totalTimeMin": 20,
               "blocks": [
                 {
                   "type": "single",
-                  "sets": 2,
-                  "restBetweenSetsSec": 90,
-                  "exercises": [
-                    {
-                      "name": "Hold Tuck adv. Fl",
-                      "timeSec": 10,
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "hold-tuck-adv-fl",
-                      "video": {
-                        "id": "LnJFyHBBRBM",
-                        "title": "FRONT LEVER- adv tuck raise",
-                        "channel": "Studio Humanology",
-                        "url": "https://www.youtube.com/watch?v=LnJFyHBBRBM",
-                        "thumbnail": "https://i.ytimg.com/vi/LnJFyHBBRBM/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
                   "sets": 4,
                   "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "Press a semi full + negativa controlada",
-                      "reps": "2-4",
-                      "id": "press-a-semi-full-negativa-controlada"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 4,
-                  "restBetweenSetsSec": 180,
-                  "exercises": [
-                    {
-                      "name": "Hold Front Lever (banda)",
-                      "reps": "max",
-                      "notes": "max seg",
+                      "name": "Lean rodillas en suelo + tirada a full hold 1 pierna",
+                      "timeSec": 20,
+                      "notes": "15-20s",
                       "tags": [
                         "isometricos"
                       ],
-                      "id": "hold-front-lever-banda",
-                      "video": {
-                        "id": "GFpnwWjyb3w",
-                        "title": "FRONT LEVER ( Hold) | Mantención - HAZLO ASÍ! Calistenia",
-                        "channel": "Olwyn Kubebarz",
-                        "url": "https://www.youtube.com/watch?v=GFpnwWjyb3w",
-                        "thumbnail": "https://i.ytimg.com/vi/GFpnwWjyb3w/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "biseries",
-                  "sets": 4,
-                  "restBetweenSetsSec": 180,
-                  "exercises": [
-                    {
-                      "name": "Pull ups tuck adv. explosivas (banda)",
-                      "reps": "6-10",
-                      "id": "pull-ups-tuck-adv-explosivas-banda",
-                      "video": {
-                        "id": "FPByZXRB_74",
-                        "title": "RINGS ASSISTED FRONT LEVER TUCK PULL UPS - TECHNIQUE BREAKDOWN// Calisthenics Exercise Library",
-                        "channel": "Moving Athlete",
-                        "url": "https://www.youtube.com/watch?v=FPByZXRB_74",
-                        "thumbnail": "https://i.ytimg.com/vi/FPByZXRB_74/hqdefault.jpg"
-                      }
-                    },
-                    {
-                      "name": "Hold en tuck adv. Fl",
-                      "timeSec": 3,
-                      "notes": "1-3s",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "hold-en-tuck-adv-fl",
-                      "video": {
-                        "id": "tDP0lqTbZ3E",
-                        "title": "Negative Tuck Front Lever with neutral grip hold 1",
-                        "channel": "Kat Brownlee",
-                        "url": "https://www.youtube.com/watch?v=tDP0lqTbZ3E",
-                        "thumbnail": "https://i.ytimg.com/vi/tDP0lqTbZ3E/hqdefault.jpg"
-                      }
+                      "id": "lean-rodillas-en-suelo-tirada-a-full-hold-1-pierna"
                     }
                   ]
                 },
                 {
                   "type": "single",
                   "sets": 3,
-                  "restBetweenSetsSec": 180,
+                  "restBetweenSetsSec": 240,
                   "exercises": [
                     {
-                      "name": "Press de tuck adv. a full + negativa",
-                      "reps": "2-4",
-                      "id": "press-de-tuck-adv-a-full-negativa",
+                      "name": "Bajada pino a semi full + hold 3-4s",
+                      "reps": "2-3",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "bajada-pino-a-semi-full-hold-3-4s"
+                    }
+                  ]
+                },
+                {
+                  "type": "superseries",
+                  "sets": 3,
+                  "restBetweenSetsSec": 210,
+                  "exercises": [
+                    {
+                      "name": "Flex supina método de choque (2s iso)",
+                      "reps": "2-3",
+                      "id": "flex-supina-metodo-de-choque-2s-iso"
+                    },
+                    {
+                      "name": "Flex lean supina",
+                      "reps": "5",
+                      "id": "flex-lean-supina"
+                    },
+                    {
+                      "name": "Lean planche supina",
+                      "timeSec": 10,
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "lean-planche-supina",
                       "video": {
-                        "id": "I_Y9vHk6vMY",
-                        "title": "🔥ROAD TO STRADDLE PLANCHE🔥VLOG #16 🥵Mikel desbloquea tuck planche press + neg 24/06/2022🥵#calistenia",
-                        "channel": "Mikel Akagami",
-                        "url": "https://www.youtube.com/watch?v=I_Y9vHk6vMY",
-                        "thumbnail": "https://i.ytimg.com/vi/I_Y9vHk6vMY/hqdefault.jpg"
+                        "id": "IMcH6ZwPC1I",
+                        "title": "CORE | Lean Planche Supina",
+                        "channel": "Gino Ryll Coach",
+                        "url": "https://www.youtube.com/watch?v=IMcH6ZwPC1I",
+                        "thumbnail": "https://i.ytimg.com/vi/IMcH6ZwPC1I/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 4,
+                  "restBetweenSetsSec": 210,
+                  "exercises": [
+                    {
+                      "name": "Flexiones en pino",
+                      "reps": "6-10",
+                      "id": "flexiones-en-pino",
+                      "video": {
+                        "id": "T5E-qvzBjYc",
+                        "title": "HSPU: Flexiones de pino - ¿Como conseguir realizarlas? - Progresión.",
+                        "channel": "mistermarkinos | Fitness y Ejercicio Físico",
+                        "url": "https://www.youtube.com/watch?v=T5E-qvzBjYc",
+                        "thumbnail": "https://i.ytimg.com/vi/T5E-qvzBjYc/hqdefault.jpg"
                       }
                     }
                   ]
@@ -5022,70 +5170,245 @@
             },
             {
               "id": "full-r4",
-              "name": "Full Front R4",
+              "name": "Full Planche R4",
               "intensity": 3,
               "totalTimeMin": 20,
               "blocks": [
                 {
                   "type": "single",
-                  "sets": 2,
-                  "restBetweenSetsSec": 90,
+                  "sets": 4,
+                  "restBetweenSetsSec": 210,
                   "exercises": [
                     {
-                      "name": "Intentos Tuck adv. Fl",
-                      "timeSec": 10,
-                      "notes": "max seg",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "intentos-tuck-adv-fl"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 2,
-                  "restBetweenSetsSec": 240,
-                  "exercises": [
-                    {
-                      "name": "Front lever en full + press (banda)",
-                      "reps": "2-3",
-                      "id": "front-lever-en-full-press-banda",
+                      "name": "Press a full planche (banda en cadera)",
+                      "reps": "3-6",
+                      "id": "press-a-full-planche-banda-en-cadera",
                       "video": {
-                        "id": "Gs9vEjWR0kM",
-                        "title": "CALISTHENICS - FRONT LEVER COMPILATION PT. 1",
-                        "channel": "Manuel Caruso Calisthenics",
-                        "url": "https://www.youtube.com/watch?v=Gs9vEjWR0kM",
-                        "thumbnail": "https://i.ytimg.com/vi/Gs9vEjWR0kM/hqdefault.jpg"
+                        "id": "-XWL7HkgelU",
+                        "title": "Full Planche Press",
+                        "channel": "Coach Paolo #1 Fitness Trainer",
+                        "url": "https://www.youtube.com/watch?v=-XWL7HkgelU",
+                        "thumbnail": "https://i.ytimg.com/vi/-XWL7HkgelU/hqdefault.jpg"
                       }
                     }
                   ]
                 },
                 {
                   "type": "biseries",
-                  "sets": 4,
-                  "restBetweenSetsSec": 240,
+                  "sets": 3,
+                  "restBetweenSetsSec": 180,
                   "exercises": [
                     {
-                      "name": "Pull ups Front lever full (banda)",
-                      "reps": "3-5",
-                      "id": "pull-ups-front-lever-full-banda",
+                      "name": "Flexiones lean planche",
+                      "reps": "10",
+                      "id": "flexiones-lean-planche",
                       "video": {
-                        "id": "PyRLrcn4YFo",
-                        "title": "The STRONGEST One Arm FRONT LEVER Pull Up Athlete in CALISTHENICS - Emanuele Majeli",
-                        "channel": "Noa Man WORKOUT",
-                        "url": "https://www.youtube.com/watch?v=PyRLrcn4YFo",
-                        "thumbnail": "https://i.ytimg.com/vi/PyRLrcn4YFo/hqdefault.jpg"
+                        "id": "lVALA9ckKJg",
+                        "title": "COMO HACER  FLEXIONES DE LEAN PLANCHE y presses",
+                        "channel": "Casanova_trainer",
+                        "url": "https://www.youtube.com/watch?v=lVALA9ckKJg",
+                        "thumbnail": "https://i.ytimg.com/vi/lVALA9ckKJg/hqdefault.jpg"
                       }
                     },
                     {
-                      "name": "Hold en Front lever full (banda)",
-                      "timeSec": 3,
-                      "notes": "1-3s",
+                      "name": "Lean planche",
+                      "timeSec": 15,
                       "tags": [
                         "isometricos"
                       ],
-                      "id": "hold-en-front-lever-full-banda",
+                      "id": "lean-planche",
+                      "video": {
+                        "id": "d6O_dppZYTI",
+                        "title": "LEAN PLANCHE  | Plancha Lean - HAZLO DE ESTA MANERA! Calistenia",
+                        "channel": "Olwyn Kubebarz",
+                        "url": "https://www.youtube.com/watch?v=d6O_dppZYTI",
+                        "thumbnail": "https://i.ytimg.com/vi/d6O_dppZYTI/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "biseries",
+                  "sets": 3,
+                  "restBetweenSetsSec": 210,
+                  "exercises": [
+                    {
+                      "name": "Fondos en barra supino (método de choque)",
+                      "reps": "5-7",
+                      "id": "fondos-en-barra-supino-metodo-de-choque",
+                      "video": {
+                        "id": "LUF5cxEJpio",
+                        "title": "BENCH DIPS (supinated) | Fondos en Banca (en supino)- HAZLO DE ESTA MANERA! Calistenia",
+                        "channel": "Olwyn Kubebarz",
+                        "url": "https://www.youtube.com/watch?v=LUF5cxEJpio",
+                        "thumbnail": "https://i.ytimg.com/vi/LUF5cxEJpio/hqdefault.jpg"
+                      }
+                    },
+                    {
+                      "name": "Hold posición arriba",
+                      "timeSec": 10,
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "hold-posicion-arriba",
+                      "video": {
+                        "id": "aoceujl0DBg",
+                        "title": "HOLLOW HOLD! Posición de Bloqueo, Lo MEJOR para trabajar tus ABDOMINALES!!",
+                        "channel": "FitnessdePena",
+                        "url": "https://www.youtube.com/watch?v=aoceujl0DBg",
+                        "thumbnail": "https://i.ytimg.com/vi/aoceujl0DBg/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 3,
+                  "restBetweenSetsSec": 180,
+                  "exercises": [
+                    {
+                      "name": "Flexiones en pino",
+                      "reps": "6-10",
+                      "id": "flexiones-en-pino",
+                      "video": {
+                        "id": "T5E-qvzBjYc",
+                        "title": "HSPU: Flexiones de pino - ¿Como conseguir realizarlas? - Progresión.",
+                        "channel": "mistermarkinos | Fitness y Ejercicio Físico",
+                        "url": "https://www.youtube.com/watch?v=T5E-qvzBjYc",
+                        "thumbnail": "https://i.ytimg.com/vi/T5E-qvzBjYc/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "full-r5",
+              "name": "Full Planche R5",
+              "intensity": 3,
+              "totalTimeMin": 20,
+              "blocks": [
+                {
+                  "type": "single",
+                  "sets": 5,
+                  "restBetweenSetsSec": 240,
+                  "exercises": [
+                    {
+                      "name": "Negativas de pino a full planche + máx hold",
+                      "reps": "1",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "negativas-de-pino-a-full-planche-max-hold"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 3,
+                  "restBetweenSetsSec": 240,
+                  "exercises": [
+                    {
+                      "name": "De tuck a full planche y volver",
+                      "reps": "3-4",
+                      "id": "de-tuck-a-full-planche-y-volver",
+                      "video": {
+                        "id": "BkV1NgEJ7Mg",
+                        "title": "PLANIFICACIÓN para FULL PLANCHE: Entrena como un PROFESIONAL durante 4 SEMANAS (Parte 1)",
+                        "channel": "WARMAXINSO - Rubén López",
+                        "url": "https://www.youtube.com/watch?v=BkV1NgEJ7Mg",
+                        "thumbnail": "https://i.ytimg.com/vi/BkV1NgEJ7Mg/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "superseries",
+                  "sets": 3,
+                  "restBetweenSetsSec": 210,
+                  "exercises": [
+                    {
+                      "name": "Flex supina método de choque (5 reps)",
+                      "reps": "5",
+                      "id": "flex-supina-metodo-de-choque-5-reps"
+                    },
+                    {
+                      "name": "Flex en lean supina",
+                      "reps": "5",
+                      "id": "flex-en-lean-supina"
+                    },
+                    {
+                      "name": "Lean planche supina",
+                      "timeSec": 10,
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "lean-planche-supina",
+                      "video": {
+                        "id": "IMcH6ZwPC1I",
+                        "title": "CORE | Lean Planche Supina",
+                        "channel": "Gino Ryll Coach",
+                        "url": "https://www.youtube.com/watch?v=IMcH6ZwPC1I",
+                        "thumbnail": "https://i.ytimg.com/vi/IMcH6ZwPC1I/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "biseries",
+                  "sets": 3,
+                  "restBetweenSetsSec": 120,
+                  "exercises": [
+                    {
+                      "name": "Fondos en paralelas",
+                      "reps": "10-12",
+                      "id": "fondos-en-paralelas",
+                      "video": {
+                        "id": "KQwrMw00eEY",
+                        "title": "COMO HACER FONDOS EN PARALELAS DE FORMA CORRECTA | HOW TO DO DIPS",
+                        "channel": "KASS Calistenia",
+                        "url": "https://www.youtube.com/watch?v=KQwrMw00eEY",
+                        "thumbnail": "https://i.ytimg.com/vi/KQwrMw00eEY/hqdefault.jpg"
+                      }
+                    },
+                    {
+                      "name": "Lean planche",
+                      "timeSec": 15,
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "lean-planche",
+                      "video": {
+                        "id": "d6O_dppZYTI",
+                        "title": "LEAN PLANCHE  | Plancha Lean - HAZLO DE ESTA MANERA! Calistenia",
+                        "channel": "Olwyn Kubebarz",
+                        "url": "https://www.youtube.com/watch?v=d6O_dppZYTI",
+                        "thumbnail": "https://i.ytimg.com/vi/d6O_dppZYTI/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "front-full-benchmark",
+              "name": "Desafío",
+              "intensity": 1,
+              "totalTimeMin": 5,
+              "blocks": [
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Hold en front lever full",
+                      "timeSec": 5,
+                      "notes": "5 seg",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "hold-en-front-lever-full",
                       "video": {
                         "id": "mWwov3lL140",
                         "title": "Mejora tu FRONT LEVER con estos ejercicios | Rutinas de Calistenia",
@@ -5098,158 +5421,47 @@
                 },
                 {
                   "type": "single",
-                  "sets": 3,
-                  "restBetweenSetsSec": 180,
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Press de tuck adv. a full + negativa máxima",
-                      "reps": "2-3",
-                      "id": "press-de-tuck-adv-a-full-negativa-maxima"
-                    }
-                  ]
-                },
-                {
-                  "type": "biseries",
-                  "sets": 4,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
-                    {
-                      "name": "Pull ups en tuck adv Fl explosivas",
-                      "reps": "6-8",
-                      "id": "pull-ups-en-tuck-adv-fl-explosivas",
+                      "name": "Pull ups Front lever full (banda)",
+                      "reps": "5",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "pull-ups-front-lever-full-banda",
                       "video": {
-                        "id": "gQzOKX3_gBs",
-                        "title": "9 adv.tuck Front Lever Pull ups",
-                        "channel": "Chebbi_sw",
-                        "url": "https://www.youtube.com/watch?v=gQzOKX3_gBs",
-                        "thumbnail": "https://i.ytimg.com/vi/gQzOKX3_gBs/hqdefault.jpg"
-                      }
-                    },
-                    {
-                      "name": "Hold en tuck adv. Fl",
-                      "timeSec": 10,
-                      "notes": "6-10s",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "hold-en-tuck-adv-fl",
-                      "video": {
-                        "id": "tDP0lqTbZ3E",
-                        "title": "Negative Tuck Front Lever with neutral grip hold 1",
-                        "channel": "Kat Brownlee",
-                        "url": "https://www.youtube.com/watch?v=tDP0lqTbZ3E",
-                        "thumbnail": "https://i.ytimg.com/vi/tDP0lqTbZ3E/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "id": "full-r5",
-              "name": "Full Front R5",
-              "intensity": 3,
-              "totalTimeMin": 20,
-              "blocks": [
-                {
-                  "type": "single",
-                  "sets": 4,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
-                    {
-                      "name": "Intentos Front Lever full (banda)",
-                      "reps": "max",
-                      "notes": "max seg",
-                      "id": "intentos-front-lever-full-banda",
-                      "video": {
-                        "id": "CwZA09PNxPE",
-                        "title": "Progresando  Front- Lever e intento a Full- Planche",
-                        "channel": "Sebastian Lino Hurtado",
-                        "url": "https://www.youtube.com/watch?v=CwZA09PNxPE",
-                        "thumbnail": "https://i.ytimg.com/vi/CwZA09PNxPE/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "biseries",
-                  "sets": 4,
-                  "restBetweenSetsSec": 240,
-                  "exercises": [
-                    {
-                      "name": "Touch to bar tuck adv Fl",
-                      "timeSec": 10,
-                      "notes": "5-10s",
-                      "tags": [
-                        "isometricos"
-                      ],
-                      "id": "touch-to-bar-tuck-adv-fl",
-                      "video": {
-                        "id": "gUYHGBLtr_Y",
-                        "title": "Advanced FL Tuck record! [Road to Front Lever #5]",
-                        "channel": "ElvisLifts",
-                        "url": "https://www.youtube.com/watch?v=gUYHGBLtr_Y",
-                        "thumbnail": "https://i.ytimg.com/vi/gUYHGBLtr_Y/hqdefault.jpg"
-                      }
-                    },
-                    {
-                      "name": "Pull ups en tuck adv. Fl",
-                      "reps": "3-5",
-                      "id": "pull-ups-en-tuck-adv-fl",
-                      "video": {
-                        "id": "gvRgrWacNtY",
-                        "title": "Adv Tuck FL pull up",
-                        "channel": "笹塚 ",
-                        "url": "https://www.youtube.com/watch?v=gvRgrWacNtY",
-                        "thumbnail": "https://i.ytimg.com/vi/gvRgrWacNtY/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 3,
-                  "restBetweenSetsSec": 210,
-                  "exercises": [
-                    {
-                      "name": "Press de tuck adv. a full + negativa máxima",
-                      "reps": "2-3",
-                      "id": "press-de-tuck-adv-a-full-negativa-maxima"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 4,
-                  "restBetweenSetsSec": 120,
-                  "exercises": [
-                    {
-                      "name": "Dominadas pronas explosivas (hasta debajo del pecho)",
-                      "reps": "5-8",
-                      "id": "dominadas-pronas-explosivas-hasta-debajo-del-pecho"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 3,
-                  "restBetweenSetsSec": 90,
-                  "exercises": [
-                    {
-                      "name": "Dominadas estándar",
-                      "reps": "12",
-                      "id": "dominadas-estandar",
-                      "video": {
-                        "id": "LSJSICeP4VI",
-                        "title": "El Estándar Que Separa a Los Avanzados de Los Elites en Las Dominadas",
+                        "id": "PyRLrcn4YFo",
+                        "title": "The STRONGEST One Arm FRONT LEVER Pull Up Athlete in CALISTHENICS - Emanuele Majeli",
                         "channel": "Noa Man WORKOUT",
-                        "url": "https://www.youtube.com/watch?v=LSJSICeP4VI",
-                        "thumbnail": "https://i.ytimg.com/vi/LSJSICeP4VI/hqdefault.jpg"
+                        "url": "https://www.youtube.com/watch?v=PyRLrcn4YFo",
+                        "thumbnail": "https://i.ytimg.com/vi/PyRLrcn4YFo/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "De tuck Fl a full Fl (banda en pies)",
+                      "reps": "4",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "de-tuck-fl-a-full-fl-banda-en-pies",
+                      "video": {
+                        "id": "5GWETCLmq5M",
+                        "title": "Open Planche Kickouts, Bent arm Work, Front Lever Negative, Tuck FL work, RTO Dips",
+                        "channel": "Pointsman",
+                        "url": "https://www.youtube.com/watch?v=5GWETCLmq5M",
+                        "thumbnail": "https://i.ytimg.com/vi/5GWETCLmq5M/hqdefault.jpg"
                       }
                     }
                   ]
                 }
-              ]
+              ],
+              "benchmark": true,
+              "tags": []
             }
           ],
           "optional": true
@@ -7630,8 +7842,11 @@
                   "exercises": [
                     {
                       "name": "Straddle Planche (intentos)",
-                      "reps": "max",
-                      "notes": "max seg",
+                      "timeSec": 5,
+                      "notes": "5 seg",
+                      "tags": [
+                        "isometricos"
+                      ],
                       "id": "straddle-planche-intentos",
                       "video": {
                         "id": "uoJMSyy4_JQ",
@@ -9380,7 +9595,7 @@
             },
             {
               "id": "fuerza-principiantes-benchmark",
-              "name": "Desbloquear",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -9391,7 +9606,7 @@
                   "exercises": [
                     {
                       "name": "Dominadas pronas",
-                      "reps": "max",
+                      "reps": "10",
                       "notes": "Anota el resultado en Progreso semanal",
                       "id": "dominadas-pronas"
                     }
@@ -9404,7 +9619,7 @@
                   "exercises": [
                     {
                       "name": "Fondos en paralelas",
-                      "reps": "max",
+                      "reps": "10",
                       "notes": "Anota el resultado en Progreso semanal",
                       "id": "fondos-en-paralelas",
                       "video": {
@@ -9424,7 +9639,7 @@
                   "exercises": [
                     {
                       "name": "Australian pull ups",
-                      "reps": "max",
+                      "reps": "15",
                       "notes": "Anota el resultado en Progreso semanal",
                       "id": "australian-pull-ups",
                       "video": {
@@ -9444,7 +9659,7 @@
                   "exercises": [
                     {
                       "name": "Flexiones en pica",
-                      "reps": "max",
+                      "reps": "8",
                       "notes": "Anota el resultado en Progreso semanal",
                       "id": "flexiones-en-pica",
                       "video": {
@@ -9464,7 +9679,7 @@
                   "exercises": [
                     {
                       "name": "Leg raises colgado",
-                      "reps": "max",
+                      "reps": "8",
                       "notes": "Anota el resultado en Progreso semanal",
                       "id": "leg-raises-colgado",
                       "video": {
@@ -9478,7 +9693,8 @@
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         },
@@ -10434,7 +10650,7 @@
             },
             {
               "id": "fuerza-intermedios-benchmark",
-              "name": "Desbloquear",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -10444,29 +10660,16 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Dominadas pronas",
-                      "reps": "max",
+                      "name": "Dominadas explosivas",
+                      "reps": "10",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "dominadas-pronas"
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 1,
-                  "restBetweenSetsSec": 0,
-                  "exercises": [
-                    {
-                      "name": "Fondos en paralelas",
-                      "reps": "max",
-                      "notes": "Anota el resultado en Progreso semanal",
-                      "id": "fondos-en-paralelas",
+                      "id": "dominadas-explosivas",
                       "video": {
-                        "id": "KQwrMw00eEY",
-                        "title": "COMO HACER FONDOS EN PARALELAS DE FORMA CORRECTA | HOW TO DO DIPS",
-                        "channel": "KASS Calistenia",
-                        "url": "https://www.youtube.com/watch?v=KQwrMw00eEY",
-                        "thumbnail": "https://i.ytimg.com/vi/KQwrMw00eEY/hqdefault.jpg"
+                        "id": "dkJGqoG2KI4",
+                        "title": "HAZLAS ASÍ | Tutorial dominadas EXPLOSIVAS - CALISTENIA",
+                        "channel": "3 MIN CALISTENIA",
+                        "url": "https://www.youtube.com/watch?v=dkJGqoG2KI4",
+                        "thumbnail": "https://i.ytimg.com/vi/dkJGqoG2KI4/hqdefault.jpg"
                       }
                     }
                   ]
@@ -10477,16 +10680,16 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Australian pull ups",
-                      "reps": "max",
+                      "name": "Fondos explosivos",
+                      "reps": "10",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "australian-pull-ups",
+                      "id": "fondos-explosivos",
                       "video": {
-                        "id": "tR4hfOIpNb8",
-                        "title": "Por qué debes hacer Remos (Australian Pull Ups)",
-                        "channel": "Arceo Fitness",
-                        "url": "https://www.youtube.com/watch?v=tR4hfOIpNb8",
-                        "thumbnail": "https://i.ytimg.com/vi/tR4hfOIpNb8/hqdefault.jpg"
+                        "id": "Xzg2U1N-tlI",
+                        "title": "Fondos explosivos con +40 kg",
+                        "channel": "JuZa",
+                        "url": "https://www.youtube.com/watch?v=Xzg2U1N-tlI",
+                        "thumbnail": "https://i.ytimg.com/vi/Xzg2U1N-tlI/hqdefault.jpg"
                       }
                     }
                   ]
@@ -10497,16 +10700,19 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Flexiones en pica",
-                      "reps": "max",
+                      "name": "Isométrico pino en pared",
+                      "timeSec": 30,
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "flexiones-en-pica",
+                      "tags": [
+                        "isometricos"
+                      ],
+                      "id": "isometrico-pino-en-pared",
                       "video": {
-                        "id": "vofAPwPxXfY",
-                        "title": "Flexiones en pica, por Jordan Bioco | Fitness de salón | GQ España",
-                        "channel": "GQSpain",
-                        "url": "https://www.youtube.com/watch?v=vofAPwPxXfY",
-                        "thumbnail": "https://i.ytimg.com/vi/vofAPwPxXfY/hqdefault.jpg"
+                        "id": "DId2yEvz8Cs",
+                        "title": "Pino Isométrico",
+                        "channel": "David Bautista Moreno",
+                        "url": "https://www.youtube.com/watch?v=DId2yEvz8Cs",
+                        "thumbnail": "https://i.ytimg.com/vi/DId2yEvz8Cs/hqdefault.jpg"
                       }
                     }
                   ]
@@ -10517,22 +10723,43 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Leg raises colgado",
-                      "reps": "max",
+                      "name": "Leg raises (1 mano)",
+                      "reps": "5",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "leg-raises-colgado",
+                      "id": "leg-raises-1-mano",
                       "video": {
-                        "id": "yJW8Gsovjfo",
-                        "title": "Cómo hacer los Leg raises colgado de la barra - Posición y técnica",
-                        "channel": "BarZDoc",
-                        "url": "https://www.youtube.com/watch?v=yJW8Gsovjfo",
-                        "thumbnail": "https://i.ytimg.com/vi/yJW8Gsovjfo/hqdefault.jpg"
+                        "id": "QyVq5oUBpss",
+                        "title": "The WORST Ab Training MISTAKES | Leg Raises",
+                        "channel": "FitnessFAQs",
+                        "url": "https://www.youtube.com/watch?v=QyVq5oUBpss",
+                        "thumbnail": "https://i.ytimg.com/vi/QyVq5oUBpss/hqdefault.jpg"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Flexiones lean planche",
+                      "reps": "8",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "flexiones-lean-planche",
+                      "video": {
+                        "id": "lVALA9ckKJg",
+                        "title": "COMO HACER  FLEXIONES DE LEAN PLANCHE y presses",
+                        "channel": "Casanova_trainer",
+                        "url": "https://www.youtube.com/watch?v=lVALA9ckKJg",
+                        "thumbnail": "https://i.ytimg.com/vi/lVALA9ckKJg/hqdefault.jpg"
                       }
                     }
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         },
@@ -11498,7 +11725,7 @@
             },
             {
               "id": "fuerza-avanzados-benchmark",
-              "name": "Desbloquear",
+              "name": "Desafío",
               "intensity": 1,
               "totalTimeMin": 5,
               "blocks": [
@@ -11508,16 +11735,29 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Dominadas explosivas",
-                      "reps": "max",
+                      "name": "Dominadas pronas explosivas (hasta debajo del pecho)",
+                      "reps": "8",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "dominadas-explosivas",
+                      "id": "dominadas-pronas-explosivas-hasta-debajo-del-pecho"
+                    }
+                  ]
+                },
+                {
+                  "type": "single",
+                  "sets": 1,
+                  "restBetweenSetsSec": 0,
+                  "exercises": [
+                    {
+                      "name": "Flexiones pino en pared",
+                      "reps": "6",
+                      "notes": "Anota el resultado en Progreso semanal",
+                      "id": "flexiones-pino-en-pared",
                       "video": {
-                        "id": "dkJGqoG2KI4",
-                        "title": "HAZLAS ASÍ | Tutorial dominadas EXPLOSIVAS - CALISTENIA",
-                        "channel": "3 MIN CALISTENIA",
-                        "url": "https://www.youtube.com/watch?v=dkJGqoG2KI4",
-                        "thumbnail": "https://i.ytimg.com/vi/dkJGqoG2KI4/hqdefault.jpg"
+                        "id": "YhINuXWndVc",
+                        "title": "FLEXIONES A PINO ASISTIDAS: de espaldas y de cara a la pared - Técnica, ventajas y desventajas y más",
+                        "channel": "Podcastenia con Yerai Alonso y Yerai Alonso",
+                        "url": "https://www.youtube.com/watch?v=YhINuXWndVc",
+                        "thumbnail": "https://i.ytimg.com/vi/YhINuXWndVc/hqdefault.jpg"
                       }
                     }
                   ]
@@ -11528,17 +11768,10 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Fondos explosivos",
-                      "reps": "max",
+                      "name": "Hefesto asistido (pies en suelo)",
+                      "reps": "10",
                       "notes": "Anota el resultado en Progreso semanal",
-                      "id": "fondos-explosivos",
-                      "video": {
-                        "id": "Xzg2U1N-tlI",
-                        "title": "Fondos explosivos con +40 kg",
-                        "channel": "JuZa",
-                        "url": "https://www.youtube.com/watch?v=Xzg2U1N-tlI",
-                        "thumbnail": "https://i.ytimg.com/vi/Xzg2U1N-tlI/hqdefault.jpg"
-                      }
+                      "id": "hefesto-asistido-pies-en-suelo"
                     }
                   ]
                 },
@@ -11548,65 +11781,26 @@
                   "restBetweenSetsSec": 0,
                   "exercises": [
                     {
-                      "name": "Isometrico pino en pared",
-                      "timeSec": 30,
+                      "name": "Lean planche (buscando inclinación)",
+                      "timeSec": 10,
                       "notes": "Anota el resultado en Progreso semanal",
                       "tags": [
                         "isometricos"
                       ],
-                      "id": "isometrico-pino-en-pared",
+                      "id": "lean-planche-buscando-inclinacion",
                       "video": {
-                        "id": "DId2yEvz8Cs",
-                        "title": "Pino Isométrico",
-                        "channel": "David Bautista Moreno",
-                        "url": "https://www.youtube.com/watch?v=DId2yEvz8Cs",
-                        "thumbnail": "https://i.ytimg.com/vi/DId2yEvz8Cs/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 1,
-                  "restBetweenSetsSec": 0,
-                  "exercises": [
-                    {
-                      "name": "Leg raises (1 mano)",
-                      "reps": "max",
-                      "notes": "Anota el resultado en Progreso semanal",
-                      "id": "leg-raises-1-mano",
-                      "video": {
-                        "id": "QyVq5oUBpss",
-                        "title": "The WORST Ab Training MISTAKES | Leg Raises",
-                        "channel": "FitnessFAQs",
-                        "url": "https://www.youtube.com/watch?v=QyVq5oUBpss",
-                        "thumbnail": "https://i.ytimg.com/vi/QyVq5oUBpss/hqdefault.jpg"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "single",
-                  "sets": 1,
-                  "restBetweenSetsSec": 0,
-                  "exercises": [
-                    {
-                      "name": "Flexiones lean planche",
-                      "reps": "max",
-                      "notes": "Anota el resultado en Progreso semanal",
-                      "id": "flexiones-lean-planche",
-                      "video": {
-                        "id": "lVALA9ckKJg",
-                        "title": "COMO HACER  FLEXIONES DE LEAN PLANCHE y presses",
-                        "channel": "Casanova_trainer",
-                        "url": "https://www.youtube.com/watch?v=lVALA9ckKJg",
-                        "thumbnail": "https://i.ytimg.com/vi/lVALA9ckKJg/hqdefault.jpg"
+                        "id": "v6HISll2Y8I",
+                        "title": "Así se hace la planche lean #calistenia #streetworkout #tutorial #calisthenics",
+                        "channel": "Daniel Torresx",
+                        "url": "https://www.youtube.com/watch?v=v6HISll2Y8I",
+                        "thumbnail": "https://i.ytimg.com/vi/v6HISll2Y8I/hqdefault.jpg"
                       }
                     }
                   ]
                 }
               ],
-              "benchmark": true
+              "benchmark": true,
+              "tags": []
             }
           ]
         }
