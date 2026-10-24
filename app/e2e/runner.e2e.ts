@@ -162,3 +162,25 @@ test('el descanso final se espera al pasar al siguiente ejercicio, no al confirm
   await expect(descanso).toBeVisible();
   await expect(descanso).toContainText('descanso configurado: 120s');
 });
+
+// cardio-r1: superseries de 4 ejercicios isométricos, 3 vueltas con 60s de descanso por serie.
+test('el descanso de serie espera a que la vuelta esté completa', async ({ page }) => {
+  await page.goto('/run/cardio-r1');
+
+  const primeraSerie = page.getByLabel('Segundos serie 1', { exact: true });
+  await expect(primeraSerie).toHaveCount(4);
+
+  for (let ejercicio = 0; ejercicio < 3; ejercicio++) {
+    await primeraSerie.nth(ejercicio).fill('12');
+    await page.getByRole('button', { name: 'confirmar' }).first().click();
+    await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
+  }
+
+  await primeraSerie.nth(3).fill('12');
+  await page.getByRole('button', { name: 'confirmar' }).first().click();
+
+  const descanso = page.getByRole('dialog', { name: 'Descanso en curso' });
+  await expect(descanso).toBeVisible();
+  await expect(descanso).toContainText('Descanso de serie');
+  await expect(descanso).toContainText('descanso configurado: 60s');
+});
