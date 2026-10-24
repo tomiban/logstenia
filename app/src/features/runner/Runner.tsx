@@ -19,7 +19,6 @@ type PasoProps = {
   setValores: (next: SerieValor[]) => void;
   marcas: Record<string, Marca>;
   bloqueado: boolean;
-  onDescansoSerie: (segundos: number) => void;
 };
 
 function Paso({
@@ -31,7 +30,6 @@ function Paso({
   setValores,
   marcas,
   bloqueado,
-  onDescansoSerie,
 }: PasoProps) {
   const exercise = step.exercise;
   const lista = valores;
@@ -47,17 +45,11 @@ function Paso({
     setValores(lista.map((x, j) => (j === i ? { ...x, value: v } : x)));
   };
 
-  /** Descanso configurado tras la serie `i` (la última serie usa el descanso final). */
-  const descansoDeSerie = (i: number) => (i < series - 1 ? step.restAfterSetSec : step.restAfterExerciseSec);
-
-  /** Registra la serie y dispara el descanso de serie configurado. */
+  /** Registra la serie: el descanso de serie lo decide `useRunner` cuando la vuelta está completa. */
   const confirmarSerie = (i: number) => {
     const v = lista[i];
     if (!v || !v.value) return;
     registrar(i + 1, v.value);
-    if (i >= series - 1) return;
-    const segundos = descansoDeSerie(i);
-    if (segundos > 0) onDescansoSerie(segundos);
   };
 
   return (
@@ -274,12 +266,11 @@ export default function Runner() {
                 step={exStep}
                 series={lista.length}
                 sets={r.allSets}
-                registrar={(setIndex: number, value: string) => r.registrarEx(actual.blockIdx, ei, ex, setIndex, value)}
+                registrar={(setIndex: number, value: string) => r.confirmarSerie(actual.blockIdx, ei, ex, setIndex, value)}
                 valores={lista}
                 setValores={(next: SerieValor[]) => r.setVals((v) => ({ ...v, [key]: next }))}
                 marcas={r.marcas}
                 bloqueado={r.descansoHasta != null}
-                onDescansoSerie={(segundos: number) => r.iniciarDescanso(segundos, 'Descanso de serie', null)}
               />
             );
           })}

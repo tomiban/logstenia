@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta } from './runnerLogic';
 import type { SessionSet } from '@/db';
+import type { Exercise } from '@/types';
 
 describe('num', () => {
   it('parses numbers and returns NaN for invalid', () => {
@@ -21,5 +22,48 @@ describe('buscarSerie', () => {
   it('returns undefined when no match', () => {
     expect(buscarSerie(sets, 'Push', 2, 2)).toBeUndefined();
     expect(buscarSerie(sets, 'Other', 2, 1)).toBeUndefined();
+  });
+});
+
+const serie = (exercise: string, setIndex: number, bloqueOrden = 0): SessionSet => ({
+  exercise,
+  setIndex,
+  bloqueOrden,
+  value: '10',
+  unit: 'reps',
+  orden: 0,
+}) as SessionSet;
+
+describe('rondaCompleta', () => {
+  const biserie: Exercise[] = [{ name: 'A' }, { name: 'B' }];
+
+  it('no está completa cuando falta un ejercicio de la vuelta', () => {
+    expect(rondaCompleta([serie('A', 1)], 0, biserie, 1)).toBe(false);
+  });
+
+  it('está completa cuando todos los ejercicios registraron esa vuelta', () => {
+    expect(rondaCompleta([serie('A', 1), serie('B', 1)], 0, biserie, 1)).toBe(true);
+  });
+
+  it('no cuenta series de otra vuelta ni de otro bloque', () => {
+    expect(rondaCompleta([serie('A', 2), serie('B', 2)], 0, biserie, 1)).toBe(false);
+    expect(rondaCompleta([serie('A', 1, 1), serie('B', 1, 1)], 0, biserie, 1)).toBe(false);
+  });
+
+  it('con un solo ejercicio depende de su propia serie', () => {
+    const simple: Exercise[] = [{ name: 'A' }];
+    expect(rondaCompleta([serie('A', 1)], 0, simple, 1)).toBe(true);
+    expect(rondaCompleta([], 0, simple, 1)).toBe(false);
+  });
+});
+
+describe('esUltimaVuelta', () => {
+  it('es la última cuando no quedan filas después de la serie', () => {
+    expect(esUltimaVuelta([3, 3], 3)).toBe(true);
+  });
+
+  it('no es la última cuando todavía quedan vueltas por delante', () => {
+    expect(esUltimaVuelta([3, 3], 1)).toBe(false);
+    expect(esUltimaVuelta([4, 3], 3)).toBe(false);
   });
 });

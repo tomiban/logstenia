@@ -7,7 +7,7 @@ import { elapsedSeconds } from './session';
 import { buildSteps, type WorkoutStep } from './steps';
 import type { Exercise, Model, Program } from '@/types';
 import { seriesCount } from './rest';
-import { num, buscarSerie } from './runnerLogic';
+import { num, buscarSerie, esUltimaVuelta, rondaCompleta } from './runnerLogic';
 import { toISODate } from '@/lib/date';
 import { useBeep } from '@/hooks/useBeep';
 import { useWakeLock } from '@/hooks/useWakeLock';
@@ -79,7 +79,7 @@ export interface RunnerState {
   irA: (indice: number) => void;
   omitirDescanso: () => void;
   finalizar: () => Promise<void>;
-  registrarEx: (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => void;
+  confirmarSerie: (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => void;
   confirmarTipeados: () => void;
   avanzar: () => void;
   siguiente: () => void;
@@ -266,6 +266,19 @@ export function useRunner(): RunnerState {
     }
   };
 
+  /**
+   * Registra la serie y abre el descanso de serie solo cuando la vuelta del bloque quedó
+   * completa (todos los ejercicios con esa serie) y no es la última vuelta.
+   */
+  const confirmarSerie = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
+    registrarEx(blockIdx, ei, exercise, setIndex, value);
+    if (!step) return;
+    if (!rondaCompleta(setsRef.current, blockIdx, step.exercises, setIndex)) return;
+    const filas = step.exercises.map((_, k) => exLista(k).length);
+    if (esUltimaVuelta(filas, setIndex)) return;
+    if (step.restAfterSetSec > 0) iniciarDescanso(step.restAfterSetSec, 'Descanso de serie', null);
+  };
+
   const sinRegistrar = step
     ? step.exercises.reduce((acc, ex, ei) => {
         const lista = exLista(ei);
@@ -357,7 +370,7 @@ export function useRunner(): RunnerState {
     irA,
     omitirDescanso,
     finalizar,
-    registrarEx,
+    confirmarSerie,
     confirmarTipeados,
     avanzar,
     siguiente,
