@@ -4,7 +4,8 @@ import { BackLink } from '@/components/BackLink';
 import { getProgram, createModel, deleteModel, updateModel } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
-import { chainFor, getProgressionIndex, isUnlocked, unlockedReason, anchorsFor } from './progression';
+import { chainFor, describeLock } from './progression';
+import { useProgression } from '@/hooks/useProgression';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,13 +25,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { TagsMenu } from '@/components/ui/tags-menu';
 import { MoreHorizontal } from 'lucide-react';
-import { createMarkRepository, createSettingsRepository } from '@/repositories';
-import type { MarkRecord } from '@/repositories';
+import { createSettingsRepository } from '@/repositories';
 import { tagPastel } from '@/lib/tags';
 import { useTags } from '@/hooks/useTags';
 
 const settingsRepository = createSettingsRepository();
-const markRepository = createMarkRepository();
 
 function RoutineTags({ routineId }: { routineId: string }) {
   const { tags } = useTags('routine', routineId);
@@ -59,12 +58,12 @@ export default function Program() {
   usePlansVersion();
   const p = getProgram(id || '');
 
-  const [progIdx, setProgIdx] = useState<number | null>(null);
-  const [unlocked, setUnlocked] = useState(true);
-  const [lockReason, setLockReason] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
-  const [marks, setMarks] = useState<MarkRecord[]>([]);
-  const [challengeAnchors, setChallengeAnchors] = useState<any[]>([]);
+  const progression = useProgression();
+  const report = progression.reportFor(p?.id ?? '');
+  const unlocked = report?.unlocked ?? true;
+  const lockReason = report && !report.unlocked ? describeLock(report) : null;
+  const levelOf = (programId: string) => report?.levels.find((l) => l.id === programId) ?? null;
 
   // program edit
 
@@ -76,16 +75,10 @@ export default function Program() {
 
   useEffect(() => {
     if (!p) return;
-    const chain = chainFor(p.id);
-    if (chain) getProgressionIndex(p.id).then(setProgIdx);
-    isUnlocked(p.id).then(setUnlocked);
-    unlockedReason(p.id).then(setLockReason);
     (async () => {
       const r = await settingsRepository.get('startedPlans');
       const arr = (r?.value as string[]) || [];
       setStarted(arr.includes(p.id));
-      setMarks(await markRepository.list());
-      setChallengeAnchors(await anchorsFor(p.id));
     })();
   }, [p]);
 
@@ -134,7 +127,12 @@ export default function Program() {
       <header className="border-b border-border pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">{p.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">{p.name}</h1>
+              {report?.completed && (
+                <Badge className="label-status border border-ink bg-accent text-on-accent">completado</Badge>
+              )}
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -144,11 +142,11 @@ export default function Program() {
             </Button>
           </div>
         </div>
-        {chainFor(p.id) && progIdx !== null && (
+        {report?.position != null && (
           <p className="label-caps mt-3 text-muted-foreground">
-            Fase <span className="metric text-base text-foreground">{progIdx + 1}</span> de {chainFor(p.id)!.length}
-            {progIdx < chainFor(p.id)!.length - 1 && (
-              <> · Siguiente: <span className="text-foreground">{getProgram(chainFor(p.id)![progIdx + 1])?.name}</span></>
+            Fase <span className="metric text-base text-foreground">{report.position}</span> de {report.total}
+            {report.next && (
+              <> · Siguiente: <span className="text-foreground">{report.next.name}</span></>
             )}
           </p>
         )}
@@ -163,11 +161,13 @@ export default function Program() {
               {prevId && (
                 <Link to={`/program/${prevId}`} className="text-muted-foreground hover:text-ink">
                   ← Más fácil: {getProgram(prevId)?.name ?? prevId}
+                  {levelOf(prevId)?.completed && <span className="ml-1 text-accent">completado</span>}
                 </Link>
               )}
               {nextId && (
                 <Link to={`/program/${nextId}`} className="text-muted-foreground hover:text-ink">
-                  Más difícil: {getProgram(nextId)?.name ?? nextId} →
+                  Más difícil: {getProgram(nextId)?.name ?? nextId}
+                  {levelOf(nextId)?.unlocked ? <span className="ml-1 text-accent">desbloqueado</span> : <span className="ml-1">bloqueado</span>} →
                 </Link>
               )}
             </div>
@@ -246,9 +246,34 @@ export default function Program() {
         </div>
       )}
 
-      {!unlocked && (
+      {!unlocked && lockReason && (
         <div className="border border-ink bg-secondary p-3">
           <p className="label-caps text-foreground">{lockReason}</p>
+        </div>
+      )}
+
+      {report?.next && (
+        <div className="border border-border bg-card p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="label-caps text-muted-foreground">Siguiente nivel</span>
+              <p className="font-heading text-base font-bold text-foreground">{report.next.name}</p>
+            </div>
+            {report.next.unlocked ? (
+              <Badge className="label-status border border-ink bg-accent text-on-accent">desbloqueado</Badge>
+            ) : (
+              <Badge variant="outline" className="label-status">bloqueado</Badge>
+            )}
+          </div>
+          {report.next.unlocked ? (
+            <Link to={`/program/${report.next.id}`} className="inline-block">
+              <Button variant="accent" size="sm">Ir al siguiente nivel</Button>
+            </Link>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Se abre cuando completes todas las rutinas de este nivel o superes sus marcas.
+            </p>
+          )}
         </div>
       )}
 
@@ -263,7 +288,7 @@ export default function Program() {
         </div>
       </div>
 
-      {(p.objectives.length > 0 || p.rules.length > 0 || specialModels.length > 0) && (
+      {(p.objectives.length > 0 || p.rules.length > 0 || (report?.anchors.length ?? 0) > 0) && (
         <div className="border border-border bg-border">
           <div className="grid sm:grid-cols-2 gap-px">
             {p.objectives.length > 0 && (
@@ -287,28 +312,22 @@ export default function Program() {
               </div>
             )}
           </div>
-          {specialModels.length > 0 && (
+          {(report?.anchors.length ?? 0) > 0 && (
             <div className="bg-card p-3 space-y-2 border-t border-border">
-              <p className="text-sm text-muted-foreground">¿Te sentís preparado para avanzar de nivel? Tomá tus marcas.</p>
-              {challengeAnchors.length > 0 && (
-                <ul className="space-y-1">
-                  {challengeAnchors.map((a, i) => {
-                    const best = marks.filter((m: any) => m.exercise === a.ejercicio).reduce((acc: number, m: any) => Math.max(acc, m.value), 0);
-                    const met = best >= a.objetivo;
-                    return (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <span className={met ? 'text-accent' : 'text-muted-foreground'}>{met ? '✓' : '○'}</span>
-                        <span className="metric text-foreground">{a.objetivo}</span>
-                        <span className="text-muted-foreground">{a.unidad}</span>
-                        <span className="text-foreground">{a.ejercicio}</span>
-                        {best > 0 && (
-                          <span className="label-caps text-muted-foreground">(mejor: {best})</span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <p className="text-sm text-muted-foreground">¿Te sentís preparado para avanzar de nivel? Tomá tus marcas: con estas se abre el nivel siguiente.</p>
+              <ul className="space-y-1">
+                {report!.anchors.map((a, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <span className={a.met ? 'text-accent' : 'text-muted-foreground'}>{a.met ? '✓' : '○'}</span>
+                    <span className="metric text-foreground">{a.objetivo}</span>
+                    <span className="text-muted-foreground">{a.unidad === 'sec' ? 'seg' : 'reps'}</span>
+                    <span className="text-foreground">{a.ejercicio}</span>
+                    {a.mejor > 0 && (
+                      <span className="label-caps text-muted-foreground">(mejor: {a.mejor})</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
               {specialModels.map((m) => (
                 <div key={m.id} className="flex items-center justify-between gap-3 pt-2">
                   <span className="label-caps text-muted-foreground">{m.name}</span>

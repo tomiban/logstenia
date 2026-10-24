@@ -9,6 +9,7 @@ import type { Exercise, Model, Program } from '@/types';
 import { seriesCount } from './rest';
 import { num, buscarSerie, esUltimaVuelta, rondaCompleta } from './runnerLogic';
 import { toISODate } from '@/lib/date';
+import { progressionReportFor, touchedAnchors, type ProgressionReport } from '@/features/plans/progression';
 import { useBeep } from '@/hooks/useBeep';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useVibration } from '@/hooks/useVibration';
@@ -17,6 +18,16 @@ import { desbloquearAudio } from './Cronometro';
 
 export type Marca = 'pr' | 'primera';
 export type Destino = { indice: number } | { fin: true } | null;
+
+export interface RunnerProgression {
+  report: ProgressionReport;
+  /** The next level was locked before this session and is unlocked now. */
+  avanzó: boolean;
+  /** This session completed the level. */
+  completo: boolean;
+  /** The session registered marks that belong to the next level's criteria. */
+  tocoCriterios: boolean;
+}
 
 export interface SerieValor {
   value: string;
@@ -42,6 +53,7 @@ export interface RunnerState {
   setHistorial: (v: Record<string, number[]>) => void;
   fin: boolean;
   setFin: (v: boolean) => void;
+  progreso: RunnerProgression | null;
   errorMsg: string | null;
   setErrorMsg: (v: string | null) => void;
   descansoHasta: number | null;
@@ -101,6 +113,7 @@ export function useRunner(): RunnerState {
   const [marcas, setMarcas] = useState<Record<string, Marca>>({});
   const [historial, setHistorial] = useState<Record<string, number[]>>({});
   const [fin, setFin] = useState(false);
+  const [progreso, setProgreso] = useState<RunnerProgression | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [descansoHasta, setDescansoHasta] = useState<number | null>(null);
   const [descansoSegundos, setDescansoSegundos] = useState(0);
@@ -166,6 +179,7 @@ export function useRunner(): RunnerState {
     setVals({});
     setDescansoHasta(null);
     try {
+      const antes = await progressionReportFor(program!.id);
       await sessionRepo.add({
         date: toISODate(),
         planId: program!.id,
@@ -175,6 +189,13 @@ export function useRunner(): RunnerState {
         sets: setsRef.current as any,
       });
       await settingsRepo.delete(`borrador:${model!.id}`);
+      const despues = await progressionReportFor(program!.id);
+      setProgreso({
+        report: despues,
+        avanzó: despues.next?.unlocked === true && antes.next?.unlocked === false,
+        completo: despues.completed && !antes.completed,
+        tocoCriterios: touchedAnchors(despues.anchors, setsRef.current),
+      });
       inicioRef.current = Date.now();
     } catch {
       setErrorMsg('No se pudo guardar la sesión en este dispositivo.');
@@ -339,6 +360,7 @@ export function useRunner(): RunnerState {
     setHistorial,
     fin,
     setFin,
+    progreso,
     errorMsg,
     setErrorMsg,
     descansoHasta,
