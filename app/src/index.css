@@ -8,6 +8,9 @@
   color-scheme: light;
   --voltage-lime: #ccff00;
   --ink: #111111;
+  /* Fijos en ambos modos: el texto sobre lima y sobre tinta no se invierte con el tema. */
+  --on-accent: #111111;
+  --on-ink: var(--voltage-lime);
   --paper: #f0f0f0;
   --surface: #ffffff;
   --foreground: #191c1d;
@@ -85,6 +88,9 @@ body {
   --color-ring: var(--ring);
   --color-border: var(--border);
   --color-ink: var(--ink);
+  --color-on-accent: var(--on-accent);
+  --color-on-ink: var(--on-ink);
+  --color-muted-surface: var(--muted-surface);
   --radius: 0px;
 }
 
@@ -96,6 +102,11 @@ body {
   --text: #f8f9fa;
   --muted: #8a8a8a;
   --border: #2a2a2a;
+  /* La tinta invierte: es texto y borde de máxima jerarquía sobre fondo oscuro. */
+  --ink: #f8f9fa;
+  --on-ink: #111111;
+  --muted-surface: #2e2e2e;
+  --alert: #ffb4ab;
   --accent: var(--voltage-lime);
   --accent-soft: #1a1a00;
   --background: #111111;

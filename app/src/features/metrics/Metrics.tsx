@@ -109,7 +109,7 @@ function MarkRow({ mark }: { mark: BestMark }) {
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{mark.exercise}</span>
           {mark.delta !== null && mark.delta > 0 ? (
-            <span className="label-status shrink-0 border border-ink bg-accent px-1 text-ink">
+            <span className="label-status shrink-0 border border-ink bg-accent px-1 text-on-accent">
               PR
             </span>
           ) : null}
@@ -271,7 +271,7 @@ export default function Metrics() {
           </p>
           <Link
             to="/"
-            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-on-accent transition-colors hover:bg-primary hover:text-primary-foreground"
           >
             Empezar a entrenar
           </Link>
@@ -364,7 +364,7 @@ export default function Metrics() {
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium">{c.summary.planName}</span>
                     {c.newBests.length > 0 ? (
-                      <span className="label-status shrink-0 border border-ink bg-accent px-1 text-ink">PR</span>
+                      <span className="label-status shrink-0 border border-ink bg-accent px-1 text-on-accent">PR</span>
                     ) : null}
                   </div>
                   <div className="label-caps mt-1 text-muted-foreground">
@@ -497,7 +497,7 @@ export default function Metrics() {
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium">{anchor.exercise}</span>
                 {anchor.reached ? (
-                  <span className="label-status shrink-0 border border-ink bg-accent px-1 text-ink">LISTO</span>
+                  <span className="label-status shrink-0 border border-ink bg-accent px-1 text-on-accent">LISTO</span>
                 ) : null}
               </div>
               <div className="mt-2 flex items-baseline justify-between gap-2">

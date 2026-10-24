@@ -234,7 +234,7 @@ export default function Program() {
 
       {!started && (
         <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
-          <span className="label-caps text-ink">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
+          <span className="label-caps text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
           <Button variant="ink" size="sm" disabled={!unlocked} onClick={async () => {
             const r = await settingsRepository.get('startedPlans');
             const arr = (r?.value as string[]) || [];

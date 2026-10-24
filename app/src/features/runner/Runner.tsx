@@ -117,7 +117,7 @@ function Paso({
                 )
               )}
               {marca === 'pr' && (
-                <Badge className="label-status border border-ink bg-accent text-ink">▲ nuevo PR</Badge>
+                <Badge className="label-status border border-ink bg-accent text-on-accent">▲ nuevo PR</Badge>
               )}
               {marca === 'primera' && (
                 <Badge className="label-status border border-ink text-ink">primera marca</Badge>
@@ -185,7 +185,7 @@ function Fin({ estado, onVolver }: { ses?: { id: string; name: string }; estado:
                 <div className="label-caps"><span className="metric text-foreground">{f.sets}</span> series</div>
               </div>
               <div className="flex items-center gap-3">
-                {f.pr && <Badge className="label-status border border-ink bg-accent text-ink">▲ PR</Badge>}
+                {f.pr && <Badge className="label-status border border-ink bg-accent text-on-accent">▲ PR</Badge>}
                 {f.primera && <Badge className="label-status border border-ink text-ink">primera marca</Badge>}
                 <span className="metric text-xl text-foreground">{f.mejor} {f.unidad}</span>
               </div>
@@ -207,7 +207,7 @@ export default function Runner() {
   if (n === 0) return <Card><div className="p-4"><p className="label-caps">no se pudieron extraer los ejercicios de este entrenamiento</p></div></Card>;
 
   if (r.descansoHasta != null && !r.fin) return (
-    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-primary text-accent">
+    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
       <span className="label-caps opacity-70">{r.descansoEtiqueta}</span>
       <div className="relative flex h-64 w-64 items-center justify-center">
         <div className="absolute inset-0 animate-spin rounded-full! border-4 border-transparent border-t-[var(--voltage-lime)] border-r-[var(--voltage-lime)]/50" />
@@ -215,9 +215,9 @@ export default function Runner() {
       </div>
       <p className="label-caps opacity-70">descanso configurado: {r.descansoSegundos}s</p>
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" className="label-caps" onClick={() => r.setDescansoHasta((h) => (h ? h - 10000 : null))}>-10s</Button>
+        <Button variant="outline" size="sm" className="label-caps border-accent text-accent" onClick={() => r.setDescansoHasta((h) => (h ? h - 10000 : null))}>-10s</Button>
         <p className="label-caps opacity-70">descansando</p>
-        <Button variant="outline" size="sm" className="label-caps" onClick={() => r.setDescansoHasta((h) => (h ? h + 10000 : null))}>+10s</Button>
+        <Button variant="outline" size="sm" className="label-caps border-accent text-accent" onClick={() => r.setDescansoHasta((h) => (h ? h + 10000 : null))}>+10s</Button>
       </div>
       <Button variant="accent" size="lg" className="label-caps" onClick={r.omitirDescanso}>saltar descanso</Button>
     </div>
@@ -226,7 +226,7 @@ export default function Runner() {
   if (r.fin) return (
     <>
       {r.errorMsg ? (
-        <p role="alert" className="label-caps mb-4 border border-ink bg-accent px-4 py-3 text-ink">
+        <p role="alert" className="label-caps mb-4 border border-ink bg-accent px-4 py-3 text-on-accent">
           {r.errorMsg}
         </p>
       ) : null}
