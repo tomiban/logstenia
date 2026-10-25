@@ -31,6 +31,7 @@ interface PageBody {
   rev: number;
   more: boolean;
   now: string;
+  user?: unknown;
   changes: ChangeBody[];
 }
 
@@ -108,8 +109,10 @@ function tombstoneChange(
   return { entity, id, rev, updatedAt, deletedAt: updatedAt, row };
 }
 
-function page(rev: number, more: boolean, changes: ChangeBody[]): PageBody {
-  return { rev, more, now: NOW, changes };
+function page(rev: number, more: boolean, changes: ChangeBody[], user?: unknown): PageBody {
+  return user === undefined
+    ? { rev, more, now: NOW, changes }
+    : { rev, more, now: NOW, user, changes };
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -311,6 +314,51 @@ describe('pull — paginated and crash safe (§5, §7)', () => {
     expect(result).toEqual({ status: 'ok', pulled: 1, cursor: 4 });
     expect((await settings.get('sync.deviceId'))?.value).toBe('dev_local');
     expect((await settings.get('theme'))?.value).toBe('dark');
+  });
+});
+
+describe('pull — caller identity for the session line (§7, §8)', () => {
+  it('keeps the caller email the page reported', async () => {
+    stubFetch(() =>
+      jsonResponse(page(6, false, [liveChange('sessions', 'a', 6, T_BASE)], 'ana@ejemplo.com')),
+    );
+
+    expect(await engine.sessionUser()).toBeNull();
+    expect(await engine.pull()).toEqual({ status: 'ok', pulled: 1, cursor: 6 });
+
+    expect(await engine.sessionUser()).toBe('ana@ejemplo.com');
+  });
+
+  it('keeps the last known email when a later page omits it', async () => {
+    const bodies = [
+      page(6, false, [liveChange('sessions', 'a', 6, T_BASE)], 'ana@ejemplo.com'),
+      page(12, false, [liveChange('sessions', 'b', 12, T_BASE)]),
+    ];
+    let call = 0;
+    stubFetch(() => {
+      const body = bodies[Math.min(call, bodies.length - 1)];
+      call += 1;
+      return jsonResponse(body);
+    });
+
+    expect(await engine.pull()).toEqual({ status: 'ok', pulled: 1, cursor: 6 });
+    expect(await engine.sessionUser()).toBe('ana@ejemplo.com');
+
+    expect(await engine.pull()).toEqual({ status: 'ok', pulled: 1, cursor: 12 });
+    expect(await engine.sessionUser()).toBe('ana@ejemplo.com');
+  });
+
+  it('rejects a page whose user is not a string and writes none of its rows', async () => {
+    const sessions = repositories.createSessionRepository();
+    const settings = repositories.createSettingsRepository();
+    stubFetch(() => jsonResponse(page(9, false, [liveChange('sessions', 'a', 9, T_BASE)], 42)));
+
+    const result = await engine.pull();
+
+    expect(result).toEqual({ status: 'failed', message: 'invalid pull response' });
+    expect(await sessions.list()).toHaveLength(0);
+    expect(await engine.sessionUser()).toBeNull();
+    expect((await settings.get('sync.cursor'))?.value).toBeUndefined();
   });
 });
 

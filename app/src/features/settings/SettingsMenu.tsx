@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   createGoalRepository,
   createMarkRepository,
@@ -41,7 +41,7 @@ function hasFields(value: unknown, fields: string[]): boolean {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex min-h-[44px] items-center justify-between gap-3">
       <span className="text-sm">{label}</span>
@@ -66,14 +66,18 @@ export function SettingsMenu() {
     let cancelled = false;
 
     const loadStoredSettings = async () => {
-      const s = await settingsRepository.get('sound');
-      const t = await settingsRepository.get('theme');
-      if (cancelled) return;
-      if (s) setSound(!!s.value);
-      if (t) {
-        const isDark = t.value === 'dark';
-        setDark(isDark);
-        document.documentElement.classList.toggle('dark', isDark);
+      try {
+        const s = await settingsRepository.get('sound');
+        const t = await settingsRepository.get('theme');
+        if (cancelled) return;
+        if (s) setSound(!!s.value);
+        if (t) {
+          const isDark = t.value === 'dark';
+          setDark(isDark);
+          document.documentElement.classList.toggle('dark', isDark);
+        }
+      } catch {
+        if (!cancelled) setMsg('No se pudieron leer los ajustes.');
       }
     };
 
@@ -108,19 +112,30 @@ export function SettingsMenu() {
   const toggleSound = async () => {
     const value = !sound;
     setSound(value);
-    await settingsRepository.put({ key: 'sound', value });
+    try {
+      await settingsRepository.put({ key: 'sound', value });
+    } catch {
+      setSound(!value);
+      setMsg('No se pudo guardar el ajuste.');
+    }
   };
 
   const toggleTheme = async () => {
     const value = !dark;
     setDark(value);
-    await settingsRepository.put({ key: 'theme', value: value ? 'dark' : 'light' });
-    document.documentElement.classList.toggle('dark', value);
+    try {
+      await settingsRepository.put({ key: 'theme', value: value ? 'dark' : 'light' });
+      document.documentElement.classList.toggle('dark', value);
+    } catch {
+      setDark(!value);
+      setMsg('No se pudo guardar el ajuste.');
+    }
   };
 
   const testSound = () => {
     const audio = new Audio('/sounds/item-found.mp3');
-    audio.play().catch(() => {});
+    // Autoplay stays blocked until the user interacts, so a rejected play is expected here.
+    void audio.play().catch(() => undefined);
   };
 
   const exportData = async () => {
@@ -255,9 +270,9 @@ export function SettingsMenu() {
               >
                 {sync.sessionLine}
               </Button>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">{sync.sessionLine}</p>
-            )}
+            ) : sync.sessionUserLine ? (
+              <p className="mt-2 text-xs text-muted-foreground">{sync.sessionUserLine}</p>
+            ) : null}
             {sync.clockWarning ? (
               <p className="mt-2 text-xs text-warning">{sync.clockWarning}</p>
             ) : null}

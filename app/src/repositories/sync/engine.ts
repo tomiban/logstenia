@@ -36,6 +36,7 @@ const CURSOR_KEY = 'sync.cursor';
 const DEVICE_ID_KEY = 'sync.deviceId';
 const LAST_SYNC_KEY = 'sync.lastSync';
 const LAST_CONFLICT_KEY = 'sync.lastConflict';
+const SESSION_USER_KEY = 'sync.user';
 
 export type SyncStepFailure =
   | { status: 'auth_required'; reason: AuthRequiredReason }
@@ -161,6 +162,7 @@ export async function pull(): Promise<PullResult> {
     pulled += outcome.applied;
     if (outcome.entities.length > 0) notifyPulledRows(outcome.entities);
     recordServerClock(response.value.now);
+    await recordSessionUser(response.value.user);
 
     // §5: the next `since` is the last received change rev, so a page watermark pointing
     // past the rows it returned cannot skip them.
@@ -228,6 +230,16 @@ export async function lastSyncAt(): Promise<string | null> {
   const row = await settings().get(LAST_SYNC_KEY);
   const value: unknown = row?.value;
   return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Email of the caller reported by the last pull, or `null` while the server never named one
+ * (§8). Stored under a local-only `sync.` key, so it never reaches the outbox or the backup.
+ */
+export async function sessionUser(): Promise<string | null> {
+  const row = await settings().get(SESSION_USER_KEY);
+  const value: unknown = row?.value;
+  return typeof value === 'string' && value !== '' ? value : null;
 }
 
 /**
@@ -407,6 +419,7 @@ function isPullPage(value: unknown): value is PullPage {
   return (
     typeof value.rev === 'number' &&
     typeof value.more === 'boolean' &&
+    (value.user === undefined || typeof value.user === 'string') &&
     Array.isArray(value.changes) &&
     value.changes.every(isPulledChange)
   );
@@ -436,6 +449,12 @@ function recordServerClock(now: unknown): void {
   const serverTime = Date.parse(now);
   if (Number.isNaN(serverTime)) return;
   serverClockSkewMs = serverTime - Date.now();
+}
+
+/** Persists the caller identity the server reported so Settings can name the session (§8). */
+async function recordSessionUser(user: unknown): Promise<void> {
+  if (typeof user !== 'string' || user === '') return;
+  await settings().put({ key: SESSION_USER_KEY, value: user });
 }
 
 async function readCursor(): Promise<number> {
