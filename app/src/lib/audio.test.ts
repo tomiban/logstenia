@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { playBeep, playSound, unlockAudio, vibrate } from './audio';
+import { playBeep, playSound, resetAudioForTesting, unlockAudio, vibrate } from './audio';
 
 function stubBeep(available: boolean, options: { throws?: boolean } = {}) {
   const oscillator = { connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0 } };
@@ -27,14 +27,16 @@ function stubBeep(available: boolean, options: { throws?: boolean } = {}) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  resetAudioForTesting();
 });
 
 describe('playBeep', () => {
   it('reports true when the Web Audio API plays the beep', () => {
-    const { oscillator } = stubBeep(true);
+    const { oscillator, gain } = stubBeep(true);
 
     expect(playBeep(0.2, 0.3)).toBe(true);
     expect(oscillator.start).toHaveBeenCalledOnce();
+    expect(gain.gain.value).toBe(0.3);
   });
 
   it('reports false when the browser has no AudioContext', () => {
@@ -114,5 +116,41 @@ describe('unlockAudio', () => {
     vi.stubGlobal('Audio', undefined);
 
     expect(unlockAudio()).toBe(false);
+  });
+
+  it('primes one muted element and restores its volume', () => {
+    const calls: string[] = [];
+    class PrimedAudio {
+      volume = 1;
+      play() {
+        calls.push(`play:${this.volume}`);
+        return Promise.resolve();
+      }
+      pause() {
+        calls.push(`pause:${this.volume}`);
+      }
+    }
+    vi.stubGlobal('Audio', PrimedAudio);
+
+    expect(unlockAudio()).toBe(true);
+    expect(calls).toEqual(['play:0', 'pause:0']);
+  });
+
+  it('primes the same element that later plays the sound', async () => {
+    const played: string[] = [];
+    class SharedAudio {
+      volume = 1;
+      play() {
+        played.push(`play:${this.volume}`);
+        return Promise.resolve();
+      }
+      pause() {}
+    }
+    vi.stubGlobal('Audio', SharedAudio);
+
+    unlockAudio();
+    await playSound(undefined, 0.8);
+
+    expect(played).toEqual(['play:0', 'play:0.8']);
   });
 });

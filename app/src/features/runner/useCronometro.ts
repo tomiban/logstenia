@@ -40,7 +40,7 @@ export function useCronometro(props: CronometroProps) {
     if (!preparando) return;
     if (countdown <= 0) {
       setPreparando(false);
-      if (!playBeep(0.2, 0.3)) setSinSonido(true);
+      setSinSonido(!playBeep(0.2, 0.3));
       vibrate([100]);
       setCorre(true);
       return;
@@ -65,13 +65,16 @@ export function useCronometro(props: CronometroProps) {
 
   useEffect(() => {
     if (!corre) setSeg(modo === 'descanso' ? inicio : 0);
-  }, [inicio, modo, corre]);
+    // Resets on a new objective or mode only: when the clock stops on its own the
+    // achieved time must stay on screen, so `corre` is deliberately not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inicio, modo]);
 
   useEffect(() => {
     if (modo !== 'crono' || !corre || !objetivo || seg < objetivo) return;
     setCorre(false);
     vibrate([180, 90, 180]);
-    if (!playBeep(0.3, 0.3)) setSinSonido(true);
+    setSinSonido(!playBeep(0.3, 0.3));
   }, [seg, corre, modo, objetivo]);
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export function useCronometro(props: CronometroProps) {
     setCorre(false);
     setAviso(true);
     vibrate([180, 90, 180]);
-    void playSound().then((played) => { if (!played) setSinSonido(true); });
+    void playSound().then((played) => setSinSonido(!played));
     finRef.current?.();
   }, [seg, corre, modo]);
 

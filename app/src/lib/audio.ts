@@ -54,11 +54,27 @@ export function vibrate(pattern: number | number[]): boolean {
   }
 }
 
+/**
+ * One element primes and plays the rest sound. Mobile browsers unlock autoplay
+ * per element, so reusing it is what keeps the sound working after a gesture.
+ */
+let restElement: HTMLAudioElement | null = null;
+
+function restAudio(src: string): HTMLAudioElement | null {
+  if (typeof Audio === 'undefined') return null;
+  try {
+    restElement ??= new Audio(src);
+    return restElement;
+  } catch {
+    return null;
+  }
+}
+
 /** Plays a local sound file. Resolves false when playback is blocked or unsupported. */
 export async function playSound(src: string = REST_SOUND, volume = 1): Promise<boolean> {
-  if (typeof Audio === 'undefined') return false;
+  const sound = restAudio(src);
+  if (!sound) return false;
   try {
-    const sound = new Audio(src);
     sound.volume = volume;
     await sound.play();
     return true;
@@ -73,9 +89,9 @@ export async function playSound(src: string = REST_SOUND, volume = 1): Promise<b
  * Returns false when the element cannot even be created.
  */
 export function unlockAudio(src: string = REST_SOUND): boolean {
-  if (typeof Audio === 'undefined') return false;
+  const sound = restAudio(src);
+  if (!sound) return false;
   try {
-    const sound = new Audio(src);
     sound.volume = 0;
     void sound.play().catch(() => false);
     sound.pause();
@@ -84,4 +100,9 @@ export function unlockAudio(src: string = REST_SOUND): boolean {
   } catch {
     return false;
   }
+}
+
+/** Testing seam: drops the shared element so a new stub can stand in for it. */
+export function resetAudioForTesting(): void {
+  restElement = null;
 }
