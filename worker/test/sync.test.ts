@@ -1,17 +1,25 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../src/index';
-
-const TEAM = 'logstenia';
-const AUD = 'aud-logstenia';
-const JWKS_URL = `https://${TEAM}.cloudflareaccess.com/cdn-cgi/access/certs`;
-const ISSUER = `https://${TEAM}.cloudflareaccess.com`;
+import {
+  AUD,
+  DEFAULT_EMAIL,
+  installAccessPlatform,
+  jwksFor,
+  JWKS_URL,
+  makeKeyPair,
+  MemoryCache,
+  signToken,
+  TEAM,
+  type JsonWebKeySet,
+  type PlatformState,
+} from './helpers/access';
 
 const T_OLD = '2026-10-20T17:55:00.000Z';
 const T_BASE = '2026-10-20T18:00:00.000Z';
 const T_NEW = '2026-10-20T18:05:00.000Z';
 
 const MAX_BODY_BYTES = 256 * 1024;
-const LOOKUP_PAIRS_PER_STATEMENT = 25;
+const LOOKUP_TRIPLES_PER_STATEMENT = 33;
 const D1_MAX_BOUND_PARAMS = 100;
 
 interface SyncChange {
@@ -45,6 +53,7 @@ interface Mutation {
 }
 
 interface StoredRow {
+  owner: string;
   entity: string;
   id: string;
   rev: number;
@@ -114,7 +123,8 @@ class FakeD1 {
   seed(rows: { entity: string; id: string; updatedAt: string; deletedAt?: string | null; row: unknown }[]): void {
     for (const row of rows) {
       this.rev += 1;
-      this.rows.set(rowKey(row.entity, row.id), {
+      this.rows.set(rowKey(DEFAULT_EMAIL, row.entity, row.id), {
+        owner: DEFAULT_EMAIL,
         entity: row.entity,
         id: row.id,
         rev: this.rev,
@@ -134,18 +144,19 @@ class FakeD1 {
 
     if (sql.startsWith(LOOKUP_PREFIX)) {
       const results: unknown[] = [];
-      for (let i = 0; i < params.length; i += 2) {
-        const stored = this.rows.get(rowKey(String(params[i]), String(params[i + 1])));
+      for (let i = 0; i < params.length; i += 3) {
+        const stored = this.rows.get(rowKey(String(params[i]), String(params[i + 1]), String(params[i + 2])));
         if (stored) results.push({ entity: stored.entity, id: stored.id, updated_at: stored.updatedAt });
       }
       return { results };
     }
 
     if (sql.startsWith(PAGE_PREFIX)) {
-      const since = Number(params[0]);
-      const limit = Number(params[1]);
+      const owner = String(params[0]);
+      const since = Number(params[1]);
+      const limit = Number(params[2]);
       const results = [...this.rows.values()]
-        .filter((row) => row.rev > since)
+        .filter((row) => row.owner === owner && row.rev > since)
         .sort((a, b) => a.rev - b.rev)
         .slice(0, limit)
         .map((row) => ({
@@ -165,9 +176,10 @@ class FakeD1 {
     }
 
     if (sql.startsWith(UPSERT_PREFIX)) {
-      const [entity, id, total, offset, updatedAt, deletedAt, payload] = params as string[];
+      const [owner, entity, id, total, offset, updatedAt, deletedAt, payload] = params as string[];
       const rev = this.rev - Number(total) + Number(offset);
-      this.rows.set(rowKey(String(entity), String(id)), {
+      this.rows.set(rowKey(String(owner), String(entity), String(id)), {
+        owner: String(owner),
         entity: String(entity),
         id: String(id),
         rev,
@@ -182,110 +194,19 @@ class FakeD1 {
   }
 }
 
-function rowKey(entity: string, id: string): string {
-  return `${entity}\u0000${id}`;
+function rowKey(owner: string, entity: string, id: string): string {
+  return `${owner}\u0000${entity}\u0000${id}`;
 }
 
-class MemoryCache {
-  private readonly entries = new Map<string, string>();
-
-  async match(request: Request | string): Promise<Response | undefined> {
-    const body = this.entries.get(cacheKey(request));
-    if (body === undefined) return undefined;
-    return new Response(body, { headers: { 'content-type': 'application/json' } });
-  }
-
-  async put(request: Request | string, response: Response): Promise<void> {
-    this.entries.set(cacheKey(request), await response.clone().text());
-  }
-
-  get size(): number {
-    return this.entries.size;
-  }
-}
-
-function cacheKey(request: Request | string): string {
-  return typeof request === 'string' ? request : request.url;
-}
-
-type JsonWebKeySet = { keys: (JsonWebKey & { kid?: string; alg?: string; use?: string })[] };
-
-const keyPairPromise = generateKeyPair();
-
-async function generateKeyPair(): Promise<CryptoKeyPair> {
-  return (await crypto.subtle.generateKey(
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: 'SHA-256',
-    },
-    true,
-    ['sign', 'verify'],
-  )) as CryptoKeyPair;
-}
-
-async function jwksFor(keyPair: CryptoKeyPair): Promise<JsonWebKeySet> {
-  const jwk = (await crypto.subtle.exportKey('jwk', keyPair.publicKey)) as JsonWebKey;
-  return { keys: [{ ...jwk, kid: 'test-kid', alg: 'RS256', use: 'sig' }] };
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function jsonToBase64Url(value: unknown): string {
-  return toBase64Url(new TextEncoder().encode(JSON.stringify(value)));
-}
-
-interface TokenClaims {
-  aud?: string | string[];
-  exp?: number;
-  iss?: string;
-}
-
-async function signToken(
-  key: CryptoKey,
-  claims: TokenClaims = {},
-  header: Record<string, unknown> = { alg: 'RS256', kid: 'test-kid', typ: 'JWT' },
-): Promise<string> {
-  const encodedHeader = jsonToBase64Url(header);
-  const encodedPayload = jsonToBase64Url({
-    aud: AUD,
-    iss: ISSUER,
-    exp: Math.floor(Date.now() / 1000) + 3600,
-    ...claims,
-  });
-  const signature = await crypto.subtle.sign(
-    { name: 'RSASSA-PKCS1-v1_5' },
-    key,
-    new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
-  );
-  return `${encodedHeader}.${encodedPayload}.${toBase64Url(new Uint8Array(signature))}`;
-}
+const keyPairPromise = makeKeyPair();
 
 let fetchCalls: string[] = [];
 let cache: MemoryCache;
 
 function installPlatform(jwks: JsonWebKeySet): void {
-  fetchCalls = [];
-  cache = new MemoryCache();
-  Object.defineProperty(globalThis, 'caches', {
-    value: { default: cache },
-    configurable: true,
-    writable: true,
-  });
-  globalThis.fetch = (async (input: Request | string | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    fetchCalls.push(url);
-    if (url !== JWKS_URL) throw new Error(`unexpected fetch: ${url}`);
-    return new Response(JSON.stringify(jwks), {
-      status: 200,
-      headers: { 'content-type': 'application/json', 'cache-control': 'max-age=3600' },
-    });
-  }) as typeof fetch;
+  const state: PlatformState = installAccessPlatform(jwks);
+  fetchCalls = state.fetchCalls;
+  cache = state.cache;
 }
 
 function envFor(db: FakeD1): { DB: D1Database; CF_ACCESS_TEAM: string; CF_ACCESS_AUD: string } {
@@ -341,7 +262,7 @@ describe('access verification', () => {
   });
 
   it('rejects a token signed by another key', async () => {
-    const other = await generateKeyPair();
+    const other = await makeKeyPair();
     const token = await signToken(other.privateKey);
 
     const response = await getSync(db, '', token);
@@ -602,12 +523,13 @@ describe('POST /api/sync', () => {
     expect(db.rows.size).toBe(500);
 
     const lookups = db.log.filter((statement) => statement.sql.startsWith(LOOKUP_PREFIX));
-    expect(lookups).toHaveLength(500 / LOOKUP_PAIRS_PER_STATEMENT);
+    expect(lookups).toHaveLength(Math.ceil(500 / LOOKUP_TRIPLES_PER_STATEMENT));
     for (const statement of db.log) {
       expect(statement.params.length).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMS);
     }
     for (const statement of lookups) {
-      expect(statement.params.length / 2).toBeLessThanOrEqual(LOOKUP_PAIRS_PER_STATEMENT);
+      expect(statement.params.length).toBeLessThanOrEqual(3 * LOOKUP_TRIPLES_PER_STATEMENT);
+      expect(statement.params.length / 3).toBeLessThanOrEqual(LOOKUP_TRIPLES_PER_STATEMENT);
     }
 
     const revs: number[] = [];
