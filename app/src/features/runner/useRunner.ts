@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { getModel } from '@/features/plans/plans';
 import type { SessionSet } from '@/repositories';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
+import type { ISessionRepository, ISettingsRepository } from '@/repositories';
 import { elapsedSeconds } from './session';
 import { buildSteps, type WorkoutStep } from './steps';
 import type { Exercise, Model, Program } from '@/types';
@@ -25,8 +26,55 @@ const BORRADOR_NO_GUARDADO = 'No se pudo guardar el borrador: si recargás la p�
 const SIN_SONIDO = 'El sonido del descanso no está disponible en este navegador.';
 const DATOS_NO_LEIDOS = 'No se pudieron leer los datos guardados de este dispositivo.';
 
-const sessionRepo = createSessionRepository();
-const settingsRepo = createSettingsRepository();
+/** The pre-rename storage key: read once so a workout in progress survives the upgrade. */
+const LEGACY_DRAFT_PREFIX = 'borrador:';
+
+function draftKey(modelId: string): string {
+  return `draft:${modelId}`;
+}
+
+/** Stable identity for React keys and draft rows, with a fallback for non-secure contexts. */
+function newId(): string {
+  const uuid = globalThis.crypto?.randomUUID;
+  return typeof uuid === 'function' ? uuid.call(globalThis.crypto) : `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Shape of the draft saved before the API rename; read once, then rewritten in the new shape. */
+interface LegacyDraft {
+  i?: number;
+  vals?: Record<string, SetValue[]>;
+  descansoHasta?: number | null;
+  descansoSegundos?: number;
+  descansoEtiqueta?: string;
+  descansoDestino?: RestDestination;
+}
+
+interface Draft {
+  i?: number;
+  values?: Record<string, SetValue[]>;
+  restUntil?: number | null;
+  restSeconds?: number;
+  restLabel?: string;
+  restDestination?: RestDestination;
+}
+
+/** Reads a draft in either shape: the current one, or the pre-rename one still on disk. */
+export function draftFrom(value: Draft | LegacyDraft): { draft: Draft; migrated: boolean } {
+  const current = value as Draft;
+  const legacy = value as LegacyDraft;
+  const migrated = legacy.vals !== undefined || legacy.descansoHasta !== undefined;
+  return {
+    migrated,
+    draft: {
+      i: current.i ?? legacy.i,
+      values: current.values ?? legacy.vals,
+      restUntil: current.restUntil ?? legacy.descansoHasta,
+      restSeconds: current.restSeconds ?? legacy.descansoSegundos,
+      restLabel: current.restLabel ?? legacy.descansoEtiqueta,
+      restDestination: current.restDestination ?? legacy.descansoDestino,
+    },
+  };
+}
 
 export interface RunnerProgression {
   report: ProgressionReport;
@@ -46,7 +94,7 @@ export interface SetValue {
 
 /** New empty set with its stable identity. */
 export function newSetValue(value = ''): SetValue {
-  return { id: crypto.randomUUID(), value };
+  return { id: newId(), value };
 }
 
 export interface RunnerState {
@@ -117,6 +165,9 @@ export function useRunner(): RunnerState {
   const program = res?.program;
 
   const steps: WorkoutStep[] = model ? buildSteps(model) : [];
+  const reposRef = useRef<{ sessions: ISessionRepository; settings: ISettingsRepository } | null>(null);
+  reposRef.current ??= { sessions: createSessionRepository(), settings: createSettingsRepository() };
+  const { sessions: sessionRepo, settings: settingsRepo } = reposRef.current;
 
   const [i, setStepIndex] = useState(0);
   const [values, setValues] = useState<Record<string, SetValue[]>>({});
@@ -164,16 +215,28 @@ export function useRunner(): RunnerState {
     (async () => {
       if (!model) return;
       try {
-        const r = await settingsRepo.get(`draft:${model.id}`);
-        if (r?.value) {
-          const d = r.value;
-          if (d.i != null) setStepIndex(d.i);
-          if (d.values) setValues(d.values.map((v: SetValue) => ({ ...newSetValue(v.value ?? ''), id: v.id ?? crypto.randomUUID() })));
-          if (d.restUntil && d.restUntil > Date.now()) {
-            setRestUntil(d.restUntil);
-            setRestSeconds(d.restSeconds ?? 0);
-            setRestLabel(d.restLabel ?? 'Descanso');
-            setRestDestination(d.restDestination ?? null);
+        const current = await settingsRepo.get(draftKey(model.id));
+        const legacy = current ? undefined : await settingsRepo.get(`${LEGACY_DRAFT_PREFIX}${model.id}`);
+        const stored = current ?? legacy;
+        if (stored?.value) {
+          const { draft, migrated } = draftFrom(stored.value);
+          if (draft.i != null) setStepIndex(draft.i);
+          if (draft.values) {
+            const restored: Record<string, SetValue[]> = {};
+            for (const [key, list] of Object.entries(draft.values)) {
+              restored[key] = (list as SetValue[]).map((v) => ({ ...newSetValue(v.value ?? ''), id: v.id ?? newId() }));
+            }
+            setValues(restored);
+          }
+          if (draft.restUntil && draft.restUntil > Date.now()) {
+            setRestUntil(draft.restUntil);
+            setRestSeconds(draft.restSeconds ?? 0);
+            setRestLabel(draft.restLabel ?? 'Descanso');
+            setRestDestination(draft.restDestination ?? null);
+          }
+          if (migrated) {
+            await settingsRepo.put({ key: draftKey(model.id), value: { ...draft, values: draft.values ?? {} } });
+            await settingsRepo.delete(`${LEGACY_DRAFT_PREFIX}${model.id}`);
           }
         }
       } catch {
@@ -187,7 +250,7 @@ export function useRunner(): RunnerState {
   useEffect(() => {
     if (!draftLoaded || !model) return;
     settingsRepo.put({
-      key: `draft:${model.id}`,
+      key: draftKey(model.id),
       value: { i, values, restUntil, restSeconds, restLabel, restDestination },
     }).catch(() => setErrorMessage(BORRADOR_NO_GUARDADO));
   }, [i, values, restUntil, restSeconds, restLabel, restDestination, draftLoaded, model]);
@@ -216,7 +279,7 @@ export function useRunner(): RunnerState {
         completed: true,
         sets: setsRef.current,
       });
-      await settingsRepo.delete(`draft:${model!.id}`);
+      await settingsRepo.delete(draftKey(model!.id));
       startedAtRef.current = Date.now();
     } catch {
       setErrorMessage(SESION_NO_GUARDADA);
