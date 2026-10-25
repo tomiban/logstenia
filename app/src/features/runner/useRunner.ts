@@ -12,11 +12,9 @@ import { seriesCount } from './rest';
 import { num, buscarSerie, esUltimaVuelta, rondaCompleta } from './runnerLogic';
 import { toISODate } from '@/lib/date';
 import { progressionReportFor, touchedAnchors, type ProgressionReport } from '@/features/plans/progression';
-import { useBeep } from '@/hooks/useBeep';
+import { playBeep, playSound, unlockAudio, vibrate } from '@/lib/audio';
 import { useWakeLock } from '@/hooks/useWakeLock';
-import { useVibration } from '@/hooks/useVibration';
 import { useCountdown } from '@/hooks/useCountdown';
-import { desbloquearAudio } from './Cronometro';
 
 export type Mark = 'pr' | 'first';
 export type RestDestination = { index: number } | { finished: true } | null;
@@ -300,19 +298,11 @@ export function useRunner(): RunnerState {
     skipDialogRef.current?.focus();
   }, [skipDialog]);
 
-  const vibrate = useVibration();
-  const playBeep = useBeep();
   useWakeLock(true);
 
   /** Best-effort sound cue: a blocked or missing audio device reports once and the timer keeps running. */
   const playRestEndSound = () => {
-    try {
-      const audio = new Audio('/sounds/item-found.mp3');
-      audio.volume = 1;
-      void audio.play().catch(() => setErrorMessage(SIN_SONIDO));
-    } catch {
-      setErrorMessage(SIN_SONIDO);
-    }
+    void playSound().then((played) => { if (!played) setErrorMessage(SIN_SONIDO); });
   };
 
   const handleExpire = () => {
@@ -331,7 +321,7 @@ export function useRunner(): RunnerState {
 
   const startRest = (seconds: number, label: string, destination: RestDestination) => {
     if (seconds <= 0) return;
-    desbloquearAudio();
+    unlockAudio();
     setRestSeconds(seconds);
     setRestLabel(label);
     setRestDestination(destination);
