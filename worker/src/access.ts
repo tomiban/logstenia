@@ -62,9 +62,14 @@ export function isDevAuthBypass(request: Request, env: AccessEnv): boolean {
   return LOOPBACK_HOSTS.has(new URL(request.url).hostname);
 }
 
-/** The single place an owner string is derived, so casing can never fork a person's rows. */
+/**
+ * The single place an owner string is derived, so casing or Unicode form can never fork a
+ * person's rows. `normalize('NFC')` matters as much as the case fold: the same accented
+ * address arrives composed (NFC) from one source and decomposed (NFD) from another, and
+ * `toLowerCase()` alone leaves those as two different owners.
+ */
 export function normalizeEmail(raw: string): string {
-  return raw.trim().toLowerCase();
+  return raw.trim().normalize('NFC').toLowerCase();
 }
 
 /**

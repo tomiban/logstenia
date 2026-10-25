@@ -13,6 +13,14 @@ describe('normalizeOwner', () => {
   it('lowercases accented uppercase with JavaScript rules, like the Worker', () => {
     expect(normalizeOwner('  Ñoña@Ejemplo.com ')).toBe('ñoña@ejemplo.com');
   });
+
+  it('folds the composed and decomposed spellings into the same owner', () => {
+    const composed = 'Mu\u00f1oz@Ejemplo.com';
+    const decomposed = 'Mun\u0303oz@Ejemplo.com';
+    expect(decomposed).not.toBe(composed);
+    expect(normalizeOwner(decomposed)).toBe(normalizeOwner(composed));
+    expect(normalizeOwner(decomposed)).toBe('mu\u00f1oz@ejemplo.com');
+  });
 });
 
 describe('buildUpdateCommand', () => {

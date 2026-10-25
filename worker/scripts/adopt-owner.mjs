@@ -20,9 +20,13 @@ const LOCAL_FLAG = '--local';
 const REMOTE_FLAG = '--remote';
 const USAGE = 'npm run adopt -- tu@email.com [--local]';
 
-/** Same rule as `normalizeEmail` in `src/access.ts`: one place, no variants. */
+/**
+ * Same rule as `normalizeEmail` in `src/access.ts`: one place, no variants. The Unicode form
+ * is folded too, or an accented address arrives composed here and decomposed from the JWT
+ * and the adopted rows become unreachable.
+ */
 export function normalizeOwner(raw) {
-  return raw.trim().toLowerCase();
+  return raw.trim().normalize('NFC').toLowerCase();
 }
 
 export function buildUpdateCommand(owner) {

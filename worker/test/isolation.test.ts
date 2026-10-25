@@ -74,6 +74,17 @@ describe('owner isolation', () => {
     expect(page.changes.map((change) => change.id)).toEqual(['s-a']);
   });
 
+  it('treats the composed and decomposed spellings of an accented email as one owner', async () => {
+    const composed = 'mu\u00f1oz@ejemplo.com';
+    const decomposed = 'mun\u0303oz@ejemplo.com';
+    expect(decomposed).not.toBe(composed);
+
+    await push(db, decomposed, [mutation('s-unicode', 'U')]);
+    const page = await pull(db, composed);
+
+    expect(page.changes.map((change) => change.id)).toEqual(['s-unicode']);
+  });
+
   it('rejects a token without an email claim instead of writing an unscoped row', async () => {
     const response = await app.request(
       '/api/sync',

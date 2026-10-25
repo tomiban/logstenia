@@ -132,3 +132,17 @@ single-user. Hallazgos y destino:
 
 L12 (e2e completo): `npm run test:e2e` → 34/34 en verde. Los `ECONNREFUSED` de `/api/sync` en
 los logs son esperados: esa suite no levanta el Worker y el engine reintenta en background.
+
+L13 (review nativo, `approved` y burned): el review del candidato (37 archivos, 3093 líneas, tier
+`high`, 4 lenses + refuter) cerró aprobado con receipt `gentle-ai.review-acknowledged/v1` y siete
+hallazgos non-blocking. Uno era real y se corrigió enseguida:
+
+- **R1-1 (risk, WARNING → corregido)**: `toLowerCase()` no unifica la **forma Unicode**. El mismo
+  email acentuado llega compuesto (NFC) desde una fuente y descompuesto (NFD) desde otra, así que
+  `normalizeEmail` y el script de adopción derivaban dos owners distintos para la misma persona y
+  las filas adoptadas quedaban inalcanzables: el mismo síntoma de F1 por otra puerta. Ambos pliegan
+  a NFC ahora, y un test compara las dos formas (sin el pliegue, el servidor ve dos dueños).
+- **R3-sessionUserLine-dead-render (CRITICAL → refutado)**: el refuter lo descartó y la lectura
+  propia lo confirmó, la línea se renderiza condicionalmente.
+- **R2-001/002/003 (readability), R3-e2e, R4 (resilience)**: trabajo posterior no bloqueante, sin
+  corrección abierta.
