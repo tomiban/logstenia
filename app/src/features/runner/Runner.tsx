@@ -193,7 +193,7 @@ function BloqueNivel({ progression }: { progression: RunnerProgression | null })
         <div className="space-y-2 border border-border bg-secondary p-3">
           <p className="label-caps text-foreground">Todavía no desbloqueás {report.next.name}</p>
           <CriteriaList anchors={report.missing} />
-          <p className="label-caps text-muted-foreground">Volvé a tomar las marks cuando las superes.</p>
+          <p className="label-caps text-muted-foreground">Volvé a tomar las marcas cuando las superes.</p>
         </div>
       </div>
     );
