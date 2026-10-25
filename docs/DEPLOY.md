@@ -34,6 +34,49 @@ npx wrangler d1 migrations apply logstenia-sync --remote
 
 Crea `rows`, `meta` y deja `rev = 0`, según `worker/migrations/0001_init.sql`.
 
+### Migración multiusuario (`0002_owner.sql`)
+
+`0002` reconstruye `rows` con la clave primaria `(owner, entity, id)` y deja las filas
+existentes bajo el marcador `legacy@local`, que ninguna identidad de Access puede presentar.
+La adopción al dueño real es un paso explícito del deploy, con el email pasado a mano (nunca
+commiteado). La hace un script, **no** un `UPDATE` escrito a mano: `lower()` en SQLite sólo
+baja ASCII, así que `Ñoña@Ejemplo.com` quedaba como `Ñoña@ejemplo.com` mientras la app deriva
+`ñoña@ejemplo.com` — filas adoptadas inalcanzables para su dueño y un `COUNT(*)` que igual
+mostraba un dueño sano. `npm run adopt` normaliza en JavaScript con la misma regla que el
+Worker (`trim()` + `toLowerCase()`), ejecuta el `UPDATE` escapando comillas y verifica el
+resultado por owner.
+
+```bash
+cd worker
+
+# 1. Copia de seguridad desde Ajustes -> Exportar JSON, antes de tocar nada.
+
+# 2. Aplicar el esquema nuevo.
+npx wrangler d1 migrations apply logstenia-sync --remote
+
+# 3. Adoptar las filas del único usuario existente. Reemplazá el email.
+npm run adopt -- tu@email.com
+
+#    Contra la D1 local, en desarrollo:
+npm run adopt -- tu@email.com --local
+```
+
+El script imprime la tabla de filas por owner y sale con código distinto de cero si queda
+alguna fila en `legacy@local` o con un owner que el Worker nunca podría derivar. La
+verificación equivalente, a mano, sigue siendo:
+
+```bash
+npx wrangler d1 execute logstenia-sync --remote \
+  --command "SELECT owner, COUNT(*) AS total FROM rows GROUP BY owner"
+```
+
+Las revisiones (`rev`) se copian sin cambios, así que el primer pull de cada dispositivo es
+un no-op y nadie pierde el cursor.
+
+**Recién después de verificar el aislamiento** agregá el resto de los emails a la política de
+Access (§3). Habilitarlos antes de este paso deja a todas las personas escribiendo el mismo
+conjunto de filas.
+
 ## 3. Activar Access sobre el Worker
 
 Workers & Pages → tu Worker → pestaña **Access** → habilitar y elegir la política
