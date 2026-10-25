@@ -50,6 +50,22 @@ async function seedLegacyDatabase(name: string): Promise<void> {
   db.close();
 }
 
+/** A v1004 database whose `plans` store still holds the legacy single document. */
+async function seedPlansStore(name: string, rows: Record<string, unknown>[]): Promise<void> {
+  const db = await idbOpenDB(name, 1004, {
+    upgrade: (upgradeDb) => {
+      upgradeDb.createObjectStore('plans', { keyPath: 'id' });
+    },
+  });
+  for (const row of rows) await db.put('plans', row);
+  db.close();
+}
+
+const legacyCategories = [
+  { id: 'cardio', name: 'Cardio', description: 'Resistencia', programs: [] },
+  { id: 'movilidad', name: 'Movilidad', description: 'Rango articular', programs: [] },
+];
+
 function openAtLatest(name: string) {
   return idbOpenDB(name, DB_VERSION, {
     upgrade(db, oldVersion, _newVersion, tx) {
@@ -163,6 +179,73 @@ describe('schema v1004 migration (fixture DB)', () => {
     const sessions = await db.getAll('sessions');
     expect(sessions).toHaveLength(1);
     expect(sessions[0].id).toBe(id);
+
+    db.close();
+  });
+});
+
+interface PlansMigrationRow {
+  id: string;
+  category?: typeof legacyCategories[number];
+  position?: number;
+  updatedAt?: string;
+  deletedAt?: string | null;
+  version?: number;
+}
+
+function categoryRowsOf(rows: PlansMigrationRow[]): PlansMigrationRow[] {
+  return rows
+    .filter((row) => row.category != null)
+    .sort((a, b) => (a.position ?? -1) - (b.position ?? -1));
+}
+
+describe('schema v1005 plans migration (one row per category)', () => {
+  it('splits the legacy root document into ordered category rows', async () => {
+    await seedPlansStore('migrate-plans-root', [
+      { id: 'root', data: { categories: legacyCategories } },
+      { id: 'video-catalog-version', version: 1 },
+    ]);
+
+    const db = await openAtLatest('migrate-plans-root');
+    const rows = (await db.getAll('plans')) as PlansMigrationRow[];
+    const categoryRows = categoryRowsOf(rows);
+
+    expect(categoryRows).toHaveLength(2);
+    expect(categoryRows.map((row) => row.id)).toEqual(['cardio', 'movilidad']);
+    expect(categoryRows.map((row) => row.position)).toEqual([0, 1]);
+    expect(categoryRows.map((row) => row.category)).toEqual(legacyCategories);
+    for (const row of categoryRows) {
+      expect(typeof row.updatedAt).toBe('string');
+      expect(Number.isNaN(Date.parse(row.updatedAt ?? ''))).toBe(false);
+      expect(row.deletedAt).toBeNull();
+    }
+
+    expect(await db.get('plans', 'root')).toBeUndefined();
+    expect(rows.some((row) => row.id === 'root')).toBe(false);
+    expect((await db.get('plans', 'video-catalog-version'))?.version).toBe(1);
+
+    db.close();
+  });
+
+  it('does not re-migrate a database that already holds category rows', async () => {
+    const migratedAt = '2000-01-01T00:00:00.000Z';
+    await seedPlansStore('migrate-plans-idempotent', [
+      { id: 'root', data: { categories: [{ id: 'cardio', name: 'Old copy', description: '', programs: [] }] } },
+      { id: 'cardio', category: legacyCategories[0], position: 0, updatedAt: migratedAt, deletedAt: null },
+      { id: 'movilidad', category: legacyCategories[1], position: 1, updatedAt: migratedAt, deletedAt: null },
+      { id: 'video-catalog-version', version: 3 },
+    ]);
+
+    const db = await openAtLatest('migrate-plans-idempotent');
+    const rows = (await db.getAll('plans')) as PlansMigrationRow[];
+    const categoryRows = categoryRowsOf(rows);
+
+    expect(categoryRows).toHaveLength(2);
+    expect(categoryRows.map((row) => row.id)).toEqual(['cardio', 'movilidad']);
+    expect(categoryRows.map((row) => row.updatedAt)).toEqual([migratedAt, migratedAt]);
+    expect(categoryRows.map((row) => row.category)).toEqual(legacyCategories);
+    expect(await db.get('plans', 'root')).toBeUndefined();
+    expect((await db.get('plans', 'video-catalog-version'))?.version).toBe(3);
 
     db.close();
   });
