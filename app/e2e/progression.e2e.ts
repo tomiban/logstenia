@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// fuerza-principiantes-benchmark: 5 bloques de un ejercicio, una serie cada uno y sin descanso.
-const RUTINA = 'fuerza-principiantes-benchmark';
-const EJERCICIOS = [
+// fuerza-principiantes-benchmark: 5 single-exercise blocks, one set each, no rest.
+const ROUTINE = 'fuerza-principiantes-benchmark';
+const EXERCISES = [
   'Dominadas pronas',
   'Fondos en paralelas',
   'Australian pull ups',
@@ -10,13 +10,13 @@ const EJERCICIOS = [
   'Leg raises colgado',
 ];
 
-async function correrBenchmark(page: Page, reps: string[]) {
-  await page.goto(`/run/${RUTINA}`);
+async function runBenchmark(page: Page, reps: string[]) {
+  await page.goto(`/run/${ROUTINE}`);
 
   for (let i = 0; i < reps.length; i++) {
-    await expect(page.getByRole('heading', { name: EJERCICIOS[i] })).toBeVisible();
+    await expect(page.getByRole('heading', { name: EXERCISES[i] })).toBeVisible();
 
-    // La rutina no tiene descanso: ningún diálogo debe tapar el registro.
+    // The routine has no rest: no dialog should cover the set registration.
     await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
 
     await page.getByPlaceholder('reps').first().fill(reps[i]);
@@ -24,10 +24,10 @@ async function correrBenchmark(page: Page, reps: string[]) {
 
     await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
 
-    const esUltimo = i === reps.length - 1;
-    await page.getByRole('button', { name: esUltimo ? 'Finalizar entrenamiento' : 'Siguiente' }).click();
+    const isLast = i === reps.length - 1;
+    await page.getByRole('button', { name: isLast ? 'Finalizar' : 'Siguiente', exact: true }).click();
 
-    if (!esUltimo) {
+    if (!isLast) {
       await expect(page.getByRole('dialog', { name: 'Descanso en curso' })).toHaveCount(0);
       await expect(page.getByRole('dialog', { name: 'series sin registrar' })).toHaveCount(0);
     }
@@ -35,7 +35,7 @@ async function correrBenchmark(page: Page, reps: string[]) {
 }
 
 test('avanzar de nivel avisa, abre el nivel siguiente y lo marca completado', async ({ page }) => {
-  await correrBenchmark(page, ['10', '10', '15', '8', '8']);
+  await runBenchmark(page, ['10', '10', '15', '8', '8']);
 
   await expect(page.getByText('Nivel desbloqueado', { exact: true })).toBeVisible();
   await expect(page.getByText('Fuerza Intermedia', { exact: true })).toBeVisible();
@@ -51,20 +51,20 @@ test('avanzar de nivel avisa, abre el nivel siguiente y lo marca completado', as
   await expect(page.locator('header').getByText('completado', { exact: true })).toBeVisible();
 
   await page.goto('/skill/fuerza');
-  const tarjetaPrincipiante = page
+  const beginnerCard = page
     .getByRole('link', { name: /Fuerza Principiante/ })
     .filter({ has: page.getByRole('heading', { name: 'Fuerza Principiante' }) });
-  await expect(tarjetaPrincipiante).toContainText('completado');
+  await expect(beginnerCard).toContainText('completado');
 });
 
 test('no avanzar avisa qué marcas faltan', async ({ page }) => {
-  await correrBenchmark(page, ['1', '1', '1', '1', '1']);
+  await runBenchmark(page, ['1', '1', '1', '1', '1']);
 
   await expect(page.getByText('Todavía no desbloqueás Fuerza Intermedia', { exact: true })).toBeVisible();
 
-  const dominadas = page.locator('li').filter({ hasText: 'Dominadas pronas' });
-  await expect(dominadas).toHaveCount(1);
-  await expect(dominadas).toContainText('(mejor: 1)');
+  const pullUps = page.locator('li').filter({ hasText: 'Dominadas pronas' });
+  await expect(pullUps).toHaveCount(1);
+  await expect(pullUps).toContainText('(mejor: 1)');
 
   await expect(page.getByText('Nivel desbloqueado', { exact: true })).toHaveCount(0);
 });
