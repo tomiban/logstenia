@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toISODate, toISOTimestamp, toLocalISODate, formatShort, formatLong } from './date';
+import { toISODate, toISOTimestamp, toLocalISODate, formatShort, formatLong, formatDayMonth } from './date';
 
 describe('date helpers', () => {
   it('toISODate returns YYYY-MM-DD in UTC', () => {
@@ -23,5 +23,16 @@ describe('date helpers', () => {
   });
   it('formatLong returns non-empty string', () => {
     expect(formatLong(new Date('2024-05-10T12:00:00.000Z')).length).toBeGreaterThan(0);
+  });
+});
+
+describe('formatDayMonth', () => {
+  it('renders a stored ISO day as dd/mm', () => {
+    expect(formatDayMonth('2026-10-31')).toBe('31/10');
+    expect(formatDayMonth('2026-01-05')).toBe('05/01');
+  });
+  it('leaves anything that is not an ISO day untouched', () => {
+    expect(formatDayMonth('')).toBe('');
+    expect(formatDayMonth('31/10')).toBe('31/10');
   });
 });
