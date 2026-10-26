@@ -265,7 +265,7 @@ export default function Skill() {
                 const level = progression.reportFor(pid)?.levels.find((l) => l.id === pid) ?? null;
                 return (
                 <span key={pid} className="flex items-center gap-2">
-                  <Link to={`/program/${pid}`} className="px-3 py-2 border border-ink bg-accent text-on-accent text-sm font-semibold hover:opacity-90">
+                  <Link to={`/program/${pid}`} className="px-3 py-2 border border-border bg-card text-foreground text-sm font-semibold transition-colors hover:border-ink">
                     {getProgram(pid)?.name ?? pid}
                     <span className="ml-2 label-caps">{LEVEL_LABEL[getProgram(pid)?.level ?? ''] ?? getProgram(pid)?.level}</span>
                     {level?.completed && <span className="ml-2 label-caps">completado</span>}

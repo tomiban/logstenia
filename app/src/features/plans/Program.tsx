@@ -263,8 +263,8 @@ export default function Program() {
       </AlertDialog>
 
       {!started && (
-        <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
-          <span className="text-sm text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
+        <div className="border border-ink bg-card p-3 flex items-center justify-between gap-3">
+          <span className="text-sm text-foreground">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
           <Button variant="ink" size="lg" disabled={!unlocked} onClick={async () => {
             try {
               const r = await settingsRepository.get('startedPlans');

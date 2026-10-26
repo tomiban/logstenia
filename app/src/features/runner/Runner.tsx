@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,7 +102,7 @@ function ExerciseStep({
                 </div>
               ) : (
                 <div className={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : ''}>
-                  <Input type="number" className="h-9 w-24" value={v.value || ''} onChange={(e) => setAt(i, e.target.value)} placeholder="reps" />
+                  <Input type="number" className="h-11 w-24" value={v.value || ''} onChange={(e) => setAt(i, e.target.value)} placeholder="reps" />
                 </div>
               )}
               {enabled && v.value && (
@@ -236,7 +236,7 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
         <span className="label-caps text-foreground">Entrenamiento terminado · {rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
         <Button variant="ghost" size="sm" onClick={onBack}>volver</Button>
       </div>
-      <div className="p-4 space-y-3">
+      <CardContent className="space-y-3">
         <BloqueNivel progression={progression} />
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">no registraste series en este entrenamiento</p>
@@ -256,7 +256,7 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
           ))
         )}
         <p className="label-caps text-muted-foreground">guardado en este navegador</p>
-      </div>
+      </CardContent>
     </Card>
   );
 }
@@ -311,7 +311,7 @@ export default function Runner() {
       </div>
 
       <Card>
-        <div className="p-4 space-y-6">
+        <CardContent className="space-y-6">
           {current.exercises.map((ex, ei) => {
             const exStep = {
               blockIdx: current.blockIdx,
@@ -338,7 +338,7 @@ export default function Runner() {
               />
             );
           })}
-        </div>
+        </CardContent>
       </Card>
 
       {r.skipDialog && (
