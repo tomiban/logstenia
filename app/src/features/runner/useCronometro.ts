@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useWakeLock } from '@/hooks/useWakeLock';
+import { playBeep, playSound, unlockAudio, vibrate } from '@/lib/audio';
 
 export type Modo = 'crono' | 'descanso';
 
@@ -15,16 +17,6 @@ export interface CronometroProps {
 export const fmt = (s: number): string =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-let audio: HTMLAudioElement | null = null;
-
-export function desbloquearAudio(): void {
-  audio = audio || new Audio('/sounds/item-found.mp3');
-  audio.volume = 0;
-  audio.play().catch(() => {});
-  audio.pause();
-  audio.volume = 1;
-}
-
 export function useCronometro(props: CronometroProps) {
   const modo: Modo = props.modo ?? 'crono';
   const inicio = props.inicio ?? 60;
@@ -39,25 +31,17 @@ export function useCronometro(props: CronometroProps) {
   const [aviso, setAviso] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const fin = useRef(onFin);
-  fin.current = onFin;
+  const [sinSonido, setSinSonido] = useState(false);
+  const finRef = useRef(onFin);
+  finRef.current = onFin;
+  useWakeLock(corre);
 
   useEffect(() => {
     if (!preparando) return;
     if (countdown <= 0) {
       setPreparando(false);
-      try {
-        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (Ctx) {
-          const ctx = new Ctx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.frequency.value = 880; gain.gain.value = 0.3;
-          osc.start(); osc.stop(ctx.currentTime + 0.2);
-        }
-      } catch {}
-      (navigator as any).vibrate?.([100]);
+      setSinSonido(!playBeep(0.2, 0.3));
+      vibrate([100]);
       setCorre(true);
       return;
     }
@@ -74,52 +58,41 @@ export function useCronometro(props: CronometroProps) {
       setSeg(modo === 'descanso' ? Math.max(0, s0 - d) : s0 + d);
     }, 250);
     return () => clearInterval(id);
+    // The interval captures the start value on purpose: it only restarts when
+    // the clock starts or the mode changes, never on every tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [corre, modo]);
 
   useEffect(() => {
-    if (!corre || !('wakeLock' in navigator)) return;
-    let lock: any = null;
-    (navigator as any).wakeLock.request('screen').then((l: any) => { lock = l; }).catch(() => {});
-    return () => lock?.release?.().catch(() => {});
-  }, [corre]);
-
-  useEffect(() => {
     if (!corre) setSeg(modo === 'descanso' ? inicio : 0);
+    // Resets on a new objective or mode only: when the clock stops on its own the
+    // achieved time must stay on screen, so `corre` is deliberately not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inicio, modo]);
 
   useEffect(() => {
     if (modo !== 'crono' || !corre || !objetivo || seg < objetivo) return;
     setCorre(false);
-    (navigator as any).vibrate?.([180, 90, 180]);
-    try {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (Ctx) {
-        const ctx = new Ctx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 880; gain.gain.value = 0.3;
-        osc.start(); osc.stop(ctx.currentTime + 0.3);
-      }
-    } catch {}
+    vibrate([180, 90, 180]);
+    setSinSonido(!playBeep(0.3, 0.3));
   }, [seg, corre, modo, objetivo]);
 
   useEffect(() => {
     if (modo !== 'descanso' || !corre || seg > 0) return;
     setCorre(false);
     setAviso(true);
-    (navigator as any).vibrate?.([180, 90, 180]);
-    audio = audio || new Audio('/sounds/item-found.mp3');
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-    fin.current?.();
+    vibrate([180, 90, 180]);
+    void playSound().then((played) => setSinSonido(!played));
+    finRef.current?.();
   }, [seg, corre, modo]);
 
   const agotado = modo === 'descanso' && seg <= 0;
 
   const reset = () => {
-    setCorre(false); setAviso(false); setPreparando(false); setCountdown(0);
+    setCorre(false);
+    setAviso(false);
+    setPreparando(false);
+    setCountdown(0);
     setSeg(modo === 'descanso' ? inicio : 0);
   };
 
@@ -129,6 +102,7 @@ export function useCronometro(props: CronometroProps) {
       setPreparando(true);
       setCountdown(3);
     } else {
+      unlockAudio();
       setCorre(true);
     }
   };
@@ -150,5 +124,6 @@ export function useCronometro(props: CronometroProps) {
     usarDisabled,
     objetivo,
     modo,
+    sinSonido,
   };
 }

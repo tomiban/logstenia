@@ -3,51 +3,95 @@ import { useParams } from 'react-router-dom';
 import { getModel } from '@/features/plans/plans';
 import type { SessionSet } from '@/repositories';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
+import type { ISessionRepository, ISettingsRepository } from '@/repositories';
 import { elapsedSeconds } from './session';
 import { buildSteps, type WorkoutStep } from './steps';
 import type { Exercise, Model, Program } from '@/types';
 import { seriesCount } from './rest';
 import { num, buscarSerie, esUltimaVuelta, rondaCompleta } from './runnerLogic';
 import { toISODate } from '@/lib/date';
-import { useBeep } from '@/hooks/useBeep';
+import { progressionReportFor, touchedAnchors, type ProgressionReport } from '@/features/plans/progression';
+import { playBeep, playSound, unlockAudio, vibrate } from '@/lib/audio';
 import { useWakeLock } from '@/hooks/useWakeLock';
-import { useVibration } from '@/hooks/useVibration';
 import { useCountdown } from '@/hooks/useCountdown';
-import { desbloquearAudio } from './Cronometro';
 
-const sessionRepo = createSessionRepository();
-const settingsRepo = createSettingsRepository();
-const CUE_PATH = '/sounds/item-found.mp3';
+export type Mark = 'pr' | 'first';
+export type RestDestination = { index: number } | { finished: true } | null;
 
-export type Marca = 'pr' | 'primera';
-export type Destino = { indice: number } | { fin: true } | null;
+const SESION_NO_GUARDADA = 'No se pudo guardar la sesión en este dispositivo.';
+const BORRADOR_NO_GUARDADO = 'No se pudo guardar el borrador: si recargás la página podés perder el entrenamiento en curso.';
+const SIN_SONIDO = 'El sonido del descanso no está disponible en este navegador.';
+const DATOS_NO_LEIDOS = 'No se pudieron leer los datos guardados de este dispositivo.';
 
-export interface SerieValor {
-  value: string;
+/** The pre-rename storage key: read once so a workout in progress survives the upgrade. */
+const LEGACY_DRAFT_PREFIX = 'borrador:';
+
+function draftKey(modelId: string): string {
+  return `draft:${modelId}`;
 }
 
-/** Draft persisted under `borrador:<modelId>`; fields stay optional for drafts written by older builds. */
-export interface RunnerDraft {
+/** Stable identity for React keys and draft rows, with a fallback for non-secure contexts. */
+function newId(): string {
+  const uuid = globalThis.crypto?.randomUUID;
+  return typeof uuid === 'function' ? uuid.call(globalThis.crypto) : `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Shape of the draft saved before the API rename; read once, then rewritten in the new shape. */
+interface LegacyDraft {
   i?: number;
-  vals?: Record<string, SerieValor[]>;
+  vals?: Record<string, SetValue[]>;
   descansoHasta?: number | null;
   descansoSegundos?: number;
   descansoEtiqueta?: string;
-  descansoDestino?: Destino | null;
+  descansoDestino?: RestDestination;
 }
 
-function asRunnerDraft(value: unknown): RunnerDraft | undefined {
-  return typeof value === 'object' && value !== null ? (value as RunnerDraft) : undefined;
+interface Draft {
+  i?: number;
+  values?: Record<string, SetValue[]>;
+  restUntil?: number | null;
+  restSeconds?: number;
+  restLabel?: string;
+  restDestination?: RestDestination;
 }
 
-/** The cue is cosmetic: no audio support and a throwing constructor both just mean "no beep". */
-function createCueAudio(): HTMLAudioElement | null {
-  if (typeof Audio === 'undefined') return null;
-  try {
-    return new Audio(CUE_PATH);
-  } catch {
-    return null;
-  }
+/** Reads a draft in either shape: the current one, or the pre-rename one still on disk. */
+export function draftFrom(value: Draft | LegacyDraft): { draft: Draft; migrated: boolean } {
+  const current = value as Draft;
+  const legacy = value as LegacyDraft;
+  const migrated = legacy.vals !== undefined || legacy.descansoHasta !== undefined;
+  return {
+    migrated,
+    draft: {
+      i: current.i ?? legacy.i,
+      values: current.values ?? legacy.vals,
+      restUntil: current.restUntil ?? legacy.descansoHasta,
+      restSeconds: current.restSeconds ?? legacy.descansoSegundos,
+      restLabel: current.restLabel ?? legacy.descansoEtiqueta,
+      restDestination: current.restDestination ?? legacy.descansoDestino,
+    },
+  };
+}
+
+export interface RunnerProgression {
+  report: ProgressionReport;
+  /** The next level was locked before this session and is unlocked now. */
+  advanced: boolean;
+  /** This session completed the level. */
+  completedNow: boolean;
+  /** The session registered marks that belong to the next level's criteria. */
+  touchedCriteria: boolean;
+}
+
+export interface SetValue {
+  /** Stable identity so React keys survive adding and removing sets. */
+  id: string;
+  value: string;
+}
+
+/** New empty set with its stable identity. */
+export function newSetValue(value = ''): SetValue {
+  return { id: newId(), value };
 }
 
 export interface RunnerState {
@@ -59,57 +103,56 @@ export interface RunnerState {
 
   // State
   i: number;
-  setI: (v: number) => void;
-  vals: Record<string, SerieValor[]>;
-  setVals: (v: Record<string, SerieValor[]> | ((prev: Record<string, SerieValor[]>) => Record<string, SerieValor[]>)) => void;
+  setStepIndex: (v: number) => void;
+  values: Record<string, SetValue[]>;
+  setValues: (v: Record<string, SetValue[]> | ((prev: Record<string, SetValue[]>) => Record<string, SetValue[]>)) => void;
   allSets: SessionSet[];
   setAllSets: (v: SessionSet[]) => void;
-  marcas: Record<string, Marca>;
-  setMarcas: (v: Record<string, Marca> | ((prev: Record<string, Marca>) => Record<string, Marca>)) => void;
-  historial: Record<string, number[]>;
-  setHistorial: (v: Record<string, number[]>) => void;
-  fin: boolean;
-  setFin: (v: boolean) => void;
-  errorMsg: string | null;
-  setErrorMsg: (v: string | null) => void;
-  descansoHasta: number | null;
-  setDescansoHasta: (v: number | null | ((prev: number | null) => number | null)) => void;
-  descansoSegundos: number;
-  setDescansoSegundos: (v: number) => void;
-  descansoEtiqueta: string;
-  setDescansoEtiqueta: (v: string) => void;
-  descansoDestino: Destino;
-  setDescansoDestino: (v: Destino) => void;
-  modalOmitir: { pendientes: number } | null;
-  setModalOmitir: (v: { pendientes: number } | null) => void;
-  segRestantes: number;
-  borradorCargado: boolean;
+  marks: Record<string, Mark>;
+  setMarks: (v: Record<string, Mark> | ((prev: Record<string, Mark>) => Record<string, Mark>)) => void;
+  history: Record<string, number[]>;
+  setHistory: (v: Record<string, number[]>) => void;
+  finished: boolean;
+  setFinished: (v: boolean) => void;
+  progression: RunnerProgression | null;
+  errorMessage: string | null;
+  setErrorMessage: (v: string | null) => void;
+  restUntil: number | null;
+  setRestUntil: (v: number | null | ((prev: number | null) => number | null)) => void;
+  restSeconds: number;
+  setRestSeconds: (v: number) => void;
+  restLabel: string;
+  setRestLabel: (v: string) => void;
+  restDestination: RestDestination;
+  setRestDestination: (v: RestDestination) => void;
+  skipDialog: { pending: number } | null;
+  setSkipDialog: (v: { pending: number } | null) => void;
+  restRemaining: number;
+  draftLoaded: boolean;
 
   // Refs
-  inicioRef: RefObject<number>;
+  startedAtRef: RefObject<number>;
   setsRef: RefObject<SessionSet[]>;
-  finalizarRef: RefObject<() => void>;
-  modalRef: RefObject<HTMLDivElement | null>;
+  skipDialogRef: RefObject<HTMLDivElement | null>;
 
   // Derived
   idx: number;
-  actual: WorkoutStep;
-  step: WorkoutStep;
-  totalSeries: number;
-  exKey: (ei: number) => string;
-  exLista: (ei: number) => SerieValor[];
-  sinRegistrar: number;
+  current: WorkoutStep;
+  totalSets: number;
+  exerciseKey: (ei: number) => string;
+  exerciseValues: (ei: number) => SetValue[];
+  unregistered: number;
 
   // Handlers
-  tocarBeep: () => void;
-  iniciarDescanso: (segundos: number, etiqueta: string, destino: Destino) => void;
-  irA: (indice: number) => void;
-  omitirDescanso: () => void;
-  finalizar: () => Promise<void>;
-  confirmarSerie: (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => void;
-  confirmarTipeados: () => void;
-  avanzar: () => void;
-  siguiente: () => void;
+  playBeep: () => void;
+  startRest: (seconds: number, label: string, destination: RestDestination) => void;
+  goTo: (indice: number) => void;
+  skipRest: () => void;
+  finishSession: () => Promise<void>;
+  confirmSet: (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => void;
+  confirmTypedValues: () => void;
+  advance: () => void;
+  nextStep: () => void;
 }
 
 export function useRunner(): RunnerState {
@@ -119,27 +162,30 @@ export function useRunner(): RunnerState {
   const program = res?.program;
 
   const steps: WorkoutStep[] = model ? buildSteps(model) : [];
+  const reposRef = useRef<{ sessions: ISessionRepository; settings: ISettingsRepository } | null>(null);
+  reposRef.current ??= { sessions: createSessionRepository(), settings: createSettingsRepository() };
+  const { sessions: sessionRepo, settings: settingsRepo } = reposRef.current;
 
-  const [i, setI] = useState(0);
-  const [vals, setVals] = useState<Record<string, SerieValor[]>>({});
+  const [i, setStepIndex] = useState(0);
+  const [values, setValues] = useState<Record<string, SetValue[]>>({});
   const [allSets, setAllSets] = useState<SessionSet[]>([]);
-  const [marcas, setMarcas] = useState<Record<string, Marca>>({});
-  const [historial, setHistorial] = useState<Record<string, number[]>>({});
-  const [fin, setFin] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [descansoHasta, setDescansoHasta] = useState<number | null>(null);
-  const [descansoSegundos, setDescansoSegundos] = useState(0);
-  const [descansoEtiqueta, setDescansoEtiqueta] = useState('Descanso');
-  const [descansoDestino, setDescansoDestino] = useState<Destino>(null);
-  const [modalOmitir, setModalOmitir] = useState<{ pendientes: number } | null>(null);
-  const [borradorCargado, setBorradorCargado] = useState(false);
-  const inicioRef = useRef(0);
+  const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [history, setHistory] = useState<Record<string, number[]>>({});
+  const [finished, setFinished] = useState(false);
+  const [progression, setProgression] = useState<RunnerProgression | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [restUntil, setRestUntil] = useState<number | null>(null);
+  const [restSeconds, setRestSeconds] = useState(0);
+  const [restLabel, setRestLabel] = useState('Descanso');
+  const [restDestination, setRestDestination] = useState<RestDestination>(null);
+  const [skipDialog, setSkipDialog] = useState<{ pending: number } | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const startedAtRef = useRef(0);
   const setsRef = useRef<SessionSet[]>([]);
-  const finalizarRef = useRef<() => void>(() => {});
-  const modalRef = useRef<HTMLDivElement>(null);
+  const skipDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    inicioRef.current = Date.now();
+    startedAtRef.current = Date.now();
   }, []);
 
   useEffect(() => {
@@ -155,10 +201,9 @@ export function useRunner(): RunnerState {
             (map[l.exercise] ||= []).push(v);
           }
         }
-        setHistorial(map);
+        setHistory(map);
       } catch {
-        // A failed history read means "no history yet"; the timer never depends on it.
-        return;
+        setErrorMessage(DATOS_NO_LEIDOS);
       }
     })();
   }, []);
@@ -166,120 +211,152 @@ export function useRunner(): RunnerState {
   useEffect(() => {
     (async () => {
       if (!model) return;
-      // Failing to *load* a draft is recoverable: start with no draft. Failing to *save* one for
-      // the whole session is not, so autosave gets enabled after this block either way.
-      const stored = await settingsRepo.get(`borrador:${model.id}`).catch(() => undefined);
-      const d = asRunnerDraft(stored?.value);
-      if (d) {
-        if (d.i != null) setI(d.i);
-        if (d.vals) setVals(d.vals);
-        if (d.descansoHasta && d.descansoHasta > Date.now()) {
-          setDescansoHasta(d.descansoHasta);
-          setDescansoSegundos(d.descansoSegundos ?? 0);
-          setDescansoEtiqueta(d.descansoEtiqueta ?? 'Descanso');
-          setDescansoDestino(d.descansoDestino ?? null);
+      try {
+        const current = await settingsRepo.get(draftKey(model.id));
+        const legacy = current ? undefined : await settingsRepo.get(`${LEGACY_DRAFT_PREFIX}${model.id}`);
+        const stored = current ?? legacy;
+        if (stored?.value) {
+          const { draft, migrated } = draftFrom(stored.value);
+          if (draft.i != null) setStepIndex(draft.i);
+          if (draft.values) {
+            const restored: Record<string, SetValue[]> = {};
+            for (const [key, list] of Object.entries(draft.values)) {
+              restored[key] = (list as SetValue[]).map((v) => ({ ...newSetValue(v.value ?? ''), id: v.id ?? newId() }));
+            }
+            setValues(restored);
+          }
+          if (draft.restUntil && draft.restUntil > Date.now()) {
+            setRestUntil(draft.restUntil);
+            setRestSeconds(draft.restSeconds ?? 0);
+            setRestLabel(draft.restLabel ?? 'Descanso');
+            setRestDestination(draft.restDestination ?? null);
+          }
+          if (migrated) {
+            await settingsRepo.put({ key: draftKey(model.id), value: { ...draft, values: draft.values ?? {} } });
+            await settingsRepo.delete(`${LEGACY_DRAFT_PREFIX}${model.id}`);
+          }
         }
+      } catch {
+        setErrorMessage(DATOS_NO_LEIDOS);
+      } finally {
+        setDraftLoaded(true);
       }
-      setBorradorCargado(true);
     })();
-  }, [model?.id]);
+  }, [model]);
 
   useEffect(() => {
-    if (!borradorCargado || !model) return;
-    // Best effort: a failed draft write must not break the timer.
-    void settingsRepo
-      .put({
-        key: `borrador:${model.id}`,
-        value: { i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino } satisfies RunnerDraft,
-      })
-      .catch(() => undefined);
-  }, [i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino, borradorCargado, model?.id]);
+    if (!draftLoaded || !model) return;
+    settingsRepo.put({
+      key: draftKey(model.id),
+      value: { i, values, restUntil, restSeconds, restLabel, restDestination },
+    }).catch(() => setErrorMessage(BORRADOR_NO_GUARDADO));
+  }, [i, values, restUntil, restSeconds, restLabel, restDestination, draftLoaded, model]);
 
-  const finalizar = async () => {
-    setFin(true);
-    setI(0);
-    setVals({});
-    setDescansoHasta(null);
+  /** The level notice is cosmetic: a failed progression read must never cost the session. */
+  const leerProgreso = async () => {
+    try {
+      return await progressionReportFor(program!.id);
+    } catch {
+      return null;
+    }
+  };
+
+  const finishSession = async () => {
+    setFinished(true);
+    setStepIndex(0);
+    setValues({});
+    setRestUntil(null);
+    const antes = await leerProgreso();
     try {
       await sessionRepo.add({
         date: toISODate(),
         planId: program!.id,
         modelId: model!.id,
-        durationSec: elapsedSeconds(inicioRef.current, Date.now()),
+        durationSec: elapsedSeconds(startedAtRef.current, Date.now()),
         completed: true,
         sets: setsRef.current,
       });
-      await settingsRepo.delete(`borrador:${model!.id}`);
-      inicioRef.current = Date.now();
+      await settingsRepo.delete(draftKey(model!.id));
+      startedAtRef.current = Date.now();
     } catch {
-      setErrorMsg('No se pudo guardar la sesión en este dispositivo.');
+      setErrorMessage(SESION_NO_GUARDADA);
+      return;
     }
+    const despues = await leerProgreso();
+    if (!antes || !despues) return;
+    setProgression({
+      report: despues,
+      advanced: despues.next?.unlocked === true && antes.next?.unlocked === false,
+      completedNow: despues.completed && !antes.completed,
+      touchedCriteria: touchedAnchors(despues.anchors, setsRef.current),
+    });
   };
 
   useEffect(() => {
-    finalizarRef.current = () => { void finalizar(); };
-  }, [finalizar]);
+    if (!skipDialog) return;
+    skipDialogRef.current?.focus();
+  }, [skipDialog]);
 
-  useEffect(() => {
-    if (!modalOmitir) return;
-    modalRef.current?.focus();
-  }, [modalOmitir]);
-
-  const vibrate = useVibration();
-  const tocarBeep = useBeep();
   useWakeLock(true);
 
+  /** Best-effort sound cue: a blocked or missing audio device reports once and the timer keeps running. */
+  const playRestEndSound = () => {
+    void playSound().then((played) => { if (!played) setErrorMessage(SIN_SONIDO); });
+  };
+
   const handleExpire = () => {
-    const audio = createCueAudio();
-    if (audio) {
-      audio.volume = 1;
-      // Autoplay stays blocked until the user interacts, so a rejected play is expected here.
-      void audio.play().catch(() => undefined);
-    }
+    playRestEndSound();
     vibrate([180, 90, 180]);
-    const destino = descansoDestino;
-    setDescansoHasta(null);
-    setDescansoDestino(null);
-    if (destino) {
-      if ('fin' in destino) finalizarRef.current();
-      else setI(destino.indice);
+    const destination = restDestination;
+    setRestUntil(null);
+    setRestDestination(null);
+    if (destination) {
+      if ('finished' in destination) void finishSession();
+      else setStepIndex(destination.index);
     }
   };
 
-  const segRestantes = useCountdown(descansoHasta, handleExpire);
+  const restRemaining = useCountdown(restUntil, handleExpire);
 
-  const iniciarDescanso = (segundos: number, etiqueta: string, destino: Destino) => {
-    if (segundos <= 0) return;
-    desbloquearAudio();
-    setDescansoSegundos(segundos);
-    setDescansoEtiqueta(etiqueta);
-    setDescansoDestino(destino);
-    setDescansoHasta(Date.now() + segundos * 1000);
+  const startRest = (seconds: number, label: string, destination: RestDestination) => {
+    if (seconds <= 0) return;
+    unlockAudio();
+    setRestSeconds(seconds);
+    setRestLabel(label);
+    setRestDestination(destination);
+    setRestUntil(Date.now() + seconds * 1000);
   };
 
-  const irA = (indice: number) => {
-    tocarBeep();
-    setI(indice);
+  const goTo = (indice: number) => {
+    playBeep();
+    setStepIndex(indice);
   };
 
-  const omitirDescanso = () => {
-    const destino = descansoDestino;
-    setDescansoHasta(null);
-    setDescansoDestino(null);
-    if (!destino) return;
-    if ('fin' in destino) void finalizar();
-    else irA(destino.indice);
+  const skipRest = () => {
+    const destination = restDestination;
+    setRestUntil(null);
+    setRestDestination(null);
+    if (!destination) return;
+    if ('finished' in destination) void finishSession();
+    else goTo(destination.index);
   };
 
   const idx = Math.min(i, Math.max(0, steps.length - 1));
-  const actual = steps[idx] as WorkoutStep;
-  const step = actual;
-  const totalSeries = step ? seriesCount(step.block) : 0;
+  const current = steps[idx] as WorkoutStep;
+  const totalSets = current ? seriesCount(current.block) : 0;
 
-  const exKey = (ei: number) => `${step.blockIdx}#${ei}`;
-  const exLista = (ei: number) => vals[exKey(ei)] ?? Array.from({ length: totalSeries }, () => ({ value: '' }));
+  const exerciseKey = (ei: number) => `${current.blockIdx}#${ei}`;
+  /** Empty sets for a current are cached per exercise so their keys stay stable across renders. */
+  const emptyValuesRef = useRef<Record<string, SetValue[]>>({});
+  const exerciseValues = (ei: number) => {
+    const key = exerciseKey(ei);
+    const stored = values[key];
+    if (stored) return stored;
+    emptyValuesRef.current[key] ??= Array.from({ length: totalSets }, () => newSetValue());
+    return emptyValuesRef.current[key];
+  };
 
-  const registrarEx = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
+  const registerSet = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
     const v = num(value);
     if (!value || isNaN(v)) return;
     const unit: 'sec' | 'reps' = exercise.timeSec && !exercise.reps ? 'sec' : 'reps';
@@ -291,71 +368,71 @@ export function useRunner(): RunnerState {
       bloqueOrden: blockIdx,
       orden: ei,
     };
-    const siguiente = [...setsRef.current.filter((l) => !(l.exercise === exercise.name && l.setIndex === setIndex && l.bloqueOrden === blockIdx)), nuevo];
-    setsRef.current = siguiente;
-    setAllSets(siguiente);
-    const previos = (historial[exercise.name] ?? []).filter((n) => !isNaN(n));
-    const marca: Marca | null = previos.length === 0 ? 'primera' : v > Math.max(...previos) ? 'pr' : null;
-    if (marca) {
+    const nextStep = [...setsRef.current.filter((l) => !(l.exercise === exercise.name && l.setIndex === setIndex && l.bloqueOrden === blockIdx)), nuevo];
+    setsRef.current = nextStep;
+    setAllSets(nextStep);
+    const previos = (history[exercise.name] ?? []).filter((n) => !isNaN(n));
+    const mark: Mark | null = previos.length === 0 ? 'first' : v > Math.max(...previos) ? 'pr' : null;
+    if (mark) {
       const key = `${blockIdx}#${ei}#${setIndex}`;
-      setMarcas((prev) => ({ ...prev, [key]: marca }));
+      setMarks((prev) => ({ ...prev, [key]: mark }));
     }
   };
 
   /**
-   * Records the set and opens the set rest only when the block round is complete
-   * (every exercise has that set) and this is not the last round.
+   * Registers the set and opens the set rest only when the block round is complete
+   * (every exercise registered that set) and it is not the last round.
    */
-  const confirmarSerie = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
-    registrarEx(blockIdx, ei, exercise, setIndex, value);
-    if (!step) return;
-    if (!rondaCompleta(setsRef.current, blockIdx, step.exercises, setIndex)) return;
-    const filas = step.exercises.map((_, k) => exLista(k).length);
-    if (esUltimaVuelta(filas, setIndex)) return;
-    if (step.restAfterSetSec > 0) iniciarDescanso(step.restAfterSetSec, 'Descanso de serie', null);
+  const confirmSet = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
+    registerSet(blockIdx, ei, exercise, setIndex, value);
+    if (!current) return;
+    if (!rondaCompleta(setsRef.current, blockIdx, current.exercises, setIndex)) return;
+    const rows = current.exercises.map((_, k) => exerciseValues(k).length);
+    if (esUltimaVuelta(rows, setIndex)) return;
+    if (current.restAfterSetSec > 0) startRest(current.restAfterSetSec, 'Descanso de serie', null);
   };
 
-  const sinRegistrar = step
-    ? step.exercises.reduce((acc, ex, ei) => {
-        const lista = exLista(ei);
-        return acc + lista.filter((_, k) => !buscarSerie(allSets, ex.name, step.blockIdx, k + 1)).length;
+  const unregistered = current
+    ? current.exercises.reduce((acc, ex, ei) => {
+        const list = exerciseValues(ei);
+        return acc + list.filter((_, k) => !buscarSerie(allSets, ex.name, current.blockIdx, k + 1)).length;
       }, 0)
     : 0;
 
-  const confirmarTipeados = () => {
-    if (!step) return;
-    step.exercises.forEach((ex, ei) => {
-      const lista = exLista(ei);
-      lista.forEach((v, k) => {
+  const confirmTypedValues = () => {
+    if (!current) return;
+    current.exercises.forEach((ex, ei) => {
+      const list = exerciseValues(ei);
+      list.forEach((v, k) => {
         if (!v.value) return;
-        const yr = buscarSerie(setsRef.current, ex.name, step.blockIdx, k + 1);
+        const yr = buscarSerie(setsRef.current, ex.name, current.blockIdx, k + 1);
         if (yr && yr.value === v.value) return;
-        registrarEx(step.blockIdx, ei, ex, k + 1, v.value);
+        registerSet(current.blockIdx, ei, ex, k + 1, v.value);
       });
     });
   };
 
-  const avanzar = () => {
-    confirmarTipeados();
-    if (!step) return;
-    const esUltimo = idx >= steps.length - 1;
-    if (step.restAfterExerciseSec > 0) {
-      iniciarDescanso(step.restAfterExerciseSec, 'Descanso al finalizar el ejercicio', esUltimo ? { fin: true } : { indice: idx + 1 });
+  const advance = () => {
+    confirmTypedValues();
+    if (!current) return;
+    const isLast = idx >= steps.length - 1;
+    if (current.restAfterExerciseSec > 0) {
+      startRest(current.restAfterExerciseSec, 'Descanso al finalizar el ejercicio', isLast ? { finished: true } : { index: idx + 1 });
       return;
     }
-    if (esUltimo) {
-      void finalizar();
+    if (isLast) {
+      void finishSession();
       return;
     }
-    irA(idx + 1);
+    goTo(idx + 1);
   };
 
-  const siguiente = () => {
-    if (sinRegistrar > 0) {
-      setModalOmitir({ pendientes: sinRegistrar });
+  const nextStep = () => {
+    if (unregistered > 0) {
+      setSkipDialog({ pending: unregistered });
       return;
     }
-    avanzar();
+    advance();
   };
 
   return {
@@ -364,50 +441,49 @@ export function useRunner(): RunnerState {
     program,
     steps,
     i,
-    setI,
-    vals,
-    setVals,
+    setStepIndex,
+    values,
+    setValues,
     allSets,
     setAllSets,
-    marcas,
-    setMarcas,
-    historial,
-    setHistorial,
-    fin,
-    setFin,
-    errorMsg,
-    setErrorMsg,
-    descansoHasta,
-    setDescansoHasta,
-    descansoSegundos,
-    setDescansoSegundos,
-    descansoEtiqueta,
-    setDescansoEtiqueta,
-    descansoDestino,
-    setDescansoDestino,
-    modalOmitir,
-    setModalOmitir,
-    segRestantes,
-    borradorCargado,
-    inicioRef,
+    marks,
+    setMarks,
+    history,
+    setHistory,
+    finished,
+    setFinished,
+    progression,
+    errorMessage,
+    setErrorMessage,
+    restUntil,
+    setRestUntil,
+    restSeconds,
+    setRestSeconds,
+    restLabel,
+    setRestLabel,
+    restDestination,
+    setRestDestination,
+    skipDialog,
+    setSkipDialog,
+    restRemaining,
+    draftLoaded,
+    startedAtRef,
     setsRef,
-    finalizarRef,
-    modalRef,
+    skipDialogRef,
     idx,
-    actual: actual as WorkoutStep,
-    step: step as WorkoutStep,
-    totalSeries,
-    exKey,
-    exLista,
-    sinRegistrar,
-    tocarBeep,
-    iniciarDescanso,
-    irA,
-    omitirDescanso,
-    finalizar,
-    confirmarSerie,
-    confirmarTipeados,
-    avanzar,
-    siguiente,
+    current: current as WorkoutStep,
+    totalSets,
+    exerciseKey,
+    exerciseValues,
+    unregistered,
+    playBeep,
+    startRest,
+    goTo,
+    skipRest,
+    finishSession,
+    confirmSet,
+    confirmTypedValues,
+    advance,
+    nextStep,
   };
 }

@@ -1,7 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { useCronometro, fmt, desbloquearAudio, type CronometroProps } from './useCronometro';
-
-export { desbloquearAudio };
+import { useCronometro, fmt, type CronometroProps } from './useCronometro';
 export type { CronometroProps };
 
 export default function Cronometro(props: CronometroProps) {
@@ -31,6 +29,9 @@ export default function Cronometro(props: CronometroProps) {
           )}
         </div>
       </div>
+      {c.sinSonido ? (
+        <p className="label-caps mt-2 text-muted-foreground" role="status">no se pudo reproducir el sonido del descanso</p>
+      ) : null}
       <span className="sr-only" role="status">{c.aviso ? 'descanso terminado' : ''}</span>
     </div>
   );
