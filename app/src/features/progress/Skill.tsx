@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import type { Program } from '@/types';
 import { BackLink } from '@/components/BackLink';
 import { useCategories } from '@/hooks/usePlans';
-import { createProgram, updateProgram, deleteProgram, updateCategory } from '@/features/plans/plans';
+import { createProgram, updateProgram, deleteProgram, updateCategory, getProgram } from '@/features/plans/plans';
 import { tagChainsForCategory } from '@/features/plans/progression';
 import { useProgression } from '@/hooks/useProgression';
-import { getProgram } from '@/features/plans/plans';
 import { TagListInput } from '@/components/ui/tag-list-input';
 import { LineListInput } from '@/components/ui/line-list-input';
 import { useCrudModal, CrudModal } from '@/components/ui/crud-modal';
@@ -54,12 +54,13 @@ export default function Skill() {
   const [catEditOpen, setCatEditOpen] = useState(false);
   const [catForm, setCatForm] = useState({ name: '', desc: '' });
 
-  const progModal = useCrudModal<any>();
+  const progModal = useCrudModal<Program>();
   const [progForm, setProgForm] = useState<ProgForm>({
     name: '', level: 'beginner', description: '', objectives: [], rules: [],
     frequency: '', restBetweenSessions: '', optional: false, tags: [],
   });
   const [deletingProg, setDeletingProg] = useState<{ id: string; name: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!cat) return <p className="label-caps">Categoría no encontrada.</p>;
 
@@ -68,8 +69,13 @@ export default function Skill() {
     setCatEditOpen(true);
   };
   const saveCat = async () => {
-    await updateCategory(cat.id, { name: catForm.name.trim(), description: catForm.desc.trim() });
-    setCatEditOpen(false);
+    try {
+      await updateCategory(cat.id, { name: catForm.name.trim(), description: catForm.desc.trim() });
+      setSaveError(null);
+      setCatEditOpen(false);
+    } catch {
+      setSaveError('No se pudo guardar la categoría.');
+    }
   };
 
   const openCreateProg = () => {
@@ -80,7 +86,7 @@ export default function Skill() {
     progModal.openCreate();
   };
 
-  const openEditProg = (p: any) => {
+  const openEditProg = (p: Program) => {
     setProgForm({
       name: p.name,
       level: p.level,
@@ -106,34 +112,50 @@ export default function Skill() {
     if (progModal.mode === 'create') {
       const existing = new Set(cat.programs.map((p) => p.id));
       const pid = uniqueId(f.name, existing);
-      await createProgram(cat.id, {
-        id: pid, categoryId: cat.id, name: f.name.trim(), level,
-        description: f.description.trim(),
-        objectives: f.objectives.filter((s) => s.trim() !== '').map((s) => s.trim()),
-        goals: [], frequency: f.frequency.trim(), restBetweenSessions: f.restBetweenSessions.trim(),
-        rules: f.rules.filter((s) => s.trim() !== '').map((s) => s.trim()),
-        models: [], optional: f.optional, tags,
-      } as any);
+      try {
+        await createProgram(cat.id, {
+          id: pid, categoryId: cat.id, name: f.name.trim(), level,
+          description: f.description.trim(),
+          objectives: f.objectives.filter((s) => s.trim() !== '').map((s) => s.trim()),
+          goals: [], frequency: f.frequency.trim(), restBetweenSessions: f.restBetweenSessions.trim(),
+          rules: f.rules.filter((s) => s.trim() !== '').map((s) => s.trim()),
+          models: [], optional: f.optional, tags,
+        });
+        setSaveError(null);
+        progModal.close();
+      } catch {
+        setSaveError('No se pudo crear el programa.');
+      }
     } else if (progModal.item) {
-      await updateProgram(progModal.item.id, {
-        name: f.name.trim(),
-        level,
-        description: f.description.trim(),
-        objectives: f.objectives.filter((s) => s.trim() !== '').map((s) => s.trim()),
-        rules: f.rules.filter((s) => s.trim() !== '').map((s) => s.trim()),
-        frequency: f.frequency.trim(),
-        restBetweenSessions: f.restBetweenSessions.trim(),
-        optional: f.optional,
-        tags,
-      });
+      try {
+        await updateProgram(progModal.item.id, {
+          name: f.name.trim(),
+          level,
+          description: f.description.trim(),
+          objectives: f.objectives.filter((s) => s.trim() !== '').map((s) => s.trim()),
+          rules: f.rules.filter((s) => s.trim() !== '').map((s) => s.trim()),
+          frequency: f.frequency.trim(),
+          restBetweenSessions: f.restBetweenSessions.trim(),
+          optional: f.optional,
+          tags,
+        });
+        setSaveError(null);
+        progModal.close();
+      } catch {
+        setSaveError('No se pudo guardar el programa.');
+      }
     }
-    progModal.close();
   };
 
   const confirmDeleteProg = async () => {
     if (!deletingProg) return;
-    await deleteProgram(deletingProg.id);
-    setDeletingProg(null);
+    try {
+      await deleteProgram(deletingProg.id);
+      setSaveError(null);
+      setDeletingProg(null);
+    } catch {
+      setSaveError('No se pudo borrar el programa.');
+    }
   };
 
   return (
@@ -213,11 +235,23 @@ export default function Skill() {
 
       {cat.programs.length === 0 && <p className="text-sm text-muted-foreground">Sin progresiones curadas aún.</p>}
 
+      {saveError && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          {saveError}
+        </p>
+      )}
+
+      {progression.error && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          No se pudo leer el progreso: los niveles completados y bloqueados pueden verse reiniciados.
+        </p>
+      )}
+
       {tagChainsForCategory(cat.id).length > 0 && (
         <section className="space-y-2">
           <h2 className="label-caps">Progresión (más fácil → más difícil)</h2>
-          {tagChainsForCategory(cat.id).map(({ tag, chain }, ci) => (
-            <div key={ci} className="space-y-1">
+          {tagChainsForCategory(cat.id).map(({ tag, chain }) => (
+            <div key={tag} className="space-y-1">
               <span className="label-caps text-muted-foreground">{tag}</span>
               <div className="flex flex-wrap items-center gap-2">
               {chain.map((pid, idx) => {
