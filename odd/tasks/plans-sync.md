@@ -143,3 +143,16 @@ L12 (cierre de los findings del review de T4):
   `seedIfEmpty` no siembra si ya se sembró alguna vez. Un catálogo guardado antes de existir el marcador
   se adopta como sembrado en el próximo init, así que vaciarlo también queda vacío. El marcador es local
   (no viaja por sync): cada dispositivo sabe si alguna vez tuvo catálogo.
+
+L13 (T5 cerrado, e2e de sync en `app/e2e-sync/sync.sync.e2e.ts`, 5/5):
+
+- **El seed se publica**: abrir la app publica las filas `plans` al mirror; el test espera a verlas por el
+  GET público, no por la UI.
+- **El seed viejo pierde**: una edición con `now` se publica, y después un seed de 1970 se rechaza con
+  `stale_server_newer`; el nombre editado sobrevive. El primer intento probaba un **empate** (1970 contra
+  1970) y falló: el Worker da el empate al cliente a propósito (`isServerNewer`, para que los reintentos
+  sean idempotentes) y eso es correcto, porque dos seeds llevan el mismo contenido. El test se reescribió
+  al caso que sí pierde datos.
+- **Aislamiento**: el catálogo editado de un owner no aparece en el de otro, aunque ambos siembren la
+  misma categoría con el mismo id.
+- Los owners de estos tests llevan `Date.now()` porque el Worker local reusa su D1 entre corridas.

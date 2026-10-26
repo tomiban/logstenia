@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { expect, test, type APIResponse, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 /*
  * Two-device and two-owner sync suite (`design-plans/multi-user.md` §5).
@@ -18,7 +18,7 @@ const POLL = { timeout: 30_000 };
 interface SyncChange {
   entity: string;
   id: string;
-  row?: { value?: unknown };
+  row?: { value?: unknown; category?: { id?: string; name?: string } };
 }
 
 interface Device {
@@ -34,14 +34,22 @@ async function openDevice(browser: Browser, owner?: string): Promise<Device> {
   return { context, page: await context.newPage() };
 }
 
-/** Everything the Worker holds for `owner`, read through its public GET (§3, S1). */
-async function serverSessionIds(page: Page, owner: string): Promise<string[]> {
+/**
+ * Everything the Worker holds for `owner`, read through its public GET (§3, S1). Without an
+ * owner the request carries the context's own identity, which is what the UI tests rely on.
+ */
+async function getServerChanges(page: Page, owner?: string): Promise<SyncChange[]> {
   const response = await page.request.get(`${WORKER_URL}/api/sync?since=0&limit=200`, {
-    headers: { [DEV_OWNER_HEADER]: owner },
+    headers: owner === undefined ? undefined : { [DEV_OWNER_HEADER]: owner },
   });
   if (!response.ok()) throw new Error(`GET /api/sync failed with ${response.status()}`);
   const body = (await response.json()) as { changes?: SyncChange[] };
-  return (body.changes ?? [])
+  return body.changes ?? [];
+}
+
+/** The session rows the Worker holds for `owner`. */
+async function serverSessionIds(page: Page, owner: string): Promise<string[]> {
+  return (await getServerChanges(page, owner))
     .filter((change) => change.entity === 'sessions')
     .map((change) => change.id);
 }
@@ -120,9 +128,8 @@ async function waitForServerTheme(page: Page, value: string): Promise<void> {
   await expect
     .poll(
       async () => {
-        const response = await page.request.get(`${WORKER_URL}/api/sync?since=0&limit=200`);
-        const body = (await response.json()) as { changes?: SyncChange[] };
-        return body.changes?.some(
+        const changes = await getServerChanges(page);
+        return changes.some(
           (change) =>
             change.entity === 'settings' && change.id === 'theme' && change.row?.value === value,
         );
@@ -208,6 +215,116 @@ test('dos owners no ven las sesiones del otro y sí las propias', async ({ brows
 
     await deviceA.page.goto('/metrics');
     await expect(sesionesReadout(deviceA.page)).toHaveText('1', POLL);
+  } finally {
+    await deviceA.context.close();
+    await deviceB.context.close();
+  }
+});
+
+/** The catalogue rows the Worker holds for `owner` (spec S2: one row per category). */
+async function serverPlans(page: Page, owner: string): Promise<SyncChange[]> {
+  return (await getServerChanges(page, owner)).filter((change) => change.entity === 'plans');
+}
+
+/** The stored name of category `id`, or `undefined` when the Worker holds no such row. */
+async function serverCategoryName(
+  page: Page,
+  owner: string,
+  id: string,
+): Promise<string | undefined> {
+  const rows = await serverPlans(page, owner);
+  return rows.find((change) => change.id === id)?.row?.category?.name;
+}
+
+/** Publishes one category row the way another device of `owner` would (S2). */
+async function pushCategory(
+  page: Page,
+  owner: string,
+  name: string,
+  updatedAt: string,
+): Promise<APIResponse> {
+  return page.request.post(`${WORKER_URL}/api/sync`, {
+    headers: { [DEV_OWNER_HEADER]: owner },
+    data: {
+      deviceId: 'e2e-catalogue',
+      mutations: [
+        {
+          entity: 'plans',
+          id: 'cardio',
+          updatedAt,
+          row: {
+            id: 'cardio',
+            category: { id: 'cardio', name, description: 'Publicado por el test', programs: [] },
+            position: 0,
+            updatedAt,
+            deletedAt: null,
+          },
+        },
+      ],
+    },
+  });
+}
+
+/** Waits until the Worker holds at least one catalogue row for `owner`. */
+async function waitForServerCatalogue(page: Page, owner: string): Promise<void> {
+  await expect.poll(async () => (await serverPlans(page, owner)).length, POLL).toBeGreaterThan(0);
+}
+
+/**
+ * The seeded catalogue is real synced data (S2, S8): opening the app publishes the bundled
+ * seed, and a stale seed must never overwrite a category another device already edited.
+ *
+ * A tie is not this case: the Worker gives a tie to the client so retries stay idempotent
+ * (`isServerNewer`), which is why the edit below carries the current time, not the seed's.
+ */
+test('un seed viejo no pisa la edición que el servidor ya tiene', async ({ browser }) => {
+  const owner = `catalogo-${Date.now()}@local`;
+  const device = await openDevice(browser, owner);
+
+  try {
+    await device.page.goto('/');
+    await waitForServerCatalogue(device.page, owner);
+
+    const editAt = new Date().toISOString();
+    expect((await pushCategory(device.page, owner, 'Cardio editado', editAt)).ok()).toBe(true);
+    expect(await serverCategoryName(device.page, owner, 'cardio')).toBe('Cardio editado');
+
+    // A brand-new device re-seeds from plans.json and pushes the frozen timestamp after that
+    // edit: the mirror must reject it instead of losing the edit.
+    const stale = await pushCategory(device.page, owner, 'Seed viejo', '1970-01-01T00:00:00.000Z');
+    expect(stale.ok()).toBe(true);
+    const body = (await stale.json()) as { rejected?: { ref: string; reason: string }[] };
+    expect(body.rejected).toEqual([{ ref: 'plans/cardio', reason: 'stale_server_newer' }]);
+
+    expect(await serverCategoryName(device.page, owner, 'cardio')).toBe('Cardio editado');
+  } finally {
+    await device.context.close();
+  }
+});
+
+/**
+ * Owner isolation also covers the catalogue (S1): two owners seed the same bundled category,
+ * A edits its copy, and B keeps the original name because A's row never reaches it.
+ */
+test('el catálogo editado de un owner no llega a otro', async ({ browser }) => {
+  const ownerA = `catalogo-a-${Date.now()}@local`;
+  const ownerB = `catalogo-b-${Date.now()}@local`;
+  const deviceA = await openDevice(browser, ownerA);
+  const deviceB = await openDevice(browser, ownerB);
+
+  try {
+    await deviceA.page.goto('/');
+    await waitForServerCatalogue(deviceA.page, ownerA);
+    const originalName = await serverCategoryName(deviceA.page, ownerA, 'cardio');
+    expect(originalName).toBeTruthy();
+
+    const edited = await pushCategory(deviceA.page, ownerA, 'Cardio solo de A', new Date().toISOString());
+    expect(edited.ok()).toBe(true);
+    expect(await serverCategoryName(deviceA.page, ownerA, 'cardio')).toBe('Cardio solo de A');
+
+    await deviceB.page.goto('/');
+    await waitForServerCatalogue(deviceB.page, ownerB);
+    expect(await serverCategoryName(deviceB.page, ownerB, 'cardio')).toBe(originalName);
   } finally {
     await deviceA.context.close();
     await deviceB.context.close();
