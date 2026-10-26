@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { Program } from '@/types';
+import type { Level, Program } from '@/types';
 import { BackLink } from '@/components/BackLink';
 import { useCategories } from '@/hooks/usePlans';
 import { createProgram, updateProgram, deleteProgram, updateCategory, getProgram } from '@/features/plans/plans';
@@ -20,6 +20,10 @@ import { TagsMenu } from '@/components/ui/tags-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { LEVELS, LEVEL_LABEL, levelForSave, tagsForSave } from './level';
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
@@ -27,14 +31,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const LEVEL_LABEL: Record<string, string> = {
-  beginner: 'principiante',
-  intermediate: 'intermedio',
-  advanced: 'avanzado',
-};
-
 interface ProgForm {
   name: string;
+  level: Level;
   description: string;
   objectives: string[];
   rules: string[];
@@ -55,7 +54,7 @@ export default function Skill() {
 
   const progModal = useCrudModal<Program>();
   const [progForm, setProgForm] = useState<ProgForm>({
-    name: '', description: '', objectives: [], rules: [],
+    name: '', level: 'beginner', description: '', objectives: [], rules: [],
     frequency: '', restBetweenSessions: '', optional: false, tags: [],
   });
   const [deletingProg, setDeletingProg] = useState<{ id: string; name: string } | null>(null);
@@ -79,7 +78,7 @@ export default function Skill() {
 
   const openCreateProg = () => {
     setProgForm({
-      name: '', description: '', objectives: [], rules: [],
+      name: '', level: 'beginner', description: '', objectives: [], rules: [],
       frequency: '', restBetweenSessions: '', optional: false, tags: [],
     });
     progModal.openCreate();
@@ -88,6 +87,7 @@ export default function Skill() {
   const openEditProg = (p: Program) => {
     setProgForm({
       name: p.name,
+      level: p.level,
       description: p.description,
       objectives: p.objectives || [],
       rules: p.rules || [],
@@ -102,10 +102,8 @@ export default function Skill() {
   const saveProg = async () => {
     const f = progForm;
     if (!f.name.trim()) return;
-    const levelTag = f.tags.find((t) => ['principiante','intermedio','avanzado'].includes(t));
-    const level = levelTag === 'intermedio' ? 'intermediate' : levelTag === 'avanzado' ? 'advanced' : 'beginner';
-    const levelLabel = LEVEL_LABEL[level] ?? level;
-    const tags = [...new Set([levelLabel, ...f.tags])];
+    const level = levelForSave(f.level);
+    const tags = tagsForSave(f.tags, level);
 
     if (progModal.mode === 'create') {
       const existing = new Set(cat.programs.map((p) => p.id));
@@ -202,6 +200,17 @@ export default function Skill() {
         <div className="space-y-3">
           <div className="space-y-1.5"><Label>Nombre</Label><Input value={progForm.name} onChange={(e) => setProgForm({ ...progForm, name: e.target.value })} placeholder="Nombre del programa" /></div>
           <div className="space-y-1.5"><Label>Descripción</Label><Input value={progForm.description} onChange={(e) => setProgForm({ ...progForm, description: e.target.value })} /></div>
+          <div className="space-y-1.5">
+            <Label>Nivel</Label>
+            <Select value={progForm.level} onValueChange={(value) => setProgForm({ ...progForm, level: levelForSave(value ?? progForm.level) })}>
+              <SelectTrigger aria-label="Nivel"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LEVELS.map((level) => (
+                  <SelectItem key={level} value={level}>{LEVEL_LABEL[level]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5"><Label>Objetivos</Label><LineListInput value={progForm.objectives} onChange={(lines) => setProgForm({ ...progForm, objectives: lines })} placeholder="objetivo" /></div>
           <div className="space-y-1.5"><Label>Reglas</Label><LineListInput value={progForm.rules} onChange={(lines) => setProgForm({ ...progForm, rules: lines })} placeholder="regla" /></div>
           <div className="space-y-1.5"><Label>Frecuencia</Label><Input value={progForm.frequency} onChange={(e) => setProgForm({ ...progForm, frequency: e.target.value })} /></div>
