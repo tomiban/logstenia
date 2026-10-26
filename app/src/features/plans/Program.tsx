@@ -411,9 +411,9 @@ export default function Program() {
           {routines.map((m) => (
             <ContextMenu key={m.id}>
               <ContextMenuTrigger className="block h-full">
-                <Card className="flex h-full flex-col gap-2 px-3 py-2 transition-colors hover:border-ink">
+                <Card className="flex h-full flex-col gap-2 px-3 py-2 transition-colors hover:ring-ink">
                   <div className="flex items-start justify-between gap-2">
-                    <Link to={`/routine/${m.id}`} className="block min-w-0 flex-1">
+                    <Link to={`/routine/${m.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium leading-tight">{m.name}</span>
                       </div>

@@ -27,27 +27,43 @@ export default function Planes() {
 
   const [editing, setEditing] = useState<{ id: string; name: string; desc: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const saveNew = async () => {
     if (!newName.trim()) return;
     const existing = new Set(cats.map((c) => c.id));
     const id = uniqueId(newName, existing);
-    await createCategory({ id, name: newName.trim(), description: newDesc.trim(), programs: [] });
-    setNewName('');
-    setNewDesc('');
-    setCreateOpen(false);
+    try {
+      await createCategory({ id, name: newName.trim(), description: newDesc.trim(), programs: [] });
+      setSaveError(null);
+      setNewName('');
+      setNewDesc('');
+      setCreateOpen(false);
+    } catch {
+      setSaveError('No se pudo crear la categoría.');
+    }
   };
 
   const saveEdit = async () => {
     if (!editing || !editing.name.trim()) return;
-    await updateCategory(editing.id, { name: editing.name.trim(), description: editing.desc.trim() });
-    setEditing(null);
+    try {
+      await updateCategory(editing.id, { name: editing.name.trim(), description: editing.desc.trim() });
+      setSaveError(null);
+      setEditing(null);
+    } catch {
+      setSaveError('No se pudo guardar la categoría.');
+    }
   };
 
   const confirmDelete = async () => {
     if (!deleting) return;
-    await deleteCategory(deleting.id);
-    setDeleting(null);
+    try {
+      await deleteCategory(deleting.id);
+      setSaveError(null);
+      setDeleting(null);
+    } catch {
+      setSaveError('No se pudo borrar la categoría.');
+    }
   };
 
   return (
@@ -61,6 +77,12 @@ export default function Planes() {
           Nueva categoría
         </Button>
       </header>
+
+      {saveError && (
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+          {saveError}
+        </p>
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
@@ -128,9 +150,9 @@ export default function Planes() {
         {cats.map((c) => (
           <ContextMenu key={c.id}>
             <ContextMenuTrigger className="block h-full">
-              <Card className="p-4 h-full transition-colors hover:border-ink">
+              <Card className="p-4 h-full transition-colors hover:ring-ink">
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1">
+                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                     <h2 className="font-semibold">{c.name}</h2>
                     <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
                     <div className="mt-2 flex gap-2">

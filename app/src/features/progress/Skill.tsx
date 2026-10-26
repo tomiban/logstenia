@@ -284,9 +284,9 @@ export default function Skill() {
         {cat.programs.map((p) => (
           <ContextMenu key={p.id}>
             <ContextMenuTrigger className="block h-full">
-              <Card className="p-4 h-full transition-colors hover:border-ink">
+              <Card className="p-4 h-full transition-colors hover:ring-ink">
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/program/${p.id}`} className="block min-w-0 flex-1">
+                  <Link to={`/program/${p.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h2 className="font-semibold">{p.name}</h2>
