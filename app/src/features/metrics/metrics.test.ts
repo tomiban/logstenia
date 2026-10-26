@@ -15,6 +15,7 @@ import {
   exerciseSeries,
   unitForExercise,
   delta,
+  metricsView,
 } from './metrics';
 import type { SessionRecord } from '@/db';
 
@@ -27,6 +28,18 @@ const ses = (date: string, over: Partial<SessionRecord> = {}): SessionRecord => 
   durationSec: 3600,
   completed: true,
   ...over,
+});
+
+describe('metricsView', () => {
+  it('shows the error state after a failed read even when no day was resolved', () => {
+    expect(
+      metricsView({ loading: false, error: 'No se pudieron leer los datos de este dispositivo.', today: '' }),
+    ).toBe('error');
+  });
+
+  it('stays loading while the read is in flight', () => {
+    expect(metricsView({ loading: true, error: null, today: '' })).toBe('loading');
+  });
 });
 
 describe('addDays', () => {

@@ -25,6 +25,21 @@ export const RANGE_OPTIONS: RangeOption[] = [
 /** Days that count as a fresh record worth highlighting. */
 export const FRESH_DAYS = 7;
 
+export type MetricsView = 'loading' | 'error' | 'ready';
+
+export interface MetricsViewState {
+  loading: boolean;
+  error: string | null;
+  today: string;
+}
+
+/** Which branch the metrics screen renders. */
+export function metricsView({ loading, error, today }: MetricsViewState): MetricsView {
+  if (error) return 'error';
+  if (loading || !today) return 'loading';
+  return 'ready';
+}
+
 export interface DayWindow {
   start: string; // inclusive, YYYY-MM-DD
   end: string; // inclusive, YYYY-MM-DD

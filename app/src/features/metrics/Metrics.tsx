@@ -14,6 +14,7 @@ import {
   dedupeAnchors,
   delta,
   exerciseSeries,
+  metricsView,
   planDistribution,
   weeklyVolume,
   windowsFor,
@@ -132,7 +133,7 @@ function MarkRow({ mark }: { mark: BestMark }) {
 
 export default function Metrics() {
   const [range, setRange] = useState<RangeKey>('30d');
-  const [today, setToday] = useState('');
+  const [today] = useState(todayIso);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +147,6 @@ export default function Metrics() {
         if (cancelled) return;
         setSessions(s);
         setMarks(m);
-        setToday(todayIso());
       } catch {
         if (!cancelled) setError('No se pudieron leer los datos de este dispositivo.');
       } finally {
@@ -158,7 +158,7 @@ export default function Metrics() {
     };
   }, []);
 
-  if (loading || !today) {
+  if (metricsView({ loading, error, today }) === 'loading') {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Cargando">
         <div className="h-8 w-40 animate-pulse bg-secondary" />
@@ -169,6 +169,17 @@ export default function Metrics() {
         </div>
         <div className="h-48 animate-pulse bg-secondary" />
       </div>
+    );
+  }
+
+  if (metricsView({ loading, error, today }) === 'error') {
+    return (
+      <section className="border border-border bg-card p-4" role="alert">
+        <h2 className="font-heading text-base font-bold">{error}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          recargá la página: los datos viven solo en este dispositivo
+        </p>
+      </section>
     );
   }
 
@@ -220,15 +231,6 @@ export default function Metrics() {
 
   return (
     <div className="space-y-4">
-      {error ? (
-        <section className="border border-border bg-card p-4" role="alert">
-          <h2 className="font-heading text-base font-bold">{error}</h2>
-          <p className="label-caps mt-2 text-muted-foreground">
-            recargá la página: los datos viven solo en este dispositivo
-          </p>
-        </section>
-      ) : null}
-
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-bold tracking-tight">Métricas</h1>
