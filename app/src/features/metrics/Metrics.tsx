@@ -27,6 +27,15 @@ import {
 import { ANCLAS } from '@/features/progress/marks';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartTooltip, ValueTick } from '@/components/ui/chart';
+import {
+  fullDayLabel,
+  measureRows,
+  seriesRows,
+  volumeRows,
+  weekValue,
+  type ChartRow,
+  type VolumeUnit,
+} from './chartData';
 import { cn } from '@/lib/utils';
 
 const UNIT_LABEL: Record<'sec' | 'reps', string> = { sec: 'seg', reps: 'reps' };
@@ -97,6 +106,47 @@ function Readout({
         <div className="mt-1.5 label-caps text-muted-foreground">{note}</div>
       ) : null}
     </div>
+  );
+}
+
+function ChartFigure({
+  caption,
+  timeHeader,
+  rows,
+  className,
+  children,
+}: {
+  caption: string;
+  timeHeader: string;
+  rows: readonly ChartRow[];
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <figure className={cn('m-0', className)}>
+      <figcaption className="sr-only">{caption}</figcaption>
+      <div aria-hidden="true" className="text-foreground">
+        {children}
+      </div>
+      <table className="sr-only">
+        <thead>
+          <tr>
+            <th scope="col">{timeHeader}</th>
+            <th scope="col">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={`${row.label}-${row.value}-${i}`}>
+              <th scope="row">{row.label}</th>
+              <td>
+                {nf.format(row.value)} {row.unit}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </figure>
   );
 }
 
@@ -217,13 +267,15 @@ export default function Metrics() {
   const rangeOpt = RANGE_OPTIONS.find((o) => o.key === range);
   const prevNote = win.previous ? `vs ${win.days} d previos` : 'histórico completo';
 
-  const volumeValue = (w: (typeof volume)[number]) => (hasDuration ? w.minutes : w.sessions);
-  const volumeUnit = hasDuration ? 'min' : 'sesiones';
+  const volumeUnit: VolumeUnit = hasDuration ? 'min' : 'sesiones';
   const volumeData = volume.map((w) => ({
     label: w.label,
-    amount: volumeValue(w),
+    amount: weekValue(w, volumeUnit),
     marker: w.current ? ('ink' as const) : undefined,
   }));
+  const measureWord = hasDuration ? 'minutos' : 'series';
+  const volumeWord = hasDuration ? 'minutos' : 'sesiones';
+  const sessionWindow = recent.length === 1 ? 'última sesión' : `últimas ${recent.length} sesiones`;
 
   const sinSesiones = sessions.length === 0;
 
@@ -277,7 +329,7 @@ export default function Metrics() {
         </section>
       ) : null}
 
-      {/* Telemetría del período */}
+      {/* Period telemetry */}
       <section className="border border-border" aria-label="Telemetría del período">
         <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">
           <Readout
@@ -311,7 +363,7 @@ export default function Metrics() {
         </div>
       </section>
 
-      {/* Sesiones ganadas */}
+      {/* Sessions gained */}
       <section className="border border-border" aria-label="Sesiones ganadas">
         <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
           <Readout
@@ -329,10 +381,14 @@ export default function Metrics() {
         </div>
       </section>
 
-      {/* Duración por sesión */}
+      {/* Duration per session */}
       <Panel title="Duración por sesión" meta={`${measureUnit} · ${recent.length} sesiones`}>
         <div className="p-4">
-          <div className="text-foreground">
+          <ChartFigure
+            caption={`Duración por sesión · ${sessionWindow} · en ${measureWord}`}
+            timeHeader="Fecha"
+            rows={measureRows(sessionData, measureUnit)}
+          >
             <ResponsiveContainer width="100%" height={150}>
               <BarChart data={sessionData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                 <XAxis
@@ -347,11 +403,11 @@ export default function Metrics() {
                 <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </ChartFigure>
         </div>
       </Panel>
 
-      {/* Comparación por sesión */}
+      {/* Session comparison */}
       <Panel title="Comparación por sesión" meta={`${recent.length} sesiones`}>
         {recent.length === 0 ? (
           <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones registradas</p>
@@ -389,13 +445,17 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Volumen semanal */}
+      {/* Weekly volume */}
       <Panel title="Volumen por semana" meta={`${volumeUnit} · ${WEEKS_SHOWN} semanas`}>
         <div className="p-4">
           {sinSesiones ? (
             <p className="label-caps text-muted-foreground">sin sesiones para graficar</p>
           ) : (
-            <div className="text-foreground">
+            <ChartFigure
+              caption={`Volumen por semana · últimas ${WEEKS_SHOWN} semanas · en ${volumeWord}`}
+              timeHeader="Semana"
+              rows={volumeRows(volume, volumeUnit)}
+            >
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={volumeData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                   <XAxis
@@ -410,12 +470,12 @@ export default function Metrics() {
                   <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartFigure>
           )}
         </div>
       </Panel>
 
-      {/* Marcas */}
+      {/* Marks */}
       <Panel title="Marcas" meta={`${best.length} ejercicios · histórico`}>
         {best.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
@@ -446,7 +506,7 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Evolución por ejercicio */}
+      {/* Progress per exercise */}
       <Panel title="Evolución por ejercicio" meta={`${series.length} con historial`}>
         {series.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
@@ -462,7 +522,12 @@ export default function Metrics() {
                     {nf.format(s.best)} <span className="label-caps text-muted-foreground">{UNIT_LABEL[s.unit]}</span>
                   </span>
                 </div>
-                <div className="mt-2 text-foreground">
+                <ChartFigure
+                  className="mt-2"
+                  caption={`${s.exercise} · del ${fullDayLabel(s.points[0].date)} al ${fullDayLabel(s.points[s.points.length - 1].date)} · en ${UNIT_LABEL[s.unit]}`}
+                  timeHeader="Fecha"
+                  rows={seriesRows(s.points, UNIT_LABEL[s.unit])}
+                >
                   <ResponsiveContainer width="100%" height={56}>
                     <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
                       <XAxis dataKey="date" hide />
@@ -478,7 +543,7 @@ export default function Metrics() {
                       />
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
+                </ChartFigure>
                 <div className="label-caps mt-1 text-muted-foreground">
                   {nf.format(s.improvements)} mejoras · {nf.format(s.points.length)} registros
                 </div>
@@ -488,7 +553,7 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Metas: tus anclas de progresión */}
+      {/* Goals: your progression anchors */}
       <Panel title="Metas" meta={`${anchors.length} anclas`}>
         <ul className="divide-y divide-border">
           {anchors.map((anchor) => (
@@ -518,7 +583,7 @@ export default function Metrics() {
         </ul>
       </Panel>
 
-      {/* Distribución por plan */}
+      {/* Plan distribution */}
       <Panel title="Sesiones por plan" meta={`${dist.length} planes`}>
         {dist.length === 0 ? (
           <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones en el período</p>
