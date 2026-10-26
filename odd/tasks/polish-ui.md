@@ -1,6 +1,6 @@
 # Polish UI
 
-Pasada de polish visual/UX por todas las pantallas y componentes compartidos, alineando con el design system "The Timing Board" (docs/DESIGN.md): tokens, tipografía, espaciado, estados, responsive, accesibilidad.
+Pasada de polish visual/UX por todas las pantallas y componentes compartidos, alineando con el design system "The Timing Board" (DESIGN.md): tokens, tipografía, espaciado, estados, responsive, accesibilidad.
 
 ## Specs
 

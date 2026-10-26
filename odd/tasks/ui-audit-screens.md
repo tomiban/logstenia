@@ -97,3 +97,7 @@ La única escritura posible son planes en `design-plans/`, y solo tras selecció
   (AGENTS.md, PRODUCT.md, 4 odd/tasks, 5 design-plans, button.tsx). Se agregó al contrato la
   sección "Herramientas de diseño y precedencia" con la cadena de revisión y los overrides
   (radio/sombra, memoización, densidad, una sola baliza).
+- L11: Slice de entrega en `feat/ui-audit-fixes`: el reporte y este documento son el primer
+  slice (sólo documentación). Los findings se entregan después en dos slices de código — (a)
+  primitivas y shell, (b) findings por pantalla — para que el revisor vea cambios de producto y no
+  prosa mezclada con tokens. La unificación de `DESIGN.md` viaja aparte de ambos.

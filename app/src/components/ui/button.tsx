@@ -1,7 +1,7 @@
 /**
  * Button — Logtenia design system.
  *
- * Variants (see docs/DESIGN.md "Components > Buttons"):
+ * Variants (see DESIGN.md "Components > Buttons"):
  *   - `accent` (default): Voltage Lime fill, Ink text, Ink border. The primary
  *     action on a screen (Entrenar, Siguiente, Guardar, ...). Hover drops the
  *     fill and keeps a Lime border (Lime text in dark, Ink text in light).

@@ -16,7 +16,7 @@ de producto (la progresión es el producto, comparar contra uno mismo, local y o
 - S7: Metas de los planes con barra de progreso, valor actual editable y estado de logro.
 - S8: Distribución de sesiones por plan con barra proporcional y porcentaje.
 - S9: Estados vacíos que enseñan la pantalla (qué es cada bloque y cómo llenarlo), no "nada acá".
-- S10: Conformidad con `docs/DESIGN.md`: todo número en `.metric` tabular, labels en `.label-caps`, bordes hairline de 1px, radio 0, sin sombras, lima ≤10% de la pantalla, retícula de 12 columnas, touch targets de 44px, copy en español, foco visible, contraste y soporte de tema oscuro.
+- S10: Conformidad con `DESIGN.md`: todo número en `.metric` tabular, labels en `.label-caps`, bordes hairline de 1px, radio 0, sin sombras, lima ≤10% de la pantalla, retícula de 12 columnas, touch targets de 44px, copy en español, foco visible, contraste y soporte de tema oscuro.
 - S11: El runner persiste la duración real de la sesión, así "minutos" no es siempre 0.
 - S12: Build, lint y tests siguen pasando; la pantalla se verifica renderizada a 375px y 1280px.
 

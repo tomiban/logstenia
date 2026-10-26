@@ -5,7 +5,7 @@
 - Supersedes/consolidates: `runner-modal-no-shadow.md`, `runner-spinner-circular.md`, `runner-footer-overflow.md`
 - Surface: Routine runner (`/run/:id`) — `app/src/pages/Runner.tsx`
 - Source commit: unavailable (working tree has no commits; branch `feat/logstenia`, all files untracked)
-- Design source: `docs/DESIGN.md` (root `DESIGN.md` is identical) — "The Timing Board"
+- Design source: `DESIGN.md` — "The Timing Board"
 - Governing rules: No-Shadow Rule; spinner exception to Zero-Radius Rule; container padding contract (`Layout.tsx`).
 
 ## Goal

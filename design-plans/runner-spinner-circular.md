@@ -4,8 +4,8 @@
 - Created: 2026-10-20
 - Surface: Routine runner — rest countdown screen (`/run/:id`)
 - Source commit: unavailable (working tree has no commits; branch `feat/logstenia`, all files untracked)
-- Design source: `docs/DESIGN.md` — "The Timing Board"
-- Governing rule: `docs/DESIGN.md` → Shapes: "No hay píldoras, círculos salvo los indicadores de estado (cuadrados de 8px) y los spinners." Spinners are an explicit exception to the Zero-Radius Rule.
+- Design source: `DESIGN.md` — "The Timing Board"
+- Governing rule: `DESIGN.md` → Shapes: "No hay píldoras, círculos salvo los indicadores de estado (cuadrados de 8px) y los spinners." Spinners are an explicit exception to the Zero-Radius Rule.
 
 ## Goal
 Restore the circular shape of the rest-screen spinner, which the global zero-radius override currently forces to a square, contradicting the documented spinner exception.

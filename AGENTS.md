@@ -120,7 +120,7 @@ If FAILED, list: `file:line - rule violated - issue`.
 
 ## Design System
 
-Visual identity follows `docs/DESIGN.md` ("The Timing Board"): Voltage Lime accent, zero-radius, hairline borders, no shadows, Swiss grid, mono metrics.
+Visual identity follows `DESIGN.md` ("The Timing Board"): Voltage Lime accent, zero-radius, hairline borders, no shadows, Swiss grid, mono metrics.
 
 ## Tooling
 
