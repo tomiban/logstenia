@@ -264,6 +264,11 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
 ### Chips / Badges
 - **Style:** fondo Voltage Lime + texto On Accent (#111) para el dato destacado (PR, énfasis
   activo); versión outline con borde hairline y texto muted para el subgrupo.
+- **Excepción documentada — tags:** los chips de etiqueta definida por el usuario usan una
+  paleta pastel de ocho pares (`app/src/lib/tags.ts`, `TAG_PASTELS`) como segundo lenguaje de
+  color. Es una decisión de producto del usuario, no una deriva: la Beacon Rule no los alcanza
+  porque distinguen categorías, no señalan estado ni acción. Si se agrega un noveno color, tiene
+  que entrar en esa tabla y mantener contraste AA sobre su propio fondo.
 - **Typography:** `.label-status` (mono 10px uppercase).
 
 ### Cards / Containers
@@ -348,3 +353,5 @@ Los defaults genéricos de las herramientas de diseño **no gobiernan** este sis
   Operate del sistema, no un defecto de jerarquía.
 - **Una sola baliza.** Cualquier propuesta de enriquecer la paleta, sumar un segundo acento o
   colorear por categoría choca con The Beacon Rule y requiere decisión explícita del usuario.
+- **Los tags pastel son la excepción ya decidida.** El usuario eligió la paleta pastel para las
+  etiquetas: no es una violación a reportar ni a "corregir" hacia el chip outline.
