@@ -19,7 +19,6 @@ const T_BASE = '2026-10-20T18:00:00.000Z';
 const T_NEW = '2026-10-20T18:05:00.000Z';
 
 const MAX_BODY_BYTES = 256 * 1024;
-const LOOKUP_TRIPLES_PER_STATEMENT = 33;
 const D1_MAX_BOUND_PARAMS = 100;
 
 interface SyncChange {
@@ -69,7 +68,6 @@ interface LoggedStatement {
 }
 
 const META_REV = "SELECT value FROM meta WHERE key = 'rev'";
-const LOOKUP_PREFIX = 'SELECT entity, id, updated_at FROM rows';
 const PAGE_PREFIX = 'SELECT entity, id, rev, updated_at, deleted_at, payload FROM rows';
 const ALLOCATE_PREFIX = 'UPDATE meta SET value = value +';
 const UPSERT_PREFIX = 'INSERT INTO rows';
@@ -142,15 +140,6 @@ class FakeD1 {
 
     if (sql === META_REV) return { results: [{ value: this.rev }] };
 
-    if (sql.startsWith(LOOKUP_PREFIX)) {
-      const results: unknown[] = [];
-      for (let i = 0; i < params.length; i += 3) {
-        const stored = this.rows.get(rowKey(String(params[i]), String(params[i + 1]), String(params[i + 2])));
-        if (stored) results.push({ entity: stored.entity, id: stored.id, updated_at: stored.updatedAt });
-      }
-      return { results };
-    }
-
     if (sql.startsWith(PAGE_PREFIX)) {
       const owner = String(params[0]);
       const since = Number(params[1]);
@@ -177,8 +166,15 @@ class FakeD1 {
 
     if (sql.startsWith(UPSERT_PREFIX)) {
       const [owner, entity, id, total, offset, updatedAt, deletedAt, payload] = params as string[];
+      const key = rowKey(String(owner), String(entity), String(id));
+      const stored = this.rows.get(key);
+      // Mirrors the statement's own `WHERE`: a stored row that is strictly newer wins and a tie
+      // belongs to the client. A rejected row returns nothing, exactly as `RETURNING` would.
+      if (stored && Date.parse(stored.updatedAt) > Date.parse(String(updatedAt))) {
+        return { results: [] };
+      }
       const rev = this.rev - Number(total) + Number(offset);
-      this.rows.set(rowKey(String(owner), String(entity), String(id)), {
+      this.rows.set(key, {
         owner: String(owner),
         entity: String(entity),
         id: String(id),
@@ -187,7 +183,7 @@ class FakeD1 {
         deletedAt: (deletedAt as string | null) ?? null,
         payload: String(payload),
       });
-      return { results: [] };
+      return { results: [{ entity: String(entity), id: String(id) }] };
     }
 
     throw new Error(`FakeD1: unexpected statement: ${sql}`);
@@ -512,7 +508,7 @@ describe('POST /api/sync', () => {
     expect(pulled.rev).toBe(3);
   });
 
-  it('chunks the lookup for 500 mutations under the 100-parameter D1 limit', async () => {
+  it('writes 500 mutations in one batch, within the parameter limit per statement', async () => {
     const mutations = Array.from({ length: 500 }, (_, index) => mutation('tags', `tag-${index}`));
 
     const response = await postSync(db, { deviceId: 'dev_a', mutations }, token);
@@ -522,14 +518,11 @@ describe('POST /api/sync', () => {
     expect(body.applied).toHaveLength(500);
     expect(db.rows.size).toBe(500);
 
-    const lookups = db.log.filter((statement) => statement.sql.startsWith(LOOKUP_PREFIX));
-    expect(lookups).toHaveLength(Math.ceil(500 / LOOKUP_TRIPLES_PER_STATEMENT));
+    // The lookup and the write share a batch now (spec S1), so one allocation covers the push.
+    const allocations = db.log.filter((statement) => statement.sql.startsWith(ALLOCATE_PREFIX));
+    expect(allocations).toHaveLength(1);
     for (const statement of db.log) {
       expect(statement.params.length).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMS);
-    }
-    for (const statement of lookups) {
-      expect(statement.params.length).toBeLessThanOrEqual(3 * LOOKUP_TRIPLES_PER_STATEMENT);
-      expect(statement.params.length / 3).toBeLessThanOrEqual(LOOKUP_TRIPLES_PER_STATEMENT);
     }
 
     const revs: number[] = [];

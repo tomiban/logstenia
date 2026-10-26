@@ -12,14 +12,16 @@ import type { Mutation } from './schema';
 
 const META_REV_QUERY = "SELECT value FROM meta WHERE key = 'rev'";
 const ALLOCATE_REV_QUERY = "UPDATE meta SET value = value + ? WHERE key = 'rev' RETURNING value";
-const LOOKUP_QUERY = 'SELECT entity, id, updated_at FROM rows WHERE (owner, entity, id) IN (VALUES ';
 const PAGE_QUERY =
   'SELECT entity, id, rev, updated_at, deleted_at, payload FROM rows WHERE owner = ? AND rev > ? ORDER BY rev LIMIT ?';
 /*
- * `rev` is derived from the counter *after* the allocation statement ran in the same
- * batch, so positional allocation stays atomic without a second round trip. The counter is
- * global and monotonic: each owner keeps its own cursor, and gaps left by rejected mutations
- * are harmless.
+ * The last-write-wins check lives in the statement, not in JS (spec S1): the lookup and the write
+ * used to be two batches, so a newer row could commit between them and the older push would still
+ * overwrite it, taking the higher `rev` with it and leaving every device converging to the wrong
+ * value. `julianday` parses an ISO timestamp the way `Date.parse` did, and a NULL comparison (an
+ * unparseable value) falls through to the client, so a tie and an ambiguous timestamp keep the
+ * behaviour the API already had. `RETURNING` reports what the statement actually wrote, which is
+ * how the caller learns what was rejected without a second round trip.
  */
 const UPSERT_QUERY = `INSERT INTO rows (owner, entity, id, rev, updated_at, deleted_at, payload)
 VALUES (?, ?, ?, (SELECT value FROM meta WHERE key = 'rev') - ? + ?, ?, ?, ?)
@@ -27,10 +29,11 @@ ON CONFLICT (owner, entity, id) DO UPDATE SET
   rev = excluded.rev,
   updated_at = excluded.updated_at,
   deleted_at = excluded.deleted_at,
-  payload = excluded.payload`;
-
-/** `(owner, entity, id)` triples per lookup statement: 33 × 3 = 99 parameters, under D1's 100. */
-const LOOKUP_TRIPLES_PER_STATEMENT = 33;
+  payload = excluded.payload
+WHERE julianday(rows.updated_at) <= julianday(excluded.updated_at)
+   OR julianday(rows.updated_at) IS NULL
+   OR julianday(excluded.updated_at) IS NULL
+RETURNING entity, id`;
 
 export interface RowRecord {
   entity: string;
@@ -39,22 +42,6 @@ export interface RowRecord {
   updated_at: string;
   deleted_at: string | null;
   payload: string;
-}
-
-interface LookupRecord {
-  entity: string;
-  id: string;
-  updated_at: string;
-}
-
-/** A mutation the domain accepted, with its 1-based position inside the pushed batch. */
-export interface AcceptedMutation {
-  mutation: Mutation;
-  offset: number;
-}
-
-export function rowKey(entity: string, id: string): string {
-  return `${entity}\u0000${id}`;
 }
 
 export async function readRev(db: D1Database): Promise<number> {
@@ -79,47 +66,28 @@ export async function readPullPage(
   return { rev: revFromResult(meta), rows: readRows<RowRecord>(page) };
 }
 
-export async function readExistingUpdatedAt(
+/**
+ * Allocates `total` revisions and writes every mutation in a single batch, so the LWW check and
+ * the write cannot be separated by another push (spec S1, S2). `accepted[i]` says whether
+ * `mutations[i]` was written; the statement's own `RETURNING` answers it, because a row rejected by
+ * the `WHERE` returns nothing. Keeping the allocation and the upserts together is what makes
+ * `rev > since` correct: assignment order has to match commit order.
+ */
+export async function writePush(
   owner: string,
   db: D1Database,
   mutations: readonly Mutation[],
-): Promise<Map<string, string>> {
-  const existing = new Map<string, string>();
-  const statements: D1PreparedStatement[] = [];
-
-  for (let start = 0; start < mutations.length; start += LOOKUP_TRIPLES_PER_STATEMENT) {
-    const chunk = mutations.slice(start, start + LOOKUP_TRIPLES_PER_STATEMENT);
-    const placeholders = chunk.map(() => '(?, ?, ?)').join(', ');
-    const params = chunk.flatMap((mutation) => [owner, mutation.entity, mutation.id]);
-    statements.push(db.prepare(`${LOOKUP_QUERY}${placeholders})`).bind(...params));
-  }
-
-  const results = await db.batch(statements);
-  for (const result of results) {
-    for (const row of readRows<LookupRecord>(result)) {
-      existing.set(rowKey(row.entity, row.id), row.updated_at);
-    }
-  }
-
-  return existing;
-}
-
-/** Allocates `total` revisions and writes the accepted ones in a single batch. */
-export async function writeMutations(
-  owner: string,
-  db: D1Database,
-  total: number,
-  accepted: readonly AcceptedMutation[],
-): Promise<number> {
+): Promise<{ rev: number; accepted: boolean[] }> {
+  const total = mutations.length;
   const statements: D1PreparedStatement[] = [db.prepare(ALLOCATE_REV_QUERY).bind(total)];
-  for (const { mutation, offset } of accepted) {
+  for (const [index, mutation] of mutations.entries()) {
     statements.push(
       db.prepare(UPSERT_QUERY).bind(
         owner,
         mutation.entity,
         mutation.id,
         total,
-        offset,
+        index + 1,
         mutation.updatedAt,
         mutation.deletedAt,
         JSON.stringify(mutation.row),
@@ -127,8 +95,8 @@ export async function writeMutations(
     );
   }
 
-  const [allocation] = await db.batch(statements);
-  return revFromResult(allocation);
+  const [allocation, ...writes] = await db.batch(statements);
+  return { rev: revFromResult(allocation), accepted: writes.map((write) => readRows(write).length > 0) };
 }
 
 function readRows<T>(result: { results?: unknown[] } | undefined): T[] {
