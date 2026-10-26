@@ -295,7 +295,7 @@ export default function Home() {
       <Card>
         <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-2">
           <span className="label-caps text-foreground">Entrenamiento</span>
-          <label className="flex items-center gap-2 label-caps text-muted-foreground">
+          <label className="flex min-h-11 items-center gap-2 label-caps text-muted-foreground">
             <input type="checkbox" className="h-4 w-4 accent-foreground" aria-label="Incluir calentamiento" checked={warmup} onChange={toggleWarmup} />
             calentamiento
           </label>
@@ -307,7 +307,7 @@ export default function Home() {
                 <p className="font-medium truncate">{warmupRoutine.model.name}</p>
                 <p className="label-caps text-muted-foreground">{warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento</p>
               </div>
-              <Button variant="accent" size="sm" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>Entrenar</Button>
+              <Button variant="accent" size="lg" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>Entrenar</Button>
             </div>
           )}
           {startedPrograms.length === 0 ? (
@@ -321,7 +321,7 @@ export default function Home() {
                       <p className="font-medium truncate">{p.prog.name}</p>
                       <p className="label-caps text-muted-foreground">{p.completedModels}/{p.totalModels} modelos · {p.sessions} sesiones</p>
                     </div>
-                    <Button variant="accent" size="sm" onClick={() => navigate(`/program/${p.prog.id}`)}>Entrenar</Button>
+                    <Button variant="accent" size="lg" onClick={() => navigate(`/program/${p.prog.id}`)}>Entrenar</Button>
                   </div>
                 </li>
               ))}

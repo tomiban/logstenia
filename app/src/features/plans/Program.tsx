@@ -265,7 +265,7 @@ export default function Program() {
       {!started && (
         <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
           <span className="text-sm text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
-          <Button variant="ink" size="sm" disabled={!unlocked} onClick={async () => {
+          <Button variant="ink" size="lg" disabled={!unlocked} onClick={async () => {
             try {
               const r = await settingsRepository.get('startedPlans');
               const arr = (r?.value as string[]) || [];
@@ -314,7 +314,7 @@ export default function Program() {
           </div>
           {report.next.unlocked ? (
             <Link to={`/program/${report.next.id}`} className="inline-block">
-              <Button variant="accent" size="sm">Ir al siguiente nivel</Button>
+              <Button variant="accent" size="lg">Ir al siguiente nivel</Button>
             </Link>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -394,7 +394,7 @@ export default function Program() {
                   <span className="label-status mt-1 inline-block text-muted-foreground">benchmark</span>
                 </div>
                 <Link to={`/routine/${m.id}`}>
-                  <Button variant="outline" size="sm">Registrar marca</Button>
+                  <Button variant="outline" size="lg">Registrar marca</Button>
                 </Link>
               </li>
             ))}
