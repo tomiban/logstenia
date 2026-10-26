@@ -9,31 +9,57 @@ import {
   anchorProgress,
   bestMarks,
   collectMarks,
+  comparisonsWithin,
   compareSessions,
   computeTelemetry,
   dedupeAnchors,
   delta,
+  earliestDay,
   exerciseSeries,
+  marksWithin,
   metricsView,
   planDistribution,
+  sessionMeasure,
+  sessionsWithin,
+  trendOf,
+  volumeWeeks,
   weeklyVolume,
   windowsFor,
   type BestMark,
   type RangeKey,
   type SessionComparison,
+  type Trend,
 } from './metrics';
 import { ANCLAS } from '@/features/progress/marks';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartTooltip, ValueTick } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
+import { pluralForm } from '@/lib/format';
 
 const UNIT_LABEL: Record<'sec' | 'reps', string> = { sec: 'seg', reps: 'reps' };
 const nf = new Intl.NumberFormat('es-AR');
-const WEEKS_SHOWN = 8;
 const SESSIONS_SHOWN = 12;
 const ANCHORS = dedupeAnchors(ANCLAS);
 const sessionRepository = createSessionRepository();
 const markRepository = createMarkRepository();
+
+const TREND_WORD: Record<Trend, string> = {
+  up: 'en alza',
+  down: 'en baja',
+  flat: 'estable',
+  none: 'sin tendencia',
+};
+
+interface ChartMarker {
+  marker: 'lime' | 'ink';
+  text: string;
+}
+
+interface ChartRow {
+  id: string;
+  label: string;
+  value: number;
+}
 
 function todayIso(): string {
   return toISODate();
@@ -49,6 +75,20 @@ function signed(value: number): string {
   return `${value > 0 ? '+' : '−'}${nf.format(Math.abs(value))}`;
 }
 
+/** A number inside a prose line: mono, tabular, ink. */
+function Num({ value }: { value: string }) {
+  return <span className="metric tabular-nums text-foreground">{value}</span>;
+}
+
+/** A code-shaped datum (a date) inside a prose line. */
+function Stamp({ value }: { value: string }) {
+  return <span className="font-mono tabular-nums">{value}</span>;
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <div className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{children}</div>;
+}
+
 function Panel({
   title,
   meta,
@@ -62,7 +102,7 @@ function Panel({
     <section className="border border-border bg-card">
       <header className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2">
         <h2 className="label-caps text-foreground">{title}</h2>
-        {meta ? <span className="label-caps text-muted-foreground">{meta}</span> : null}
+        {meta ? <span className="label-caps text-right text-muted-foreground">{meta}</span> : null}
       </header>
       {children}
     </section>
@@ -82,24 +122,78 @@ function Readout({
   unit?: string;
   deltaText?: string;
   deltaNote?: string;
-  note?: string;
+  note?: ReactNode;
 }) {
   return (
     <div className="bg-card p-4">
       <div className="label-caps text-muted-foreground">{label}</div>
       <div className="mt-1.5 flex items-baseline gap-1.5">
-        <span className="metric text-3xl text-foreground">{value}</span>
+        <span className="metric text-3xl tabular-nums text-foreground">{value}</span>
         {unit ? <span className="label-caps text-muted-foreground">{unit}</span> : null}
       </div>
       {deltaText ? (
-        <div className="mt-1.5 flex items-baseline gap-1.5">
-          <span className="metric text-sm text-foreground">{deltaText}</span>
-          <span className="label-caps text-muted-foreground">{deltaNote}</span>
+        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+          <span className="metric text-sm tabular-nums text-foreground">{deltaText}</span>
+          {deltaNote ? <span className="text-xs text-muted-foreground">{deltaNote}</span> : null}
         </div>
       ) : note ? (
-        <div className="mt-1.5 label-caps text-muted-foreground">{note}</div>
+        <Note>{note}</Note>
       ) : null}
     </div>
+  );
+}
+
+/** The legend of a chart: what each marker means, in words. */
+function ChartLegend({ markers = [], note }: { markers?: ChartMarker[]; note?: string }) {
+  if (markers.length === 0 && !note) return null;
+  return (
+    <div className="mt-3 space-y-1">
+      {markers.length > 0 ? (
+        <p className="label-caps flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+          {markers.map((item) => (
+            <span key={item.text} className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={cn('inline-block h-2 w-2', item.marker === 'lime' ? 'bg-accent' : 'bg-foreground')}
+              />
+              {item.text}
+            </span>
+          ))}
+        </p>
+      ) : null}
+      {/* Una nota es una frase: va en cuerpo, no en el mono de los datos. */}
+      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+    </div>
+  );
+}
+
+/** The same values the chart draws, readable without hover. */
+function ChartTable({ caption, rows, unit }: { caption: string; rows: ChartRow[]; unit: string }) {
+  return (
+    <details className="mt-3 border-t border-border pt-2">
+      <summary className="label-caps cursor-pointer text-muted-foreground">ver valores</summary>
+      <table className="mt-2 w-full text-sm">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr className="border-b border-border text-left">
+            <th scope="col" className="label-caps pb-1 font-normal text-muted-foreground">
+              Fecha
+            </th>
+            <th scope="col" className="label-caps pb-1 text-right font-normal text-muted-foreground">
+              {unit}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td className="py-1 tabular-nums text-muted-foreground">{row.label}</td>
+              <td className="metric tabular-nums py-1 text-right text-foreground">{nf.format(row.value)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }
 
@@ -109,10 +203,8 @@ function MarkRow({ mark }: { mark: BestMark }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{mark.exercise}</span>
-          {mark.delta !== null && mark.delta > 0 ? (
-            <span className="label-status shrink-0 border border-ink bg-accent px-1 text-on-accent">
-              PR
-            </span>
+          {mark.isFresh ? (
+            <span className="label-status shrink-0 border border-ink bg-accent px-1 text-on-accent">PR</span>
           ) : null}
         </div>
         <div className="label-caps mt-1 text-muted-foreground">
@@ -120,11 +212,11 @@ function MarkRow({ mark }: { mark: BestMark }) {
         </div>
       </div>
       <div className="shrink-0 text-right">
-        <div className="metric text-lg text-foreground">
+        <div className="metric text-lg tabular-nums text-foreground">
           {nf.format(mark.value)} <span className="label-caps text-muted-foreground">{UNIT_LABEL[mark.unit]}</span>
         </div>
         <div className="label-caps mt-1 text-muted-foreground">
-          {mark.delta === null ? 'primer registro' : `+${nf.format(mark.delta)} vs anterior`}
+          {mark.delta === null ? 'primer registro' : `${signed(mark.delta)} vs anterior`}
         </div>
       </div>
     </li>
@@ -183,25 +275,24 @@ export default function Metrics() {
     );
   }
 
-  const earliest = sessions.reduce<string | undefined>(
-    (acc, s) => (acc === undefined || s.date < acc ? s.date : acc),
-    undefined,
-  );
-  const win = windowsFor(range, today, earliest);
-  const telemetry = computeTelemetry(sessions, win);
-  const volume = weeklyVolume(sessions, WEEKS_SHOWN, today);
+  const win = windowsFor(range, today, earliestDay(sessions, marks));
+  const inRange = sessionsWithin(sessions, win);
   const entries = collectMarks(sessions, marks);
-  const best = bestMarks(entries, today);
+  const rangeEntries = marksWithin(entries, win);
+
+  const telemetry = computeTelemetry(sessions, win);
+  const measureInfo = sessionMeasure(inRange);
+  const weeks = volumeWeeks(win);
+  const volume = weeklyVolume(inRange, weeks, today);
+  const best = bestMarks(rangeEntries, today);
   const dist = planDistribution(sessions, win.current);
 
-  const comparisons = compareSessions(sessions);
+  const comparisons = comparisonsWithin(compareSessions(sessions), win);
   const recent = comparisons.slice(-SESSIONS_SHOWN);
   const comparable = recent.filter((c) => c.gained !== null);
   const gained = comparable.filter((c) => c.gained).length;
   const newBests = recent.reduce((total, c) => total + c.newBests.length, 0);
-  const hasDuration = sessions.some((s) => (s.durationSec || 0) > 0);
-  const measure = (c: SessionComparison) => (hasDuration ? c.summary.durationMin : c.summary.series);
-  const measureUnit = hasDuration ? 'min' : 'series';
+  const measure = (c: SessionComparison) => (measureInfo.key === 'duracion' ? c.summary.durationMin : c.summary.series);
   const bestSession = recent.reduce<SessionComparison | null>(
     (bestOne, c) => (bestOne === null || measure(c) > measure(bestOne) ? c : bestOne),
     null,
@@ -211,21 +302,38 @@ export default function Metrics() {
     amount: measure(c),
     marker: c.gained === true ? ('lime' as const) : undefined,
   }));
-  const series = exerciseSeries(entries).filter((s) => s.points.length > 1);
-  const anchors = anchorProgress(ANCHORS, entries).sort(
+  const series = exerciseSeries(rangeEntries).filter((s) => s.points.length > 1);
+  const anchors = anchorProgress(ANCHORS, rangeEntries).sort(
     (a, b) => Number(b.reached) - Number(a.reached) || b.pct - a.pct,
   );
 
   const rangeOpt = RANGE_OPTIONS.find((o) => o.key === range);
-  const prevNote = win.previous ? `vs ${win.days} d previos` : 'histórico completo';
+  const rangeTag = rangeOpt?.key === 'all' ? 'histórico' : (rangeOpt?.short ?? '');
+  const prevNote = win.previous ? `vs los ${win.days} días previos` : 'histórico completo';
+  const subtitle = win.previous ? `${rangeOpt?.label} · contra los ${win.days} días previos` : rangeOpt?.label;
 
-  const volumeValue = (w: (typeof volume)[number]) => (hasDuration ? w.minutes : w.sessions);
-  const volumeUnit = hasDuration ? 'min' : 'sesiones';
+  const volumeUnit = measureInfo.key === 'duracion' ? 'min' : 'sesiones';
+  const volumeNoun = measureInfo.key === 'duracion' ? 'minutos' : 'sesiones';
+  const volumeValue = (w: (typeof volume)[number]) => (measureInfo.key === 'duracion' ? w.minutes : w.sessions);
   const volumeData = volume.map((w) => ({
     label: w.label,
     amount: volumeValue(w),
     marker: w.current ? ('ink' as const) : undefined,
   }));
+
+  const sessionMeta = `${recent.length === comparisons.length ? nf.format(comparisons.length) : `${nf.format(recent.length)} de ${nf.format(comparisons.length)}`} ${pluralForm(comparisons.length, 'sesión', 'sesiones')} · ${rangeTag}`;
+  const weeksLabel = `${nf.format(weeks)} ${pluralForm(weeks, 'semana', 'semanas')}`;
+
+  const sessionValues = sessionData.map((d) => d.amount);
+  const sessionTrend = trendOf(sessionValues);
+  const sessionChartLabel =
+    recent.length === 0
+      ? `${measureInfo.title}: sin sesiones en el rango elegido.`
+      : `${measureInfo.title} de ${nf.format(recent.length)} ${pluralForm(recent.length, 'sesión', 'sesiones')}, del ${dayLabel(recent[0].summary.date)} al ${dayLabel(recent[recent.length - 1].summary.date)}: entre ${nf.format(Math.min(...sessionValues))} y ${nf.format(Math.max(...sessionValues))} ${measureInfo.unit}, tendencia ${TREND_WORD[sessionTrend]}.`;
+
+  const volumeValues = volumeData.map((d) => d.amount);
+  const peak = volumeData[volumeValues.indexOf(Math.max(...volumeValues))];
+  const volumeChartLabel = `${volumeNoun} por semana, ${weeksLabel} del rango elegido: máximo ${nf.format(peak.amount)} en la semana del ${peak.label}, tendencia ${TREND_WORD[trendOf(volumeValues)]}.`;
 
   const sinSesiones = sessions.length === 0;
 
@@ -234,10 +342,7 @@ export default function Metrics() {
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-bold tracking-tight">Métricas</h1>
-          <p className="label-caps text-muted-foreground">
-            {rangeOpt?.label}
-            {win.previous ? ` · vs ${win.days} días previos` : ''}
-          </p>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
         <div
           role="group"
@@ -298,8 +403,13 @@ export default function Metrics() {
           <Readout
             label="Racha"
             value={nf.format(telemetry.streak)}
-            unit={telemetry.streak === 1 ? 'día' : 'días'}
-            note={`mejor ${nf.format(telemetry.bestStreak)} días`}
+            unit={pluralForm(telemetry.streak, 'día', 'días')}
+            note={
+              <>
+                mejor <Num value={nf.format(telemetry.bestStreak)} />{' '}
+                {pluralForm(telemetry.bestStreak, 'día', 'días')}
+              </>
+            }
           />
           <Readout
             label="Media por sesión"
@@ -318,45 +428,85 @@ export default function Metrics() {
         <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
           <Readout
             label="Sesiones ganadas"
-            value={`${gained}/${comparable.length}`}
-            note="vs la sesión anterior del mismo plan"
+            value={comparable.length === 0 ? '—' : `${gained}/${comparable.length}`}
+            note={
+              comparable.length === 0
+                ? 'sin sesiones comparables'
+                : 'vs la sesión anterior del mismo plan'
+            }
           />
           <Readout
             label="Mejor sesión"
             value={bestSession ? nf.format(measure(bestSession)) : '—'}
-            unit={bestSession ? measureUnit : undefined}
-            note={bestSession ? dayLabel(bestSession.summary.date) : undefined}
+            unit={bestSession ? measureInfo.unit : undefined}
+            note={
+              bestSession ? (
+                <>
+                  el <Stamp value={dayLabel(bestSession.summary.date)} />
+                </>
+              ) : (
+                'sin sesiones en el rango'
+              )
+            }
           />
-          <Readout label="Marcas superadas" value={nf.format(newBests)} note={`en ${recent.length} sesiones`} />
+          <Readout
+            label="Marcas superadas"
+            value={nf.format(newBests)}
+            note={
+              <>
+                en <Num value={nf.format(recent.length)} /> {pluralForm(recent.length, 'sesión', 'sesiones')}
+              </>
+            }
+          />
         </div>
       </section>
 
       {/* Duración por sesión */}
-      <Panel title="Duración por sesión" meta={`${measureUnit} · ${recent.length} sesiones`}>
-        <div className="p-4">
-          <div className="text-foreground">
-            <ResponsiveContainer width="100%" height={150}>
-              <BarChart data={sessionData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                <XAxis
-                  dataKey="label"
-                  height={44}
-                  interval={0}
-                  tick={(props) => <ValueTick {...props} data={sessionData} />}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tickLine={false}
-                />
-                <Tooltip content={<ChartTooltip unit={measureUnit} />} cursor={{ fill: 'var(--muted-surface)' }} />
-                <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
-              </BarChart>
-            </ResponsiveContainer>
+      <Panel title={measureInfo.title} meta={sessionMeta}>
+        {recent.length === 0 ? (
+          <p className="px-4 py-4 text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
+        ) : (
+          <div className="p-4">
+            <div role="img" aria-label={sessionChartLabel} className="text-foreground">
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={sessionData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis
+                    dataKey="label"
+                    height={44}
+                    interval={0}
+                    tick={(props) => <ValueTick {...props} data={sessionData} />}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<ChartTooltip unit={measureInfo.unit} />}
+                    cursor={{ fill: 'var(--muted-surface)' }}
+                  />
+                  <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartLegend
+              markers={[{ marker: 'lime', text: 'sesión ganada' }]}
+              note="sin cuadrado = sin sesión previa del mismo plan"
+            />
+            <ChartTable
+              caption={`${measureInfo.title}, ${sessionMeta}`}
+              rows={recent.map((c) => ({
+                id: c.summary.id,
+                label: dayLabel(c.summary.date),
+                value: measure(c),
+              }))}
+              unit={measureInfo.unit}
+            />
           </div>
-        </div>
+        )}
       </Panel>
 
       {/* Comparación por sesión */}
-      <Panel title="Comparación por sesión" meta={`${recent.length} sesiones`}>
+      <Panel title="Comparación por sesión" meta={sessionMeta}>
         {recent.length === 0 ? (
-          <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones registradas</p>
+          <p className="px-4 py-4 text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
         ) : (
           <ul className="divide-y divide-border">
             {[...recent].reverse().map((c) => (
@@ -377,7 +527,7 @@ export default function Metrics() {
                   ) : null}
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="metric text-lg text-foreground">
+                  <div className="metric text-lg tabular-nums text-foreground">
                     {nf.format(c.summary.durationMin)}{' '}
                     <span className="label-caps text-muted-foreground">min</span>
                   </div>
@@ -392,37 +542,45 @@ export default function Metrics() {
       </Panel>
 
       {/* Volumen semanal */}
-      <Panel title="Volumen por semana" meta={`${volumeUnit} · ${WEEKS_SHOWN} semanas`}>
+      <Panel title="Volumen por semana" meta={`${volumeUnit} · ${weeksLabel}`}>
         <div className="p-4">
-          {sinSesiones ? (
-            <p className="label-caps text-muted-foreground">sin sesiones para graficar</p>
+          {inRange.length === 0 ? (
+            <p className="text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
           ) : (
-            <div className="text-foreground">
-              <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={volumeData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                  <XAxis
-                    dataKey="label"
-                    height={44}
-                    interval={0}
-                    tick={(props) => <ValueTick {...props} data={volumeData} />}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<ChartTooltip unit={volumeUnit} />} cursor={{ fill: 'var(--muted-surface)' }} />
-                  <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <>
+              <div role="img" aria-label={volumeChartLabel} className="text-foreground">
+                <ResponsiveContainer width="100%" height={150}>
+                  <BarChart data={volumeData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                    <XAxis
+                      dataKey="label"
+                      height={44}
+                      interval={0}
+                      tick={(props) => <ValueTick {...props} data={volumeData} />}
+                      axisLine={{ stroke: 'var(--border)' }}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip unit={volumeUnit} />} cursor={{ fill: 'var(--muted-surface)' }} />
+                    <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <ChartLegend markers={[{ marker: 'ink', text: 'semana en curso' }]} />
+              <ChartTable
+                caption={`Volumen por semana, ${weeksLabel}`}
+                rows={volume.map((w) => ({ id: w.start, label: w.label, value: volumeValue(w) }))}
+                unit={volumeUnit}
+              />
+            </>
           )}
         </div>
       </Panel>
 
       {/* Marcas */}
-      <Panel title="Marcas" meta={`${best.length} ejercicios · histórico`}>
+      <Panel title="Marcas" meta={`${nf.format(best.length)} ${pluralForm(best.length, 'ejercicio', 'ejercicios')} · ${rangeTag}`}>
         {best.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
-            <span className="label-caps text-muted-foreground">sin marcas todavía:</span> aparecen cuando registrás el
-            valor de una serie (segundos en isométricos, reps en básicos)
+            sin marcas en este rango: aparecen cuando registrás el valor de una serie (segundos en isométricos,
+            reps en básicos)
           </p>
         ) : (
           <>
@@ -449,49 +607,73 @@ export default function Metrics() {
       </Panel>
 
       {/* Evolución por ejercicio */}
-      <Panel title="Evolución por ejercicio" meta={`${series.length} con historial`}>
+      <Panel
+        title="Evolución por ejercicio"
+        meta={`${nf.format(series.length)} con historial · ${rangeTag}`}
+      >
         {series.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
-            con dos registros del mismo ejercicio vas a ver acá la curva de progreso
+            con dos registros del mismo ejercicio dentro del rango vas a ver acá la curva de progreso
           </p>
         ) : (
           <ul className="divide-y divide-border">
-            {series.map((s) => (
-              <li key={`${s.exercise}-${s.unit}`} className="px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-sm font-medium">{s.exercise}</span>
-                  <span className="metric shrink-0 text-sm text-foreground">
-                    {nf.format(s.best)} <span className="label-caps text-muted-foreground">{UNIT_LABEL[s.unit]}</span>
-                  </span>
-                </div>
-                <div className="mt-2 text-foreground">
-                  <ResponsiveContainer width="100%" height={56}>
-                    <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-                      <XAxis dataKey="date" hide />
-                      <YAxis hide domain={[0, 'dataMax']} />
-                      <Tooltip content={<ChartTooltip unit={UNIT_LABEL[s.unit]} />} cursor={{ stroke: 'var(--muted-surface)' }} />
-                      <Line
-                        type="linear"
-                        dataKey="value"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        dot={{ r: 2.5, fill: 'currentColor', strokeWidth: 0 }}
-                        activeDot={{ r: 4, fill: 'var(--voltage-lime)', stroke: 'var(--ink)' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="label-caps mt-1 text-muted-foreground">
-                  {nf.format(s.improvements)} mejoras · {nf.format(s.points.length)} registros
-                </div>
-              </li>
-            ))}
+            {series.map((s) => {
+              const values = s.points.map((p) => p.value);
+              return (
+                <li key={`${s.exercise}-${s.unit}`} className="px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-sm font-medium">{s.exercise}</span>
+                    <span className="metric shrink-0 text-sm tabular-nums text-foreground">
+                      {nf.format(s.best)}{' '}
+                      <span className="label-caps text-muted-foreground">{UNIT_LABEL[s.unit]}</span>
+                    </span>
+                  </div>
+                  <div
+                    role="img"
+                    aria-label={`${s.exercise}: ${nf.format(s.points.length)} registros, mejor ${nf.format(s.best)} ${UNIT_LABEL[s.unit]}, tendencia ${TREND_WORD[trendOf(values)]}.`}
+                    className="mt-2 text-foreground"
+                  >
+                    <ResponsiveContainer width="100%" height={56}>
+                      <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide domain={[0, 'dataMax']} />
+                        <Tooltip
+                          content={<ChartTooltip unit={UNIT_LABEL[s.unit]} />}
+                          cursor={{ stroke: 'var(--muted-surface)' }}
+                        />
+                        <Line
+                          type="linear"
+                          dataKey="value"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          dot={{ r: 2.5, fill: 'currentColor', strokeWidth: 0 }}
+                          activeDot={{ r: 4, fill: 'var(--voltage-lime)', stroke: 'var(--ink)' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <ChartLegend note="cada punto es un registro del rango" />
+                  <div className="label-caps mt-1 text-muted-foreground">
+                    {nf.format(s.improvements)} mejoras · {nf.format(s.points.length)} registros
+                  </div>
+                  <ChartTable
+                    caption={`Evolución de ${s.exercise}`}
+                    rows={s.points.map((point, index) => ({
+                      id: `${point.date}-${index}`,
+                      label: dayLabel(point.date),
+                      value: point.value,
+                    }))}
+                    unit={UNIT_LABEL[s.unit]}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </Panel>
 
       {/* Metas: tus anclas de progresión */}
-      <Panel title="Metas" meta={`${anchors.length} anclas`}>
+      <Panel title="Metas" meta={`${nf.format(anchors.length)} anclas · ${rangeTag}`}>
         <ul className="divide-y divide-border">
           {anchors.map((anchor) => (
             <li key={`${anchor.exercise}-${anchor.unit}`} className="px-4 py-3">
@@ -505,7 +687,7 @@ export default function Metrics() {
                 <div className="h-1 flex-1 bg-border">
                   <div className="h-full bg-foreground" style={{ width: `${anchor.pct}%` }} />
                 </div>
-                <span className="metric shrink-0 text-sm text-foreground">
+                <span className="metric shrink-0 text-sm tabular-nums text-foreground">
                   {nf.format(anchor.current)}
                   <span className="label-caps ml-1 text-muted-foreground">
                     / {nf.format(anchor.target)} {UNIT_LABEL[anchor.unit]}
@@ -521,16 +703,19 @@ export default function Metrics() {
       </Panel>
 
       {/* Distribución por plan */}
-      <Panel title="Sesiones por plan" meta={`${dist.length} planes`}>
+      <Panel
+        title="Sesiones por plan"
+        meta={`${nf.format(dist.length)} ${pluralForm(dist.length, 'plan', 'planes')} · ${rangeTag}`}
+      >
         {dist.length === 0 ? (
-          <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones en el período</p>
+          <p className="px-4 py-4 text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
         ) : (
           <ul className="divide-y divide-border">
             {dist.map((slice) => (
               <li key={slice.planId} className="px-4 py-3">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm">{slice.name}</span>
-                  <span className="metric shrink-0 text-sm text-foreground">
+                  <span className="metric shrink-0 text-sm tabular-nums text-foreground">
                     {nf.format(slice.count)}
                     <span className="label-caps ml-1 text-muted-foreground">{slice.pct}%</span>
                   </span>
