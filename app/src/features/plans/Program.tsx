@@ -5,6 +5,7 @@ import { BackLink } from '@/components/BackLink';
 import { getProgram, createModel, deleteModel, updateModel } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
+import { splitModels } from './planModels';
 import { chainFor, describeLock } from './progression';
 import { useProgression } from '@/hooks/useProgression';
 import { Card } from '@/components/ui/card';
@@ -99,8 +100,7 @@ export default function Program() {
 
   if (!p) return <p className="label-caps">Programa no encontrado.</p>;
 
-  const normalModels = p.models.filter((m) => !m.benchmark);
-  const specialModels = p.models.filter((m) => m.benchmark);
+  const { routines, special } = splitModels(p.models);
 
   const saveNewModel = async () => {
     if (!newModelName.trim()) return;
@@ -375,26 +375,40 @@ export default function Program() {
                   </li>
                 ))}
               </ul>
-              {specialModels.map((m) => (
-                <div key={m.id} className="flex items-center justify-between gap-3 pt-2">
-                  <span className="label-caps text-muted-foreground">{m.name}</span>
-                  <Link to={`/routine/${m.id}`}>
-                    <Button variant="accent" size="sm">Registrar marca</Button>
-                  </Link>
-                </div>
-              ))}
             </div>
           )}
         </div>
       )}
 
+      {special.length > 0 && (
+        <section>
+          <div className="border-b border-border pb-2 mb-4 flex items-center justify-between">
+            <span className="label-caps text-foreground">Marcas</span>
+            <span className="metric text-sm text-muted-foreground">{special.length}</span>
+          </div>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {special.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-3 border border-border bg-card px-3 py-2">
+                <div className="min-w-0">
+                  <span className="block text-sm font-medium leading-tight text-foreground">{m.name}</span>
+                  <span className="label-status mt-1 inline-block text-muted-foreground">benchmark</span>
+                </div>
+                <Link to={`/routine/${m.id}`}>
+                  <Button variant="outline" size="sm">Registrar marca</Button>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <div className="border-b border-border pb-2 mb-4 flex items-center justify-between">
           <span className="label-caps text-foreground">Rutinas</span>
-          <span className="metric text-sm text-muted-foreground">{normalModels.length}</span>
+          <span className="metric text-sm text-muted-foreground">{routines.length}</span>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {normalModels.map((m) => (
+          {routines.map((m) => (
             <ContextMenu key={m.id}>
               <ContextMenuTrigger className="block h-full">
                 <Card className="flex h-full flex-col gap-2 px-3 py-2 transition-colors hover:border-ink">
