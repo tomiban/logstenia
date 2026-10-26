@@ -16,7 +16,8 @@ export interface PlansRepository {
 }
 
 // ---- idb implementation ----
-import { getDB as getSharedDB } from '../db/open';
+import { db } from '@/db';
+import { enqueueOutbox, withOutboxWrite } from '../repositories/sync/outbox';
 
 const STORE = 'plans';
 const VIDEO_CATALOG_VERSION_KEY = 'video-catalog-version';
@@ -34,10 +35,6 @@ interface CategoryRow {
 }
 
 type PlansRow = Record<string, unknown>;
-
-function getDB() {
-  return getSharedDB();
-}
 
 function nowISO(): string {
   return new Date().toISOString();
@@ -73,16 +70,36 @@ function isSameValue(a: unknown, b: unknown): boolean {
 }
 
 async function readCategoryRows(): Promise<(PlansRow & CategoryRow)[]> {
-  const db = await getDB();
-  return ((await db.getAll(STORE)) as PlansRow[]).filter(isCategoryRow);
+  return ((await db.plans.toArray()) as PlansRow[]).filter(isCategoryRow);
 }
 
-async function writeRows(rows: CategoryRow[]): Promise<void> {
+/**
+ * Stores the changed category rows and their pending push entries in one transaction
+ * (spec S5): the row and its outbox entry land together or not at all, so a saved edit
+ * can never be missing from the next sync. The metadata row never goes through here.
+ */
+async function writeCategoryRows(rows: CategoryRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const db = await getDB();
-  const tx = db.transaction(STORE, 'readwrite');
-  await Promise.all(rows.map((row) => tx.store.put(row)));
-  await tx.done;
+  // Row and outbox entry must commit in one transaction: the single-store `db` shim cannot express that.
+  await withOutboxWrite(STORE, async (tx) => {
+    const store = tx.objectStore(STORE);
+    for (const row of rows) {
+      await store.put(row);
+      await enqueueOutbox(tx, {
+        entity: STORE,
+        id: row.id,
+        updatedAt: row.updatedAt,
+        deletedAt: row.deletedAt,
+        row,
+      });
+    }
+  });
+}
+
+/** The version row is metadata; its payload is narrowed like every other stored payload. */
+function storedVersion(value: unknown): number {
+  const version = (value as { version?: unknown } | null | undefined)?.version;
+  return typeof version === 'number' ? version : 0;
 }
 
 /** Rows come from storage, so the payload is checked before it reaches the UI. */
@@ -130,7 +147,7 @@ export const idbPlansRepository: PlansRepository = {
       writes.push({ ...row, updatedAt: now, deletedAt: now });
     }
 
-    await writeRows(writes);
+    await writeCategoryRows(writes);
   },
   async seedIfEmpty(seed) {
     const existing = await this.load();
@@ -139,13 +156,10 @@ export const idbPlansRepository: PlansRepository = {
     }
   },
   async getVideoCatalogVersion() {
-    const db = await getDB();
-    const record = await db.get(STORE, VIDEO_CATALOG_VERSION_KEY);
-    return typeof record?.version === 'number' ? record.version : 0;
+    return storedVersion(await db.plans.get(VIDEO_CATALOG_VERSION_KEY));
   },
   async setVideoCatalogVersion(version) {
-    const db = await getDB();
-    await db.put(STORE, { id: VIDEO_CATALOG_VERSION_KEY, version });
+    await db.plans.put({ id: VIDEO_CATALOG_VERSION_KEY, version });
   },
 };
 

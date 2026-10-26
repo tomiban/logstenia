@@ -139,7 +139,7 @@ describe('parsePushBody', () => {
     });
   });
 
-  it('accepts exactly the six synced entities', () => {
+  it('accepts exactly the seven synced entities', () => {
     expect([...SYNC_ENTITY_NAMES]).toEqual([
       'sessions',
       'progress',
@@ -147,12 +147,13 @@ describe('parsePushBody', () => {
       'settings',
       'marks',
       'tags',
+      'plans',
     ]);
 
     const result = parsePushBody(body(SYNC_ENTITY_NAMES.map((entity) => mutation({ entity }))));
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.body.mutations).toHaveLength(6);
+    if (result.ok) expect(result.body.mutations).toHaveLength(7);
   });
 
   it('rejects a non-string deletedAt', () => {

@@ -113,7 +113,7 @@ describe('owner isolation', () => {
   });
 
   it('accepts every entity the client actually syncs', async () => {
-    const entities = ['sessions', 'progress', 'goals', 'settings', 'marks', 'tags'];
+    const entities = ['sessions', 'progress', 'goals', 'settings', 'marks', 'tags', 'plans'];
     const response = await push(
       db,
       OWNER_A,

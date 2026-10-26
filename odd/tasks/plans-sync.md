@@ -64,3 +64,47 @@ de esquema; la migración tiene que preservarlas.
 L3 (corrección de estimación): la opción se presentó como "~150 líneas". Con la costura en
 `plansRepository` el cambio queda en ~250 líneas y toca `db/open.ts`, `db/index.ts` y la
 allowlist del Worker; sigue siendo contenido, pero no es un cambio de una sola capa.
+
+L4 (T1+T2, commit `a7cfc88`): `DB_VERSION` 1005. El store deja de recrearse en cada upgrade y en
+su lugar migra el documento `{ id: 'root', data }` a una fila por categoría
+(`{ id, category, position, updatedAt, deletedAt }`), de forma idempotente: una base que ya tiene
+filas por categoría no se re-migra ni duplica, una fila `root` vieja se elimina, y la fila de
+versión del catálogo de videos no se toca. `load()` reconstruye el `PlanData` ordenando por
+`position` y valida el payload guardado con un guard mínimo antes de entregarlo a la UI;
+`save()` diffea por categoría, escribe solo lo que cambió y marca `deletedAt` en las que
+desaparecen (la forma que el sync necesita). **`plans.ts` no se tocó.**
+
+Prueba del defecto, sobre un fixture v1003 con el catálogo editado: el código anterior dejaba
+**cero filas**; el nuevo conserva las dos categorías con el payload editado y en orden.
+Deuda cerrada de paso, exigida por el hook de review: `PlansData.categories` pasó de `any[]` a
+`Category[]`.
+
+L5 (T3 en curso): `'plans'` entra en `ENTITY_NAMES` y en la allowlist del Worker, y `save()` rutea
+sus escrituras por `withOutboxWrite` para que la fila y su entrada de outbox sean atómicas. La fila
+de metadata (`video-catalog-version`) nunca se encola.
+
+L6 (hallazgo de T3, bloqueante para T4): **el seed ahora encola**. Como `save()` es el único camino
+de escritura, `seedIfEmpty()` hereda el outbox y un dispositivo nuevo publica sus siete categorías
+con `updatedAt` de este momento. Bajo LWW por categoría, eso significa que **estrenar un dispositivo
+puede pisar las categorías editadas en el otro**, porque el seed es "más nuevo" que la edición
+real. T4 tiene que decidir el orden seed-vs-pull antes de habilitar el seed con sync: la opción
+razonable es no encolar el seed y dejar que el pull mande, o sellarlo con el timestamp del catálogo
+curado y no con `Date.now()`.
+
+L7 (límite conocido de T3): una categoría que llega por pull se escribe en el store, pero **la UI no
+se refresca**: `plans.ts` cachea en memoria y ningún consumidor escucha `onPulledRows` para `plans`.
+El dato está en IndexedDB y la pantalla queda vieja hasta recargar. Es de T4.
+
+L8 (decisión para T4, el seed no debe ganar nunca): el seed se sellará con un `updatedAt` **viejo y
+constante** (no `Date.now()`). El LWW solo compara contra filas existentes, así que los tres casos
+salen bien sin coordinación: servidor vacío → no hay contra qué comparar y el seed se publica (el
+catálogo viaja al segundo dispositivo); servidor con la categoría editada → el seed pierde y se
+rechaza como `stale_server_newer` (instalar en un dispositivo nuevo no borra lo editado en otro);
+dispositivo nuevo sobre servidor poblado → siembra local viejo y el pull gana. La alternativa "no
+encolar el seed" falla en el caso base: si nadie lo publica, el segundo dispositivo nunca lo recibe.
+
+L9 (deuda de infraestructura de test, no de producto): el e2e de runner es **no determinístico**
+bajo carga. El síntoma es siempre el mismo — la página queda en `Cargando…` (el `Suspense` del chunk
+lazy) cuando el `expect` de 5 s vence — y ocurre igual antes y después de los cambios de este
+feature (base: 1-3 fallos por corrida; con `--retries=2`: 34/34). El fix de fondo es precargar la
+ruta o subir el timeout del chunk, no acumular retries para siempre.

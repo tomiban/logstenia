@@ -35,6 +35,7 @@ export const SYNC_ENTITY_NAMES = [
   'settings',
   'marks',
   'tags',
+  'plans',
 ] as const;
 
 const SYNC_ENTITY_ALLOWLIST: ReadonlySet<string> = new Set(SYNC_ENTITY_NAMES);

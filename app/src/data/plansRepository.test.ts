@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import 'fake-indexeddb/auto';
 import type { Category } from '@/types';
 import { getDB } from '@/db/open';
+import { pendingOutboxEntries } from '@/repositories/sync/outbox';
+import type { PendingOutboxEntry } from '@/repositories/sync/outbox';
 import { plansRepository } from './plansRepository';
 
 /**
@@ -49,9 +51,20 @@ function liveCategoryIds(): Promise<string[]> {
   return plansRepository.load().then((data) => (data?.categories ?? []).map((c: Category) => c.id));
 }
 
+function pendingPlansEntries(): Promise<PendingOutboxEntry[]> {
+  return pendingOutboxEntries(100);
+}
+
+function outboxEntry(entries: PendingOutboxEntry[], id: string): PendingOutboxEntry {
+  const entry = entries.find((candidate) => candidate.id === id);
+  if (!entry) throw new Error(`missing outbox entry ${id}`);
+  return entry;
+}
+
 beforeEach(async () => {
   const db = await getDB();
   await db.clear(STORE);
+  await db.clear('outbox');
 });
 
 describe('plansRepository.load', () => {
@@ -129,6 +142,66 @@ describe('plansRepository.save', () => {
 
     expect(await plansRepository.getVideoCatalogVersion()).toBe(4);
     expect(await liveCategoryIds()).toEqual(['cardio']);
+  });
+});
+
+describe('plansRepository.save outbox (spec S5)', () => {
+  it('leaves exactly one pending entry for the category it edited', async () => {
+    await putRows([
+      { id: 'cardio', category: cardio, position: 0, updatedAt: SEEDED_AT, deletedAt: null },
+      { id: 'movilidad', category: movilidad, position: 1, updatedAt: SEEDED_AT, deletedAt: null },
+    ]);
+    const edited = { ...cardio, name: 'Cardio adaptado' };
+
+    await plansRepository.save({ categories: [edited, movilidad] });
+
+    const entries = await pendingPlansEntries();
+    expect(entries).toHaveLength(1);
+    const entry = outboxEntry(entries, 'cardio');
+    const stored = rowById(await storedRows(), 'cardio');
+    expect(entry.entity).toBe('plans');
+    expect(entry.deletedAt).toBeNull();
+    expect(entry.updatedAt).toBe(stored.updatedAt);
+    expect(entry.row).toEqual(stored);
+  });
+
+  it('enqueues nothing when the document did not change', async () => {
+    await putRows([
+      { id: 'cardio', category: cardio, position: 0, updatedAt: SEEDED_AT, deletedAt: null },
+      { id: 'movilidad', category: movilidad, position: 1, updatedAt: SEEDED_AT, deletedAt: null },
+    ]);
+
+    await plansRepository.save({ categories: [cardio, movilidad] });
+
+    expect(await pendingPlansEntries()).toEqual([]);
+  });
+
+  it('enqueues a tombstone for a category the document removed', async () => {
+    await putRows([
+      { id: 'cardio', category: cardio, position: 0, updatedAt: SEEDED_AT, deletedAt: null },
+      { id: 'movilidad', category: movilidad, position: 1, updatedAt: SEEDED_AT, deletedAt: null },
+    ]);
+
+    await plansRepository.save({ categories: [cardio] });
+
+    const entries = await pendingPlansEntries();
+    expect(entries).toHaveLength(1);
+    const entry = outboxEntry(entries, 'movilidad');
+    const stored = rowById(await storedRows(), 'movilidad');
+    expect(entry.entity).toBe('plans');
+    expect(typeof entry.deletedAt).toBe('string');
+    expect(entry.deletedAt).toBe(stored.deletedAt);
+    expect(entry.row).toEqual(stored);
+  });
+
+  it('never enqueues the video catalog version row', async () => {
+    await plansRepository.setVideoCatalogVersion(7);
+
+    await plansRepository.save({ categories: [cardio] });
+
+    const entries = await pendingPlansEntries();
+    expect(entries.map((entry) => entry.id)).toEqual(['cardio']);
+    expect(await plansRepository.getVideoCatalogVersion()).toBe(7);
   });
 });
 
