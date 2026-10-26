@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import type { Intensity, Model } from '@/types';
 import { BackLink } from '@/components/BackLink';
 import { getProgram, createModel, deleteModel, updateModel } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
@@ -53,6 +54,19 @@ function RoutineTags({ routineId }: { routineId: string }) {
   );
 }
 
+/** The fields a model edit form round-trips; kept narrow so the payload cannot drift from `Model`. */
+interface ModelEditForm {
+  name: string;
+  intensity: Intensity;
+  totalTimeMin: number;
+  benchmark: boolean;
+}
+
+/** The select hands back a string; anything outside the three levels falls back to the first. */
+function toIntensity(raw: string | null | undefined): Intensity {
+  return raw === '2' ? 2 : raw === '3' ? 3 : 1;
+}
+
 export default function Program() {
   const { id } = useParams();
   usePlansVersion();
@@ -70,8 +84,9 @@ export default function Program() {
   // model create/edit/delete
   const [modelCreateOpen, setModelCreateOpen] = useState(false);
   const [newModelName, setNewModelName] = useState('');
-  const [modelEdit, setModelEdit] = useState<{ id: string; form: any } | null>(null);
+  const [modelEdit, setModelEdit] = useState<{ id: string; form: ModelEditForm } | null>(null);
   const [modelDelete, setModelDelete] = useState<{ id: string; name: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!p) return;
@@ -89,14 +104,19 @@ export default function Program() {
 
   const saveNewModel = async () => {
     if (!newModelName.trim()) return;
-    const existing = new Set(p.models.map((m: any) => m.id));
+    const existing = new Set(p.models.map((m: Model) => m.id));
     const id = uniqueId(newModelName, existing);
-    await createModel(p.id, { id, name: newModelName.trim(), intensity: 1, totalTimeMin: 0, blocks: [], tags: [] } as any);
-    setNewModelName('');
-    setModelCreateOpen(false);
+    try {
+      await createModel(p.id, { id, name: newModelName.trim(), intensity: 1, totalTimeMin: 0, blocks: [], tags: [] });
+      setSaveError(null);
+      setNewModelName('');
+      setModelCreateOpen(false);
+    } catch {
+      setSaveError('No se pudo crear la rutina.');
+    }
   };
 
-  const openModelEdit = (m: any) => {
+  const openModelEdit = (m: Model) => {
     setModelEdit({
       id: m.id,
       form: { name: m.name, intensity: m.intensity, totalTimeMin: m.totalTimeMin, benchmark: !!m.benchmark },
@@ -104,18 +124,28 @@ export default function Program() {
   };
   const saveModelEdit = async () => {
     if (!modelEdit) return;
-    await updateModel(modelEdit.id, {
-      name: modelEdit.form.name.trim(),
-      intensity: Number(modelEdit.form.intensity) as any,
-      totalTimeMin: Number(modelEdit.form.totalTimeMin),
-      benchmark: modelEdit.form.benchmark,
-    });
-    setModelEdit(null);
+    try {
+      await updateModel(modelEdit.id, {
+        name: modelEdit.form.name.trim(),
+        intensity: modelEdit.form.intensity,
+        totalTimeMin: Number(modelEdit.form.totalTimeMin),
+        benchmark: modelEdit.form.benchmark,
+      });
+      setSaveError(null);
+      setModelEdit(null);
+    } catch {
+      setSaveError('No se pudo guardar la rutina.');
+    }
   };
   const confirmDeleteModel = async () => {
     if (!modelDelete) return;
-    await deleteModel(modelDelete.id);
-    setModelDelete(null);
+    try {
+      await deleteModel(modelDelete.id);
+      setSaveError(null);
+      setModelDelete(null);
+    } catch {
+      setSaveError('No se pudo borrar la rutina.');
+    }
   };
 
   return (
@@ -196,7 +226,7 @@ export default function Program() {
               <div className="space-y-1.5"><Label>Nombre</Label><Input value={modelEdit.form.name} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, name: e.target.value } })} /></div>
               <div className="space-y-1.5">
                 <Label>Intensidad</Label>
-                <Select value={String(modelEdit.form.intensity)} onValueChange={(v) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, intensity: (v ?? "") as string } })}>
+                <Select value={String(modelEdit.form.intensity)} onValueChange={(v) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, intensity: toIntensity(v) } })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">1</SelectItem>
@@ -205,7 +235,7 @@ export default function Program() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label>Tiempo total (min)</Label><Input type="number" value={modelEdit.form.totalTimeMin} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, totalTimeMin: e.target.value } })} /></div>
+              <div className="space-y-1.5"><Label>Tiempo total (min)</Label><Input type="number" value={modelEdit.form.totalTimeMin} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, totalTimeMin: Number(e.target.value) } })} /></div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" className="h-4 w-4 accent-foreground" checked={modelEdit.form.benchmark} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, benchmark: e.target.checked } })} />
                 Benchmark
@@ -236,20 +266,37 @@ export default function Program() {
         <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
           <span className="label-caps text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
           <Button variant="ink" size="sm" disabled={!unlocked} onClick={async () => {
-            const r = await settingsRepository.get('startedPlans');
-            const arr = (r?.value as string[]) || [];
-            if (!arr.includes(p.id)) {
-              await settingsRepository.put({ key: 'startedPlans', value: [...arr, p.id] });
+            try {
+              const r = await settingsRepository.get('startedPlans');
+              const arr = (r?.value as string[]) || [];
+              if (!arr.includes(p.id)) {
+                await settingsRepository.put({ key: 'startedPlans', value: [...arr, p.id] });
+              }
+              setSaveError(null);
+              setStarted(true);
+            } catch {
+              setSaveError('No se pudo empezar el plan.');
             }
-            setStarted(true);
           }}>{unlocked ? 'Empezar plan' : 'Bloqueado'}</Button>
         </div>
+      )}
+
+      {saveError && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          {saveError}
+        </p>
       )}
 
       {!unlocked && lockReason && (
         <div className="border border-ink bg-secondary p-3">
           <p className="label-caps text-foreground">{lockReason}</p>
         </div>
+      )}
+
+      {progression.error && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          No se pudo leer el progreso: las fases y los niveles desbloqueados pueden verse reiniciados.
+        </p>
       )}
 
       {report?.next && (
@@ -295,8 +342,8 @@ export default function Program() {
               <div className="bg-card p-3 space-y-1.5">
                 <span className="label-caps text-muted-foreground">Objetivos</span>
                 <ul className="space-y-1">
-                  {p.objectives.map((o, i) => (
-                    <li key={i} className="text-sm text-foreground">· {o}</li>
+                  {p.objectives.map((o) => (
+                    <li key={o} className="text-sm text-foreground">· {o}</li>
                   ))}
                 </ul>
               </div>
@@ -305,8 +352,8 @@ export default function Program() {
               <div className="bg-card p-3 space-y-1.5">
                 <span className="label-caps text-muted-foreground">Reglas</span>
                 <ul className="space-y-1">
-                  {p.rules.map((r, i) => (
-                    <li key={i} className="text-sm text-foreground">· {r}</li>
+                  {p.rules.map((r) => (
+                    <li key={r} className="text-sm text-foreground">· {r}</li>
                   ))}
                 </ul>
               </div>
@@ -316,8 +363,8 @@ export default function Program() {
             <div className="bg-card p-3 space-y-2 border-t border-border">
               <p className="text-sm text-muted-foreground">¿Te sentís preparado para avanzar de nivel? Tomá tus marcas: con estas se abre el nivel siguiente.</p>
               <ul className="space-y-1">
-                {report!.anchors.map((a, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
+                {report!.anchors.map((a) => (
+                  <li key={`${a.ejercicio}-${a.objetivo}`} className="flex items-center gap-2 text-sm">
                     <span className={a.met ? 'text-accent' : 'text-muted-foreground'}>{a.met ? '✓' : '○'}</span>
                     <span className="metric text-foreground">{a.objetivo}</span>
                     <span className="text-muted-foreground">{a.unidad === 'sec' ? 'seg' : 'reps'}</span>
