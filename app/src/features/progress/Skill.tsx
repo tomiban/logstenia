@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { Level, Program } from '@/types';
+import { pluralForm } from '@/lib/format';
 import { BackLink } from '@/components/BackLink';
 import { useCategories } from '@/hooks/usePlans';
-import { createProgram, updateProgram, deleteProgram, updateCategory, getProgram } from '@/features/plans/plans';
-import { tagChainsForCategory } from '@/features/plans/progression';
+import { allPrograms, createProgram, updateProgram, deleteProgram, updateCategory } from '@/features/plans/plans';
+import { progressionChainsForCategory, type ProgressionReport } from '@/features/plans/progression';
 import { useProgression } from '@/hooks/useProgression';
 import { TagListInput } from '@/components/ui/tag-list-input';
 import { LineListInput } from '@/components/ui/line-list-input';
@@ -43,6 +44,22 @@ interface ProgForm {
   tags: string[];
 }
 
+/**
+ * The unlock condition in one line. `describeLock` lists every missing anchor, which turns a card
+ * into a wall of text; here the previous program and the number of pending marks are enough to know
+ * what to do next, and the criteria stay on the program screen.
+ */
+function lockSummary(report: ProgressionReport): string {
+  const missing = report.requirements.filter((anchor) => !anchor.met).length;
+  const marks = `${missing} ${pluralForm(missing, 'marca', 'marcas')}`;
+  if (report.previous) {
+    return missing > 0
+      ? `Bloqueado: completá ${report.previous.name} o superá ${marks}.`
+      : `Bloqueado: completá ${report.previous.name}.`;
+  }
+  return missing > 0 ? `Bloqueado: superá ${marks}.` : 'Bloqueado.';
+}
+
 export default function Skill() {
   const { id } = useParams();
   const cats = useCategories();
@@ -61,6 +78,10 @@ export default function Skill() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!cat) return <p className="label-caps">Categoría no encontrada.</p>;
+
+  const chains = progressionChainsForCategory(cat.id);
+  const programsById = new Map(allPrograms().map((p) => [p.id, p]));
+  const reports = new Map(cat.programs.map((p) => [p.id, progression.reportFor(p.id)]));
 
   const openCatEdit = () => {
     setCatForm({ name: cat.name, desc: cat.description });
@@ -161,15 +182,29 @@ export default function Skill() {
         <div className="flex items-center justify-between gap-3 mt-2">
           <ContextMenu>
             <ContextMenuTrigger className="min-w-0 flex-1">
-              <h1 className="text-3xl font-bold tracking-tight font-heading">{cat.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight font-heading">{cat.name}</h1>
             </ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem onClick={openCatEdit}>Editar categoría</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-          <Button variant="accent" size="sm" onClick={openCreateProg} >
-            Nuevo programa
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {cat.programs.length > 0 && (
+              <Button variant="accent" size="lg" onClick={openCreateProg}>
+                Nuevo programa
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="icon-lg" aria-label="Acciones de la categoría" />}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={openCatEdit}>Editar categoría</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <p className="text-muted-foreground">{cat.description}</p>
       </header>
@@ -230,8 +265,10 @@ export default function Skill() {
       <AlertDialog open={!!deletingProg} onOpenChange={(o) => !o && setDeletingProg(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Borrar programa?</AlertDialogTitle>
-            <AlertDialogDescription>Se borrarán sus rutinas. Sesiones y marcas quedan huérfanas.</AlertDialogDescription>
+            <AlertDialogTitle>¿Borrar programa? {deletingProg?.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se borrarán las rutinas de {deletingProg?.name}. Sesiones y marcas quedan huérfanas.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -240,99 +277,122 @@ export default function Skill() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {cat.programs.length === 0 && <p className="text-sm text-muted-foreground">Sin progresiones curadas aún.</p>}
+      {cat.programs.length === 0 && (
+        <section className="space-y-3 border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Sin programas curados aún.</p>
+          <Button variant="outline" size="lg" onClick={openCreateProg}>
+            Nuevo programa
+          </Button>
+        </section>
+      )}
 
       {saveError && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+        <p role="alert" className="border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {saveError}
         </p>
       )}
 
       {progression.error && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+        <p role="alert" className="border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
           No se pudo leer el progreso: los niveles completados y bloqueados pueden verse reiniciados.
         </p>
       )}
 
-      {tagChainsForCategory(cat.id).length > 0 && (
+      {chains.groups.length > 0 && (
         <section className="space-y-2">
           <h2 className="label-caps">Progresión (más fácil → más difícil)</h2>
-          {tagChainsForCategory(cat.id).map(({ tag, chain }) => (
-            <div key={tag} className="space-y-1">
-              <span className="label-caps text-muted-foreground">{tag}</span>
-              <div className="flex flex-wrap items-center gap-2">
+          {chains.groups.map((chain) => (
+            <div key={chain.join('>')} className="flex flex-wrap items-center gap-2">
               {chain.map((pid, idx) => {
-                const level = progression.reportFor(pid)?.levels.find((l) => l.id === pid) ?? null;
+                const program = programsById.get(pid);
+                const report = reports.get(pid) ?? null;
                 return (
-                <span key={pid} className="flex items-center gap-2">
-                  <Link to={`/program/${pid}`} className="px-3 py-2 border border-border bg-card text-foreground text-sm font-semibold transition-colors hover:border-ink">
-                    {getProgram(pid)?.name ?? pid}
-                    <span className="ml-2 label-caps">{LEVEL_LABEL[getProgram(pid)?.level ?? ''] ?? getProgram(pid)?.level}</span>
-                    {level?.completed && <span className="ml-2 label-caps">completado</span>}
-                  </Link>
-                  {idx < chain.length - 1 && <span className="text-muted-foreground">→</span>}
-                </span>
+                  <span key={pid} className="flex items-center gap-2">
+                    <Link
+                      to={`/program/${pid}`}
+                      className="flex items-center gap-2 border border-ink bg-transparent px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-on-ink"
+                    >
+                      <span className="label-caps">{idx + 1}</span>
+                      <span className="min-w-0">{program?.name ?? pid}</span>
+                      {report?.completed && <span aria-hidden="true" className="size-2 shrink-0 bg-ink" />}
+                      {report && !report.unlocked && (
+                        <span aria-hidden="true" className="size-2 shrink-0 border border-ink" />
+                      )}
+                      <span className="sr-only">
+                        {report?.completed ? 'completado' : report && !report.unlocked ? 'bloqueado' : 'disponible'}
+                      </span>
+                    </Link>
+                    {idx < chain.length - 1 && (
+                      <span aria-hidden="true" className="text-muted-foreground">→</span>
+                    )}
+                  </span>
                 );
               })}
-            </div>
             </div>
           ))}
         </section>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cat.programs.map((p) => (
-          <ContextMenu key={p.id}>
-            <ContextMenuTrigger className="block h-full">
-              <Card className="p-4 h-full transition-colors hover:ring-ink">
-                <div className="flex items-start justify-between gap-2">
-                  <Link to={`/program/${p.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h2 className="font-semibold">{p.name}</h2>
-                        <p className="text-xs text-muted-foreground mt-0.5">{LEVEL_LABEL[p.level] ?? p.level}</p>
+        {cat.programs.map((p) => {
+          const report = reports.get(p.id) ?? null;
+          const slot = chains.slots.get(p.id) ?? null;
+          return (
+            <ContextMenu key={p.id}>
+              <ContextMenuTrigger className="block h-full">
+                <Card className="p-4 h-full transition-colors hover:ring-ink">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link to={`/program/${p.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                      <h2 className="font-semibold">{p.name}</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">{LEVEL_LABEL[p.level] ?? p.level}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="outline">{p.models.length} rutinas</Badge>
+                        {slot && (
+                          <Badge variant="outline" className="label-status">
+                            Fase {slot.position} de {slot.total}
+                          </Badge>
+                        )}
+                        {report?.completed && (
+                          <Badge variant="outline" className="label-status gap-1.5">
+                            <span aria-hidden="true" className="size-2 bg-accent" />
+                            completado
+                          </Badge>
+                        )}
+                        {report?.unlocked === false && (
+                          <Badge variant="outline" className="label-status">bloqueado</Badge>
+                        )}
                       </div>
-
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="outline">{p.models.length} rutinas</Badge>
-                      {tagChainsForCategory(cat.id).some(({ chain }) => chain.includes(p.id)) && (
-                        <Badge variant="outline">En cadena</Badge>
+                      {report?.unlocked === false && (
+                        <p className="mt-2 text-xs text-muted-foreground">{lockSummary(report)}</p>
                       )}
-                      {progression.reportFor(p.id)?.completed && (
-                        <Badge className="border-ink bg-accent text-on-accent label-status">completado</Badge>
-                      )}
-                      {progression.reportFor(p.id)?.unlocked === false && (
-                        <Badge variant="outline" className="label-status">bloqueado</Badge>
-                      )}
-                    </div>
-                  </Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditProg(p)}>Editar</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </Card>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem onClick={() => openEditProg(p)}>Editar</ContextMenuItem>
-              <ContextMenuSub>
-                <ContextMenuSubTrigger>Etiquetas</ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-48 p-1.5">
-                  <TagsMenu targetType="program" targetId={p.id} />
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-              <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        ))}
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditProg(p)}>Editar</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </Card>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => openEditProg(p)}>Editar</ContextMenuItem>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>Etiquetas</ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="w-48 p-1.5">
+                    <TagsMenu targetType="program" targetId={p.id} />
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuSeparator />
+                <ContextMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+        })}
       </div>
     </div>
   );
