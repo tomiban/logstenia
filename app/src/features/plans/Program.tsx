@@ -10,6 +10,7 @@ import { chainFor, describeLock } from './progression';
 import { useProgression } from '@/hooks/useProgression';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from '@/components/ui/context-menu';
@@ -92,9 +93,13 @@ export default function Program() {
   useEffect(() => {
     if (!p) return;
     (async () => {
-      const r = await settingsRepository.get('startedPlans');
-      const arr = (r?.value as string[]) || [];
-      setStarted(arr.includes(p.id));
+      try {
+        const r = await settingsRepository.get('startedPlans');
+        const arr = (r?.value as string[]) || [];
+        setStarted(arr.includes(p.id));
+      } catch {
+        setSaveError('No se pudo leer si este plan ya está empezado.');
+      }
     })();
   }, [p]);
 
@@ -282,9 +287,7 @@ export default function Program() {
       )}
 
       {saveError && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
-          {saveError}
-        </p>
+        <ErrorAlert>{saveError}</ErrorAlert>
       )}
 
       {!unlocked && lockReason && (
@@ -294,9 +297,9 @@ export default function Program() {
       )}
 
       {progression.error && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+        <ErrorAlert>
           No se pudo leer el progreso: las fases y los niveles desbloqueados pueden verse reiniciados.
-        </p>
+        </ErrorAlert>
       )}
 
       {report?.next && (

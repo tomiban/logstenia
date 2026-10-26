@@ -6,6 +6,7 @@ import { createProgressRepository, createSessionRepository, createSettingsReposi
 import type { MarkRecord, ProgressRecord, SessionRecord } from '@/repositories';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -185,11 +186,7 @@ export default function Home() {
           {ahora.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' })}
         </p>
       </header>
-      {saveError && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
-          {saveError}
-        </p>
-      )}
+      {saveError && <ErrorAlert>{saveError}</ErrorAlert>}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <div className="border-b border-border px-4 py-2">

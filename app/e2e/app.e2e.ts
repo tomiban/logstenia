@@ -13,7 +13,7 @@ test('métricas explica qué falta cuando todavía no hay registros', async ({ p
 
 test('ajustes se abre desde el nombre del navbar y se cierra con Escape', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'tomas' }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
@@ -26,7 +26,7 @@ test('ajustes se abre desde el nombre del navbar y se cierra con Escape', async 
 
 test('ajustes muestra el estado de sincronización y el disparo manual', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'tomas' }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog.getByText('Sincronización', { exact: true })).toBeVisible();

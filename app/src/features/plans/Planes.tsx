@@ -5,6 +5,7 @@ import { createCategory, updateCategory, deleteCategory } from './plans';
 import { uniqueId } from './ids';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -26,7 +27,7 @@ export default function Planes() {
   const [newDesc, setNewDesc] = useState('');
 
   const [editing, setEditing] = useState<{ id: string; name: string; desc: string } | null>(null);
-  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const saveNew = async () => {
@@ -58,7 +59,7 @@ export default function Planes() {
   const confirmDelete = async () => {
     if (!deleting) return;
     try {
-      await deleteCategory(deleting.id);
+      await deleteCategory(deleting);
       setSaveError(null);
       setDeleting(null);
     } catch {
@@ -71,7 +72,7 @@ export default function Planes() {
       <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-heading">Planes</h1>
-          <p className="label-caps text-muted-foreground">progresiones por categoría</p>
+          <p className="label-caps text-muted-foreground">programas por categoría</p>
         </div>
         <Button variant="accent" size="sm" onClick={() => setCreateOpen(true)}>
           Nueva categoría
@@ -79,9 +80,7 @@ export default function Planes() {
       </header>
 
       {saveError && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
-          {saveError}
-        </p>
+        <ErrorAlert>{saveError}</ErrorAlert>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -156,7 +155,7 @@ export default function Planes() {
                     <h2 className="font-semibold">{c.name}</h2>
                     <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
                     <div className="mt-2 flex gap-2">
-                      <Badge variant="outline">{c.programs.length} progresiones</Badge>
+                      <Badge variant="outline">{c.programs.length} programas</Badge>
                     </div>
                   </Link>
                   <DropdownMenu>
@@ -166,7 +165,7 @@ export default function Planes() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setEditing({ id: c.id, name: c.name, desc: c.description })}>Editar</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleting({ id: c.id, name: c.name })}>Borrar</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleting(c.id)}>Borrar</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -175,7 +174,7 @@ export default function Planes() {
             <ContextMenuContent>
               <ContextMenuItem onClick={() => setEditing({ id: c.id, name: c.name, desc: c.description })}>Editar</ContextMenuItem>
               <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive" onClick={() => setDeleting({ id: c.id, name: c.name })}>Borrar</ContextMenuItem>
+              <ContextMenuItem className="text-destructive" onClick={() => setDeleting(c.id)}>Borrar</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
         ))}

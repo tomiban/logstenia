@@ -12,6 +12,7 @@ import { useCrudModal, CrudModal } from '@/components/ui/crud-modal';
 import { uniqueId } from '@/features/plans/ids';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -57,7 +58,7 @@ export default function Skill() {
     name: '', level: 'beginner', description: '', objectives: [], rules: [],
     frequency: '', restBetweenSessions: '', optional: false, tags: [],
   });
-  const [deletingProg, setDeletingProg] = useState<{ id: string; name: string } | null>(null);
+  const [deletingProg, setDeletingProg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!cat) return <p className="label-caps">Categoría no encontrada.</p>;
@@ -146,7 +147,7 @@ export default function Skill() {
   const confirmDeleteProg = async () => {
     if (!deletingProg) return;
     try {
-      await deleteProgram(deletingProg.id);
+      await deleteProgram(deletingProg);
       setSaveError(null);
       setDeletingProg(null);
     } catch {
@@ -240,18 +241,16 @@ export default function Skill() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {cat.programs.length === 0 && <p className="text-sm text-muted-foreground">Sin progresiones curadas aún.</p>}
+      {cat.programs.length === 0 && <p className="text-sm text-muted-foreground">Sin programas curados aún.</p>}
 
       {saveError && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
-          {saveError}
-        </p>
+        <ErrorAlert>{saveError}</ErrorAlert>
       )}
 
       {progression.error && (
-        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+        <ErrorAlert>
           No se pudo leer el progreso: los niveles completados y bloqueados pueden verse reiniciados.
-        </p>
+        </ErrorAlert>
       )}
 
       {tagChainsForCategory(cat.id).length > 0 && (
@@ -297,7 +296,7 @@ export default function Skill() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Badge variant="outline">{p.models.length} rutinas</Badge>
                       {tagChainsForCategory(cat.id).some(({ chain }) => chain.includes(p.id)) && (
-                        <Badge variant="outline">En cadena</Badge>
+                        <Badge variant="outline">En progresión</Badge>
                       )}
                       {progression.reportFor(p.id)?.completed && (
                         <Badge className="border-ink bg-accent text-on-accent label-status">completado</Badge>
@@ -314,7 +313,7 @@ export default function Skill() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditProg(p)}>Editar</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeletingProg(p.id)}>Borrar</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -329,7 +328,7 @@ export default function Skill() {
                 </ContextMenuSubContent>
               </ContextMenuSub>
               <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive" onClick={() => setDeletingProg({ id: p.id, name: p.name })}>Borrar</ContextMenuItem>
+              <ContextMenuItem className="text-destructive" onClick={() => setDeletingProg(p.id)}>Borrar</ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
         ))}

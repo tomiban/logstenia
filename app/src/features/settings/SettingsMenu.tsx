@@ -50,7 +50,8 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Settings popover anchored to the profile name in the navbar. */
+const PROFILE_NAME = 'tomas';
+
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const [sound, setSound] = useState(true);
@@ -197,9 +198,10 @@ export function SettingsMenu() {
         className="label-caps"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label="Ajustes"
         onClick={() => setOpen((o) => !o)}
       >
-        tomas
+        Ajustes
       </Button>
 
       {open ? (
@@ -209,7 +211,8 @@ export function SettingsMenu() {
           className="absolute right-0 top-full z-30 mt-1 w-[280px] border border-border bg-card p-4"
         >
           <div className="border-b border-border pb-2">
-            <p className="label-caps text-foreground">Ajustes</p>
+            <p className="label-caps text-muted-foreground">Ajustes</p>
+            <p className="mt-1 font-heading text-sm font-semibold text-foreground">{PROFILE_NAME}</p>
           </div>
 
           <div className="space-y-1 pt-3">
