@@ -8,7 +8,7 @@ import { elapsedSeconds } from './session';
 import { buildSteps, type WorkoutStep } from './steps';
 import type { Exercise, Model, Program } from '@/types';
 import { seriesCount } from './rest';
-import { num, buscarSerie, esUltimaVuelta, rondaCompleta } from './runnerLogic';
+import { num, buscarSerie, countPendingSets, esUltimaVuelta, rondaCompleta, type PendingSet } from './runnerLogic';
 import { toISODate } from '@/lib/date';
 import { progressionReportFor, touchedAnchors, type ProgressionReport } from '@/features/plans/progression';
 import { playBeep, playSound, unlockAudio, vibrate } from '@/lib/audio';
@@ -83,6 +83,18 @@ export interface RunnerProgression {
   touchedCriteria: boolean;
 }
 
+/**
+ * The series the skip dialog has to account for: `Continuar` registers what was typed and skips
+ * what was left empty, so the dialog states both numbers instead of calling every pending set
+ * omitted.
+ */
+export interface SkipDialog {
+  /** Typed but not confirmed: continuing registers them. */
+  typed: number;
+  /** No value typed and nothing registered: continuing skips them. */
+  empty: number;
+}
+
 export interface SetValue {
   /** Stable identity so React keys survive adding and removing sets. */
   id: string;
@@ -125,8 +137,8 @@ export interface RunnerState {
   setRestLabel: (v: string) => void;
   restDestination: RestDestination;
   setRestDestination: (v: RestDestination) => void;
-  skipDialog: { pending: number } | null;
-  setSkipDialog: (v: { pending: number } | null) => void;
+  skipDialog: SkipDialog | null;
+  setSkipDialog: (v: SkipDialog | null) => void;
   restRemaining: number;
   draftLoaded: boolean;
 
@@ -141,6 +153,7 @@ export interface RunnerState {
   totalSets: number;
   exerciseKey: (ei: number) => string;
   exerciseValues: (ei: number) => SetValue[];
+  /** Series of the current block left empty: continuing skips them. */
   unregistered: number;
 
   // Handlers
@@ -178,7 +191,7 @@ export function useRunner(): RunnerState {
   const [restSeconds, setRestSeconds] = useState(0);
   const [restLabel, setRestLabel] = useState('Descanso');
   const [restDestination, setRestDestination] = useState<RestDestination>(null);
-  const [skipDialog, setSkipDialog] = useState<{ pending: number } | null>(null);
+  const [skipDialog, setSkipDialog] = useState<SkipDialog | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const startedAtRef = useRef(0);
   const setsRef = useRef<SessionSet[]>([]);
@@ -392,12 +405,19 @@ export function useRunner(): RunnerState {
     if (current.restAfterSetSec > 0) startRest(current.restAfterSetSec, 'Descanso de serie', null);
   };
 
-  const unregistered = current
-    ? current.exercises.reduce((acc, ex, ei) => {
-        const list = exerciseValues(ei);
-        return acc + list.filter((_, k) => !buscarSerie(allSets, ex.name, current.blockIdx, k + 1)).length;
-      }, 0)
-    : 0;
+  /** Series typed without confirming, and series still empty, across the current block. */
+  const pending: SkipDialog = current
+    ? countPendingSets(
+        current.exercises.flatMap((ex, ei) =>
+          [...exerciseValues(ei).entries()].map(([k, v]): PendingSet => ({
+            value: v.value,
+            registeredValue: buscarSerie(allSets, ex.name, current.blockIdx, k + 1)?.value ?? null,
+          })),
+        ),
+      )
+    : { typed: 0, empty: 0 };
+
+  const unregistered = pending.empty;
 
   const confirmTypedValues = () => {
     if (!current) return;
@@ -429,7 +449,7 @@ export function useRunner(): RunnerState {
 
   const nextStep = () => {
     if (unregistered > 0) {
-      setSkipDialog({ pending: unregistered });
+      setSkipDialog(pending);
       return;
     }
     advance();

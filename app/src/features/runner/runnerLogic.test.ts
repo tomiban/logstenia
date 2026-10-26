@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie, rondaCompleta, esUltimaVuelta } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets } from './runnerLogic';
 import type { SessionSet } from '@/db';
 import type { Exercise } from '@/types';
 
@@ -65,5 +65,33 @@ describe('esUltimaVuelta', () => {
   it('no es la última cuando todavía quedan vueltas por delante', () => {
     expect(esUltimaVuelta([3, 3], 1)).toBe(false);
     expect(esUltimaVuelta([4, 3], 3)).toBe(false);
+  });
+});
+
+describe('countPendingSets', () => {
+  it('counts an empty set only when nothing was typed and nothing was registered', () => {
+    expect(
+      countPendingSets([
+        { value: '', registeredValue: null },
+        { value: '', registeredValue: '5' },
+      ]),
+    ).toEqual({ typed: 0, empty: 1 });
+  });
+
+  it('counts a typed value as pending while it differs from the registered one', () => {
+    expect(
+      countPendingSets([
+        { value: '6', registeredValue: null },
+        { value: '7', registeredValue: '6' },
+      ]),
+    ).toEqual({ typed: 2, empty: 0 });
+  });
+
+  it('ignores a typed value that already matches what was registered', () => {
+    expect(countPendingSets([{ value: '6', registeredValue: '6' }])).toEqual({ typed: 0, empty: 0 });
+  });
+
+  it('reports nothing pending for an empty list of sets', () => {
+    expect(countPendingSets([])).toEqual({ typed: 0, empty: 0 });
   });
 });

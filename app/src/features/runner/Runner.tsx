@@ -6,10 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { SessionSet } from '@/repositories';
 import { isTimedExercise } from '@/lib/exercise';
+import { pluralForm } from '@/lib/format';
+import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import Cronometro from './Cronometro';
 import { num } from './runnerLogic';
 import { type WorkoutStep } from './steps';
-import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue } from './useRunner';
+import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue, type SkipDialog } from './useRunner';
+
+/** What `Continuar` really does: it registers the values already typed and skips the empty series. */
+function skipDialogCopy({ typed, empty }: SkipDialog): string {
+  const loaded = `${typed} ${pluralForm(typed, 'serie cargada', 'series cargadas')}`;
+  const blank = `${empty} ${pluralForm(empty, 'serie vacía', 'series vacías')}`;
+  if (typed === 0) {
+    return `${pluralForm(empty, 'Queda', 'Quedan')} ${blank}. Si continuás, ${pluralForm(empty, 'se omite', 'se omiten')}.`;
+  }
+  return `Tenés ${loaded} sin confirmar y ${blank}. Si continuás, las cargadas se registran y las vacías se omiten.`;
+}
 
 type ExerciseStepProps = {
   step: WorkoutStep;
@@ -37,6 +49,14 @@ function ExerciseStep({
   const [editing, setEditing] = useState<Set<number>>(new Set());
 
   const isTimed = isTimedExercise(exercise);
+  const maxSeconds = Math.max(20, (exercise.timeSec ?? 0) * 2);
+  const objetivo = exercise.timeSec
+    ? restLabel(exercise.timeSec)
+    : exercise.reps
+      ? `${exercise.reps} reps`
+      : isTimed
+        ? 'mantenimiento máx.'
+        : '—';
 
   const alreadyRegistered = (i: number) => sets.some((l) =>
     l.exercise === exercise.name && l.setIndex === i + 1 && l.bloqueOrden === step.blockIdx);
@@ -54,20 +74,30 @@ function ExerciseStep({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="label-caps">Bloque {step.blockIdx}</span>
-            <Badge variant="outline" className="label-status border-border text-muted-foreground">{step.block.type}</Badge>
-          </div>
-          <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
-          <p className="label-caps mt-1">
-            {exercise.timeSec ? `objetivo ${exercise.timeSec}s` : isTimed ? `objetivo ${exercise.reps || 'max'} hold` : (exercise.reps ? `objetivo ${exercise.reps} reps` : '')}
-            {` · ${setCount} series`}
-            {` · descanso por serie ${step.restAfterSetSec}s`}
-            {` · descanso final ${step.restAfterExerciseSec}s`}
-          </p>
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="label-caps">Bloque {step.blockIdx + 1}</span>
+          <Badge variant="outline" className="label-status border-border text-muted-foreground">{BLOCK_TYPE_LABEL[step.block.type]}</Badge>
         </div>
+        <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <div>
+            <dt className="label-caps text-muted-foreground">Objetivo</dt>
+            <dd className="metric text-base text-foreground">{objetivo}</dd>
+          </div>
+          <div>
+            <dt className="label-caps text-muted-foreground">Series</dt>
+            <dd className="metric text-base text-foreground">{setCount}</dd>
+          </div>
+          <div>
+            <dt className="label-caps text-muted-foreground">Descanso</dt>
+            <dd className="metric text-base text-foreground">{restLabel(step.restAfterSetSec)}</dd>
+          </div>
+          <div>
+            <dt className="label-caps text-muted-foreground">Descanso final</dt>
+            <dd className="metric text-base text-foreground">{restLabel(step.restAfterExerciseSec)}</dd>
+          </div>
+        </dl>
       </div>
 
       {isTimed && (
@@ -94,23 +124,23 @@ function ExerciseStep({
               <span className="label-status w-8 text-muted-foreground">S{i + 1}</span>
               {isTimed ? (
                 <div className={`flex min-w-0 flex-1 items-center gap-3 ${!enabled ? 'pointer-events-none opacity-40' : ''}`}>
-                  <input type="range" min={0} max={20} step={1} value={v.value || 0}
+                  <input type="range" min={0} max={maxSeconds} step={1} value={v.value || 0}
                     onChange={(e) => { if (!enabled) return; setAt(i, e.target.value); }}
                     disabled={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i))}
-                    className="w-56 disabled:opacity-40 accent-ink" aria-label={`Segundos serie ${i + 1}`} />
-                  <span className="metric w-14 text-right text-foreground">{v.value || 0}s</span>
+                    className="min-w-0 flex-1 disabled:opacity-40 accent-ink" aria-label={`Segundos serie ${i + 1}`} />
+                  <span className="metric w-16 shrink-0 text-right text-foreground">{v.value || 0}s</span>
                 </div>
               ) : (
                 <div className={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : ''}>
-                  <Input type="number" className="h-11 w-24" value={v.value || ''} onChange={(e) => setAt(i, e.target.value)} placeholder="reps" />
+                  <Input type="number" className="h-11 min-w-24 flex-1" value={v.value || ''} onChange={(e) => setAt(i, e.target.value)} placeholder="reps" />
                 </div>
               )}
               {enabled && v.value && (
                 alreadyRegistered(i) && !editing.has(i) ? (
-                  <Button variant="ghost" size="sm" className="label-caps h-8" disabled={blocked}
+                  <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
                     onClick={() => setEditing((prev) => new Set(prev).add(i))}>editar</Button>
                 ) : (
-                  <Button variant="ghost" size="sm" className="label-caps h-8" disabled={blocked}
+                  <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
                     onClick={() => { confirmSet(i); setEditing((prev) => { const n = new Set(prev); n.delete(i); return n; }); }}>
                     confirmar
                   </Button>
@@ -126,9 +156,9 @@ function ExerciseStep({
           );
         })}
         <div className="flex gap-2 pt-2">
-          <Button variant="ghost" size="sm" className="label-caps h-9 text-muted-foreground" onClick={() => setValues([...list, newSetValue()])}>+ serie</Button>
+          <Button variant="ghost" size="lg" className="label-caps text-muted-foreground" onClick={() => setValues([...list, newSetValue()])}>+ serie</Button>
           {list.length > 1 && (
-            <Button variant="ghost" size="sm" className="label-caps h-9 text-muted-foreground" onClick={() => setValues(list.slice(0, -1))}>− serie</Button>
+            <Button variant="ghost" size="lg" className="label-caps text-muted-foreground" onClick={() => setValues(list.slice(0, -1))}>− serie</Button>
           )}
         </div>
       </div>
@@ -263,11 +293,25 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
 
 export default function Runner() {
   const r = useRunner();
+  const navigate = useNavigate();
 
-  if (!r.res || !r.model || !r.program) return <p>Rutina no encontrada.</p>;
+  /* Dead end: no way forward from here, so every exit state carries the route back to the catalogue. */
+  const deadEnd = (title: string, detail: string) => (
+    <Card>
+      <CardContent className="space-y-3">
+        <p className="font-heading text-xl font-bold text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{detail}</p>
+        <Button variant="outline" size="lg" className="label-caps" onClick={() => navigate('/planes')}>Ir a planes</Button>
+      </CardContent>
+    </Card>
+  );
+
+  if (!r.res || !r.model || !r.program) {
+    return deadEnd('No encontramos esta rutina', 'El enlace puede estar roto o la rutina ya no existe en este dispositivo.');
+  }
 
   const n = r.steps.length;
-  if (n === 0) return <Card><div className="p-4"><p className="text-sm text-muted-foreground">no se pudieron extraer los ejercicios de este entrenamiento</p></div></Card>;
+  if (n === 0) return deadEnd('Esta rutina no tiene ejercicios', 'No pudimos extraer los ejercicios de esta rutina.');
 
   if (r.restUntil != null && !r.finished) return (
     <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
@@ -278,9 +322,9 @@ export default function Runner() {
       </div>
       <p className="label-caps opacity-70">descanso configurado: {r.restSeconds}s</p>
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h - 10000 : null))}>-10s</Button>
+        <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h - 10000 : null))}>-10s</Button>
         <p className="label-caps opacity-70">descansando</p>
-        <Button variant="outline" size="sm" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h + 10000 : null))}>+10s</Button>
+        <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h + 10000 : null))}>+10s</Button>
       </div>
       <Button variant="accent" size="lg" className="label-caps" onClick={r.skipRest}>saltar descanso</Button>
       {r.errorMessage ? <p role="alert" className="max-w-xs text-center text-sm opacity-80">{r.errorMessage}</p> : null}
@@ -290,7 +334,7 @@ export default function Runner() {
   if (r.finished) return (
     <>
       {r.errorMessage ? (
-        <p role="alert" className="mb-4 border border-ink bg-accent px-4 py-3 text-sm text-on-accent">
+        <p role="alert" className="mb-4 border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {r.errorMessage}
         </p>
       ) : null}
@@ -305,9 +349,9 @@ export default function Runner() {
   const exerciseValues = r.exerciseValues;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4 pb-28">
       <div className="h-1 w-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={n} aria-valuenow={idx + 1}>
-        <div className="h-full bg-accent" style={{ width: `${((idx + 1) / n) * 100}%` }} />
+        <div className="h-full bg-ink dark:bg-foreground" style={{ width: `${((idx + 1) / n) * 100}%` }} />
       </div>
 
       <Card>
@@ -350,22 +394,31 @@ export default function Runner() {
             onKeyDown={(e) => { if (e.key === 'Escape') r.setSkipDialog(null); }}
           >
             <p id="modal-omitir-title" className="label-caps text-foreground">series sin registrar</p>
-            <p className="text-sm text-foreground">
-              Quedan {r.skipDialog.pending} {r.skipDialog.pending === 1 ? 'serie' : 'series'} sin registrar.
-              {' '}Si continuás, {r.skipDialog.pending === 1 ? 'se omite' : 'se omiten'}.
-            </p>
+            <p className="text-sm text-foreground">{skipDialogCopy(r.skipDialog)}</p>
             <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => r.setSkipDialog(null)}>Cancelar</Button>
-              <Button variant="accent" className="flex-1" onClick={() => { r.setSkipDialog(null); r.advance(); }}>Continuar</Button>
+              <Button variant="ghost" size="lg" className="flex-1" onClick={() => r.setSkipDialog(null)}>Cancelar</Button>
+              <Button variant="accent" size="lg" className="flex-1" onClick={() => { r.setSkipDialog(null); r.advance(); }}>Continuar</Button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="sticky bottom-0 -mx-4 sm:-mx-6 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <Button variant="outline" disabled={idx === 0 || r.restUntil != null} onClick={() => r.goTo(idx - 1)}>Anterior</Button>
-        <span className="label-caps"><span className="metric text-base text-foreground">{idx + 1}</span> / {n}{r.unregistered > 0 && (<> · <span className="text-ink">quedan {r.unregistered} sin registrar</span></>)}</span>
-        <Button variant="accent" disabled={r.restUntil != null} onClick={r.nextStep}>{idx >= n - 1 ? 'Finalizar entrenamiento' : 'Siguiente'}</Button>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
+        <div className="mx-auto w-full max-w-6xl px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto flex max-w-2xl flex-nowrap items-center gap-2">
+            <Button variant="outline" size="lg" className="label-caps shrink-0 px-3" disabled={idx === 0 || r.restUntil != null} onClick={() => r.goTo(idx - 1)}>Anterior</Button>
+            <span className="flex min-w-0 flex-1 items-baseline justify-center gap-1">
+              <span className="metric text-base text-foreground">{idx + 1}</span>
+              <span className="label-caps text-muted-foreground">/ {n}</span>
+              {r.unregistered > 0 && (
+                <span className="label-caps hidden text-muted-foreground sm:inline">
+                  · quedan {r.unregistered} {pluralForm(r.unregistered, 'serie vacía', 'series vacías')}
+                </span>
+              )}
+            </span>
+            <Button variant="accent" size="lg" className="label-caps shrink-0 px-3" disabled={r.restUntil != null} onClick={r.nextStep}>{idx >= n - 1 ? 'Finalizar' : 'Siguiente'}</Button>
+          </div>
+        </div>
       </div>
     </div>
   );

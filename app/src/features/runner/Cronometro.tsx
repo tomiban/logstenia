@@ -12,7 +12,7 @@ export default function Cronometro(props: CronometroProps) {
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-4">
         {c.preparando ? (
-          <span className="metric tabular text-5xl text-ink animate-pulse">{c.countdown === 0 ? 'GO!' : c.countdown}</span>
+          <span className="metric tabular text-5xl text-ink animate-pulse">{c.countdown === 0 ? '¡YA!' : c.countdown}</span>
         ) : (
           <>
             <span className={'metric tabular text-5xl ' + (c.corre ? 'text-ink' : c.agotado ? 'text-muted-foreground' : '')}>{fmt(Math.max(0, c.seg))}</span>
@@ -20,12 +20,12 @@ export default function Cronometro(props: CronometroProps) {
           </>
         )}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={c.aplicar} disabled={c.corre || c.agotado}>
+          <Button variant="outline" size="lg" className="label-caps" onClick={c.aplicar} disabled={c.corre || c.agotado}>
             {c.preparando ? 'Preparando…' : 'Aplicar'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={c.reset}>Reiniciar</Button>
+          <Button variant="ghost" size="lg" className="label-caps" onClick={c.reset}>Reiniciar</Button>
           {props.onUsar && c.modo === 'crono' && (
-            <Button variant="accent" size="sm" disabled={props.usarDisabled} onClick={c.usar}>Usar tiempo</Button>
+            <Button variant="outline" size="lg" className="label-caps" disabled={props.usarDisabled} onClick={c.usar}>Usar tiempo</Button>
           )}
         </div>
       </div>
