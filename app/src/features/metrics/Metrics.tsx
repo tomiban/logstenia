@@ -7,7 +7,9 @@ import type { MarkRecord, SessionRecord } from '@/repositories';
 import {
   RANGE_OPTIONS,
   anchorProgress,
+  anchoredEntries,
   bestMarks,
+  dayLabel,
   collectMarks,
   compareSessions,
   computeTelemetry,
@@ -37,11 +39,6 @@ const markRepository = createMarkRepository();
 
 function todayIso(): string {
   return toISODate();
-}
-
-function dayLabel(isoDay: string): string {
-  const [, m, d] = isoDay.split('-');
-  return `${d}/${m}`;
 }
 
 function signed(value: number): string {
@@ -191,7 +188,8 @@ export default function Metrics() {
   const telemetry = computeTelemetry(sessions, win);
   const volume = weeklyVolume(sessions, WEEKS_SHOWN, today);
   const entries = collectMarks(sessions, marks);
-  const best = bestMarks(entries, today);
+  const anchored = anchoredEntries(ANCHORS, entries);
+  const best = bestMarks(anchored, today);
   const dist = planDistribution(sessions, win.current);
 
   const comparisons = compareSessions(sessions);
@@ -211,7 +209,7 @@ export default function Metrics() {
     amount: measure(c),
     marker: c.gained === true ? ('lime' as const) : undefined,
   }));
-  const series = exerciseSeries(entries).filter((s) => s.points.length > 1);
+  const series = exerciseSeries(anchored).filter((s) => s.points.length > 1);
   const anchors = anchorProgress(ANCHORS, entries).sort(
     (a, b) => Number(b.reached) - Number(a.reached) || b.pct - a.pct,
   );
@@ -421,8 +419,8 @@ export default function Metrics() {
       <Panel title="Marcas" meta={`${best.length} ejercicios · histórico`}>
         {best.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
-            <span className="label-caps text-muted-foreground">sin marcas todavía:</span> aparecen cuando registrás el
-            valor de una serie (segundos en isométricos, reps en básicos)
+            <span className="label-caps text-muted-foreground">faltan marcas de los ejercicios que medís:</span> aparecen
+            cuando registrás el valor de una serie (segundos en isométricos, reps en básicos)
           </p>
         ) : (
           <>
