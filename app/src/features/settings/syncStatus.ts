@@ -19,6 +19,8 @@ export interface SyncStatusInput {
   authRequired: boolean;
   /** Server clock minus local clock from the last pulled page. */
   clockSkewMs: number | null;
+  /** Email of the caller from the last pull, or `null` when the server never reported one. */
+  email?: string | null;
   device: string;
   now?: Date;
 }
@@ -27,6 +29,8 @@ export interface SyncStatusView {
   /** `Última sincronización: hace 2 h · 3 cambios pendientes · este dispositivo (Android)`. */
   statusLine: string;
   sessionLine: string;
+  /** `Sesión: ana@example.com`, or `null` to render no line at all. */
+  sessionUserLine: string | null;
   sessionExpired: boolean;
   clockWarning: string | null;
 }
@@ -38,9 +42,19 @@ export function describeSync(input: SyncStatusInput): SyncStatusView {
   return {
     statusLine: `Última sincronización: ${relative} · ${formatPendingCount(input.pendingCount)} · este dispositivo (${input.device})`,
     sessionLine: input.authRequired ? SESSION_EXPIRED_COPY : 'Sesión: activa',
+    sessionUserLine: formatSessionLine(input.email ?? null),
     sessionExpired: input.authRequired,
     clockWarning: clockWarning(input.clockSkewMs),
   };
+}
+
+/**
+ * The session line that names the signed-in email, or `null` so the popover renders no line
+ * instead of `Sesión: null` or a bare prefix (§8).
+ */
+export function formatSessionLine(email: string | null): string | null {
+  if (email === null || email === '') return null;
+  return `Sesión: ${email}`;
 }
 
 export function formatPendingCount(count: number): string {

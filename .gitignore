@@ -41,3 +41,6 @@ dist-ssr
 .playwright/
 test-results/
 playwright-report/
+
+# D1 backups taken before a remote migration (never committed)
+worker/.backup/

@@ -5,6 +5,7 @@ import {
   deviceLabel,
   formatPendingCount,
   formatRelativeSync,
+  formatSessionLine,
 } from './syncStatus';
 
 describe('formatPendingCount', () => {
@@ -88,6 +89,17 @@ describe('deviceLabel', () => {
   });
 });
 
+describe('formatSessionLine', () => {
+  it('names the signed-in email', () => {
+    expect(formatSessionLine('ana@example.com')).toBe('Sesión: ana@example.com');
+  });
+
+  it('renders no line at all while the email is unknown or empty', () => {
+    expect(formatSessionLine(null)).toBeNull();
+    expect(formatSessionLine('')).toBeNull();
+  });
+});
+
 describe('describeSync', () => {
   const now = new Date('2026-10-23T18:00:00.000Z');
   const base = {
@@ -103,9 +115,16 @@ describe('describeSync', () => {
     expect(describeSync(base)).toEqual({
       statusLine: 'Última sincronización: nunca · sin cambios pendientes · este dispositivo (Android)',
       sessionLine: 'Sesión: activa',
+      sessionUserLine: null,
       sessionExpired: false,
       clockWarning: null,
     });
+  });
+
+  it('shows the session email once the server reported it', () => {
+    expect(describeSync({ ...base, email: 'ana@example.com' }).sessionUserLine).toBe(
+      'Sesión: ana@example.com',
+    );
   });
 
   it('reports the last sync, the pending changes and the device', () => {

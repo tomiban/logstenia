@@ -1,6 +1,7 @@
-import type { PlanData, Category, Program, Model, Exercise } from '@/types';
+import type { PlanData, Category, Program, Model, Block, Exercise } from '@/types';
 import plansJson from '@/data/plans.json';
 import { plansRepository } from '@/data/plansRepository';
+import { onPulledRows } from '@/repositories/sync/engine';
 import { addTag } from '@/lib/tags';
 
 // In-memory cache (storage-agnostic: backed by plansRepository).
@@ -84,8 +85,9 @@ export async function initPlans(): Promise<void> {
   for (const c of data.categories) {
     for (const p of c.programs) {
       for (const m of p.models) {
-        for (const t of (m as any).tags || []) {
-          await addTag('routine', m.id, t).catch(() => {});
+        for (const t of m.tags ?? []) {
+          // A failed tag is best-effort: it must never lose the routine.
+          await addTag('routine', m.id, t).catch(() => undefined);
         }
       }
     }
@@ -97,6 +99,39 @@ export async function persistPlans(): Promise<void> {
   rebuildIndexes();
   notify();
 }
+
+/**
+ * Re-reads the catalogue from storage (spec S8, finding L7). A pull writes category rows
+ * straight to IndexedDB, behind this cache, so without this the screen keeps showing the
+ * old catalogue until a reload.
+ *
+ * Resolves `false` when nothing was stored, leaving the previous catalogue in place: an
+ * emptied catalogue must not blank the screen (same trade-off as deleting the last category).
+ */
+export async function refreshPlansFromStore(): Promise<boolean> {
+  const stored = await plansRepository.load();
+  if (!stored) return false;
+  data = stored;
+  rebuildIndexes();
+  notify();
+  return true;
+}
+
+let refreshError: unknown = null;
+
+/** Last failed catalogue refresh after a pull, or `null`. Observable, unlike a swallowed rejection. */
+export function getPlansRefreshError(): unknown {
+  return refreshError;
+}
+
+// Pulled category rows invalidate the cache; other entities leave the catalogue alone.
+onPulledRows((entities) => {
+  if (!entities.includes('plans')) return;
+  void refreshPlansFromStore().then(
+    () => { refreshError = null; },
+    (error: unknown) => { refreshError = error; },
+  );
+});
 
 // ---- read (sync, from cache) ----
 export function getCategories(): Category[] { return data.categories; }
@@ -110,8 +145,8 @@ export function allPrograms(): Program[] {
   return out;
 }
 
-function normalizeBlockType(block: any) {
-  if (!block || !Array.isArray(block.exercises)) return;
+function normalizeBlockType(block: Block): void {
+  if (!Array.isArray(block.exercises)) return;
   const n = block.exercises.length;
   if (n <= 1) block.type = 'single';
   else if (n === 2) block.type = 'biseries';
@@ -306,12 +341,12 @@ export async function deleteModel(id: string): Promise<void> {
 }
 
 // Block
-export async function createBlock(modelId: string, block: any): Promise<void> {
+export async function createBlock(modelId: string, block: Block): Promise<void> {
   const entry = modelIndex.get(modelId);
   if (entry) entry.model.blocks.push(block);
   await persistPlans();
 }
-export async function updateBlock(modelId: string, blockIndex: number, patch: any): Promise<void> {
+export async function updateBlock(modelId: string, blockIndex: number, patch: Partial<Block>): Promise<void> {
   const entry = modelIndex.get(modelId);
   if (entry && entry.model.blocks[blockIndex]) Object.assign(entry.model.blocks[blockIndex], patch);
   await persistPlans();
@@ -323,14 +358,16 @@ export async function deleteBlock(modelId: string, blockIndex: number): Promise<
 }
 
 // Exercise (within a block)
-export async function updateExercise(modelId: string, blockIndex: number, exerciseIndex: number, patch: any): Promise<void> {
+export async function updateExercise(modelId: string, blockIndex: number, exerciseIndex: number, patch: Partial<Exercise>): Promise<void> {
   const entry = modelIndex.get(modelId);
   const block = entry?.model.blocks[blockIndex];
   if (block && block.exercises[exerciseIndex]) {
-    for (const k of Object.keys(patch)) {
-      const ex: any = block.exercises[exerciseIndex];
-      if (patch[k] === undefined) delete ex[k];
-      else ex[k] = patch[k];
+    const ex = block.exercises[exerciseIndex];
+    const target = ex as Exercise & Record<string, unknown>;
+    const source = patch as Partial<Exercise> & Record<string, unknown>;
+    for (const k of Object.keys(source)) {
+      if (source[k] === undefined) delete target[k];
+      else target[k] = source[k];
     }
   }
   await persistPlans();
@@ -389,7 +426,7 @@ export async function reorderBlocks(modelId: string, fromIndex: number, toIndex:
 }
 
 // Exercise creation
-export async function createExercise(modelId: string, blockIndex: number, exercise: any): Promise<void> {
+export async function createExercise(modelId: string, blockIndex: number, exercise: Exercise): Promise<void> {
   const entry = modelIndex.get(modelId);
   const block = entry?.model.blocks[blockIndex];
   if (block) {

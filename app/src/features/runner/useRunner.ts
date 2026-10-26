@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import type { MutableRefObject, RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useParams } from 'react-router-dom';
 import { getModel } from '@/features/plans/plans';
 import type { SessionSet } from '@/repositories';
@@ -132,8 +131,8 @@ export interface RunnerState {
   draftLoaded: boolean;
 
   // Refs
-  startedAtRef: MutableRefObject<number>;
-  setsRef: MutableRefObject<SessionSet[]>;
+  startedAtRef: RefObject<number>;
+  setsRef: RefObject<SessionSet[]>;
   skipDialogRef: RefObject<HTMLDivElement | null>;
 
   // Derived

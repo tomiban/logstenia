@@ -61,6 +61,8 @@ export interface PullPage {
   rev: number;
   more: boolean;
   now?: string;
+  /** Email of the caller (the row owner); never another person's email. */
+  user?: string;
   changes: PulledChange[];
 }
 

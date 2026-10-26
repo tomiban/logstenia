@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
-import { getSyncState, lastSyncAt, onSyncStateChange, pendingCount, run } from '@/repositories';
+import {
+  getSyncState,
+  lastSyncAt,
+  onSyncStateChange,
+  pendingCount,
+  run,
+  sessionUser,
+} from '@/repositories';
 import { describeSync, deviceLabel, type SyncStatusView } from './syncStatus';
 
 interface Snapshot {
   lastSyncAt: string | null;
+  email: string | null;
   pendingCount: number;
   authRequired: boolean;
   clockSkewMs: number | null;
@@ -11,6 +19,7 @@ interface Snapshot {
 
 const EMPTY_SNAPSHOT: Snapshot = {
   lastSyncAt: null,
+  email: null,
   pendingCount: 0,
   authRequired: false,
   clockSkewMs: null,
@@ -20,6 +29,7 @@ async function readSnapshot(): Promise<Snapshot> {
   const state = getSyncState();
   return {
     lastSyncAt: await lastSyncAt(),
+    email: await sessionUser(),
     pendingCount: await pendingCount(),
     authRequired: state.authRequired,
     clockSkewMs: state.serverClockSkewMs,

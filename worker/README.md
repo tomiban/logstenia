@@ -50,6 +50,13 @@ npx wrangler d1 migrations apply logstenia-sync --local
 npx wrangler d1 migrations apply logstenia-sync --remote
 ```
 
+`0002_owner.sql` agrega `owner` a la clave primaria y deja las filas existentes en
+`legacy@local`; la adopción al dueño real es `npm run adopt -- <email>`, documentado en
+`docs/DEPLOY.md` §2.
+Los tests de migración corren ese archivo contra SQLite real vía `node:sqlite`, así que el
+`typecheck` usa dos configuraciones: `tsconfig.json` para `src` (sólo tipos de Workers) y
+`tsconfig.test.json`, que agrega los tipos de Node para los tests.
+
 ## Pruebas
 
 `test/sync.test.ts` corre contra un D1 falso que registra los statements, así que verifica el
