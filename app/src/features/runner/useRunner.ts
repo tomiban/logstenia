@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useParams } from 'react-router-dom';
 import { getModel } from '@/features/plans/plans';
 import type { SessionSet } from '@/repositories';
@@ -15,11 +15,39 @@ import { useVibration } from '@/hooks/useVibration';
 import { useCountdown } from '@/hooks/useCountdown';
 import { desbloquearAudio } from './Cronometro';
 
+const sessionRepo = createSessionRepository();
+const settingsRepo = createSettingsRepository();
+const CUE_PATH = '/sounds/item-found.mp3';
+
 export type Marca = 'pr' | 'primera';
 export type Destino = { indice: number } | { fin: true } | null;
 
 export interface SerieValor {
   value: string;
+}
+
+/** Draft persisted under `borrador:<modelId>`; fields stay optional for drafts written by older builds. */
+export interface RunnerDraft {
+  i?: number;
+  vals?: Record<string, SerieValor[]>;
+  descansoHasta?: number | null;
+  descansoSegundos?: number;
+  descansoEtiqueta?: string;
+  descansoDestino?: Destino | null;
+}
+
+function asRunnerDraft(value: unknown): RunnerDraft | undefined {
+  return typeof value === 'object' && value !== null ? (value as RunnerDraft) : undefined;
+}
+
+/** The cue is cosmetic: no audio support and a throwing constructor both just mean "no beep". */
+function createCueAudio(): HTMLAudioElement | null {
+  if (typeof Audio === 'undefined') return null;
+  try {
+    return new Audio(CUE_PATH);
+  } catch {
+    return null;
+  }
 }
 
 export interface RunnerState {
@@ -55,14 +83,13 @@ export interface RunnerState {
   modalOmitir: { pendientes: number } | null;
   setModalOmitir: (v: { pendientes: number } | null) => void;
   segRestantes: number;
-  setSegRestantes: (v: number) => void;
   borradorCargado: boolean;
 
   // Refs
-  inicioRef: React.MutableRefObject<number>;
-  setsRef: React.MutableRefObject<SessionSet[]>;
-  finalizarRef: React.MutableRefObject<() => void>;
-  modalRef: React.RefObject<HTMLDivElement | null>;
+  inicioRef: RefObject<number>;
+  setsRef: RefObject<SessionSet[]>;
+  finalizarRef: RefObject<() => void>;
+  modalRef: RefObject<HTMLDivElement | null>;
 
   // Derived
   idx: number;
@@ -92,8 +119,6 @@ export function useRunner(): RunnerState {
   const program = res?.program;
 
   const steps: WorkoutStep[] = model ? buildSteps(model) : [];
-  const sessionRepo = createSessionRepository();
-  const settingsRepo = createSettingsRepository();
 
   const [i, setI] = useState(0);
   const [vals, setVals] = useState<Record<string, SerieValor[]>>({});
@@ -119,26 +144,33 @@ export function useRunner(): RunnerState {
 
   useEffect(() => {
     (async () => {
-      const sessions = await sessionRepo.list();
-      const map: Record<string, number[]> = {};
-      for (const s of sessions) {
-        if (!s.completed) continue;
-        for (const l of s.sets || []) {
-          const v = num(l.value);
-          if (isNaN(v)) continue;
-          (map[l.exercise] ||= []).push(v);
+      try {
+        const sessions = await sessionRepo.list();
+        const map: Record<string, number[]> = {};
+        for (const s of sessions) {
+          if (!s.completed) continue;
+          for (const l of s.sets || []) {
+            const v = num(l.value);
+            if (isNaN(v)) continue;
+            (map[l.exercise] ||= []).push(v);
+          }
         }
+        setHistorial(map);
+      } catch {
+        // A failed history read means "no history yet"; the timer never depends on it.
+        return;
       }
-      setHistorial(map);
     })();
   }, []);
 
   useEffect(() => {
     (async () => {
       if (!model) return;
-      const r = await settingsRepo.get(`borrador:${model.id}`);
-      if (r?.value) {
-        const d = r.value;
+      // Failing to *load* a draft is recoverable: start with no draft. Failing to *save* one for
+      // the whole session is not, so autosave gets enabled after this block either way.
+      const stored = await settingsRepo.get(`borrador:${model.id}`).catch(() => undefined);
+      const d = asRunnerDraft(stored?.value);
+      if (d) {
         if (d.i != null) setI(d.i);
         if (d.vals) setVals(d.vals);
         if (d.descansoHasta && d.descansoHasta > Date.now()) {
@@ -154,10 +186,13 @@ export function useRunner(): RunnerState {
 
   useEffect(() => {
     if (!borradorCargado || !model) return;
-    settingsRepo.put({
-      key: `borrador:${model.id}`,
-      value: { i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino },
-    }).catch(() => {});
+    // Best effort: a failed draft write must not break the timer.
+    void settingsRepo
+      .put({
+        key: `borrador:${model.id}`,
+        value: { i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino } satisfies RunnerDraft,
+      })
+      .catch(() => undefined);
   }, [i, vals, descansoHasta, descansoSegundos, descansoEtiqueta, descansoDestino, borradorCargado, model?.id]);
 
   const finalizar = async () => {
@@ -172,7 +207,7 @@ export function useRunner(): RunnerState {
         modelId: model!.id,
         durationSec: elapsedSeconds(inicioRef.current, Date.now()),
         completed: true,
-        sets: setsRef.current as any,
+        sets: setsRef.current,
       });
       await settingsRepo.delete(`borrador:${model!.id}`);
       inicioRef.current = Date.now();
@@ -183,7 +218,7 @@ export function useRunner(): RunnerState {
 
   useEffect(() => {
     finalizarRef.current = () => { void finalizar(); };
-  });
+  }, [finalizar]);
 
   useEffect(() => {
     if (!modalOmitir) return;
@@ -195,11 +230,12 @@ export function useRunner(): RunnerState {
   useWakeLock(true);
 
   const handleExpire = () => {
-    try {
-      const a = new Audio('/sounds/item-found.mp3');
-      a.volume = 1;
-      a.play().catch(() => {});
-    } catch { /* ignore */ }
+    const audio = createCueAudio();
+    if (audio) {
+      audio.volume = 1;
+      // Autoplay stays blocked until the user interacts, so a rejected play is expected here.
+      void audio.play().catch(() => undefined);
+    }
     vibrate([180, 90, 180]);
     const destino = descansoDestino;
     setDescansoHasta(null);
@@ -267,8 +303,8 @@ export function useRunner(): RunnerState {
   };
 
   /**
-   * Registra la serie y abre el descanso de serie solo cuando la vuelta del bloque quedó
-   * completa (todos los ejercicios con esa serie) y no es la última vuelta.
+   * Records the set and opens the set rest only when the block round is complete
+   * (every exercise has that set) and this is not the last round.
    */
   const confirmarSerie = (blockIdx: number, ei: number, exercise: Exercise, setIndex: number, value: string) => {
     registrarEx(blockIdx, ei, exercise, setIndex, value);
@@ -352,7 +388,6 @@ export function useRunner(): RunnerState {
     modalOmitir,
     setModalOmitir,
     segRestantes,
-    setSegRestantes: () => {},
     borradorCargado,
     inicioRef,
     setsRef,
