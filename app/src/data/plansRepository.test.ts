@@ -4,7 +4,8 @@ import type { Category } from '@/types';
 import { getDB } from '@/db/open';
 import { pendingOutboxEntries } from '@/repositories/sync/outbox';
 import type { PendingOutboxEntry } from '@/repositories/sync/outbox';
-import { plansRepository } from './plansRepository';
+import { resolvePullRow } from '@/repositories/sync/merge';
+import { plansRepository, SEED_UPDATED_AT } from './plansRepository';
 
 /**
  * Repository contract tests for the per-category `plans` store (spec S2, S3): rows are
@@ -14,6 +15,8 @@ import { plansRepository } from './plansRepository';
 
 const STORE = 'plans';
 const SEEDED_AT = '2000-01-01T00:00:00.000Z';
+const T_LOCAL = '2020-01-01T00:00:00.000Z';
+const T_REMOTE = '2021-01-01T00:00:00.000Z';
 
 interface StoredRow {
   id: string;
@@ -53,6 +56,29 @@ function liveCategoryIds(): Promise<string[]> {
 
 function pendingPlansEntries(): Promise<PendingOutboxEntry[]> {
   return pendingOutboxEntries(100);
+}
+
+/**
+ * One category change arriving from the server, written the way the sync engine writes a
+ * pulled row: the merge decision picks the row, Dexie stores it. Keeps the tests on the
+ * public pull interface instead of a second copy of the LWW rules.
+ */
+async function pullCategory(category: Category, updatedAt: string, position: number): Promise<void> {
+  const db = await getDB();
+  const local = (await db.get(STORE, category.id)) as StoredRow | undefined;
+  const localMeta =
+    local && typeof local.updatedAt === 'string'
+      ? { id: local.id, updatedAt: local.updatedAt, deletedAt: local.deletedAt ?? null }
+      : null;
+  const row = resolvePullRow(localMeta, {
+    entity: STORE,
+    id: category.id,
+    rev: 1,
+    updatedAt,
+    deletedAt: null,
+    row: { id: category.id, category, position, updatedAt, deletedAt: null },
+  });
+  if (row) await db.put(STORE, row);
 }
 
 function outboxEntry(entries: PendingOutboxEntry[], id: string): PendingOutboxEntry {
@@ -143,6 +169,15 @@ describe('plansRepository.save', () => {
     expect(await plansRepository.getVideoCatalogVersion()).toBe(4);
     expect(await liveCategoryIds()).toEqual(['cardio']);
   });
+
+  it('stamps an ordinary save with the current time, not the seed timestamp', async () => {
+    await plansRepository.save({ categories: [cardio] });
+
+    const stamp = rowById(await storedRows(), 'cardio').updatedAt;
+    expect(stamp).not.toBe(SEED_UPDATED_AT);
+    expect(typeof stamp).toBe('string');
+    expect(Math.abs(Date.parse(stamp as string) - Date.now())).toBeLessThan(60_000);
+  });
 });
 
 describe('plansRepository.save outbox (spec S5)', () => {
@@ -214,5 +249,71 @@ describe('plansRepository.seedIfEmpty', () => {
 
     await plansRepository.seedIfEmpty({ categories: [category('fuerza', 'Fuerza')] });
     expect(await liveCategoryIds()).toEqual(['cardio', 'movilidad']);
+  });
+
+  it('stamps every seeded row with the frozen timestamp and enqueues it for publish', async () => {
+    await plansRepository.seedIfEmpty({ categories: [cardio, movilidad] });
+
+    const rows = await storedRows();
+    const stamps = rows
+      .filter((row) => row.id === 'cardio' || row.id === 'movilidad')
+      .map((row) => row.updatedAt);
+    expect(stamps).toEqual([SEED_UPDATED_AT, SEED_UPDATED_AT]);
+
+    const entries = await pendingPlansEntries();
+    expect(entries.map((entry) => entry.id).sort()).toEqual(['cardio', 'movilidad']);
+    expect(entries.every((entry) => entry.updatedAt === SEED_UPDATED_AT)).toBe(true);
+  });
+});
+
+describe('plansRepository merge per category (spec S7)', () => {
+  it('keeps the categories edited independently on two devices', async () => {
+    await putRows([
+      { id: 'cardio', category: cardio, position: 0, updatedAt: T_LOCAL, deletedAt: null },
+      { id: 'movilidad', category: movilidad, position: 1, updatedAt: T_LOCAL, deletedAt: null },
+    ]);
+    const localCardio = { ...cardio, name: 'Cardio en casa' };
+    await plansRepository.save({ categories: [localCardio, movilidad] });
+
+    const remoteMovilidad = { ...movilidad, name: 'Movilidad remota' };
+    await pullCategory(remoteMovilidad, T_REMOTE, 1);
+
+    const loaded = (await plansRepository.load())?.categories ?? [];
+    expect(loaded.map((category_) => category_.id)).toEqual(['cardio', 'movilidad']);
+    expect(loaded[0].name).toBe('Cardio en casa');
+    expect(loaded[1].name).toBe('Movilidad remota');
+  });
+
+  it('replaces the whole category with the newer side instead of merging its fields', async () => {
+    const localCardio = { ...cardio, name: 'Cardio local' };
+    await putRows([
+      { id: 'cardio', category: localCardio, position: 0, updatedAt: T_LOCAL, deletedAt: null },
+    ]);
+
+    const remoteCardio = { ...cardio, name: 'Cardio remoto', description: 'Otra descripción' };
+    await pullCategory(remoteCardio, T_REMOTE, 0);
+
+    expect((await plansRepository.load())?.categories).toEqual([remoteCardio]);
+  });
+
+  it('keeps the newer local category when the pulled copy is older', async () => {
+    const localCardio = { ...cardio, name: 'Cardio local' };
+    await putRows([
+      { id: 'cardio', category: localCardio, position: 0, updatedAt: T_REMOTE, deletedAt: null },
+    ]);
+
+    await pullCategory({ ...cardio, name: 'Cardio viejo' }, T_LOCAL, 0);
+
+    expect((await plansRepository.load())?.categories).toEqual([localCardio]);
+  });
+
+  it('does not let a freshly seeded category overwrite one edited on another device', async () => {
+    await plansRepository.seedIfEmpty({ categories: [cardio, movilidad] });
+
+    const editedCardio = { ...cardio, name: 'Cardio editado en otro dispositivo' };
+    await pullCategory(editedCardio, T_REMOTE, 0);
+
+    const loaded = (await plansRepository.load())?.categories ?? [];
+    expect(loaded.find((category_) => category_.id === 'cardio')).toEqual(editedCardio);
   });
 });

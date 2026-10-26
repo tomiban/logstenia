@@ -23,6 +23,15 @@ const STORE = 'plans';
 const VIDEO_CATALOG_VERSION_KEY = 'video-catalog-version';
 
 /**
+ * Frozen timestamp of the bundled seed (spec S8, decision L8). The seed is a catalogue
+ * nobody edited, so it must never win last-write-wins against a real edit made on another
+ * device: a constant old value publishes on an empty server (nothing to compare against),
+ * loses against an edited category (`stale_server_newer`), and loses to the pull on a new
+ * device that already has a populated server.
+ */
+export const SEED_UPDATED_AT = '1970-01-01T00:00:00.000Z';
+
+/**
  * One category row (spec S2): the category document is the sync unit, `position` keeps
  * the catalogue order and `updatedAt` / `deletedAt` are the shared LWW/tombstone fields.
  */
@@ -151,9 +160,18 @@ export const idbPlansRepository: PlansRepository = {
   },
   async seedIfEmpty(seed) {
     const existing = await this.load();
-    if (!existing) {
-      await this.save(seed);
-    }
+    if (existing) return;
+
+    // Stamped here instead of through `save()`: an ordinary save uses the current time,
+    // and a seed carrying `now` would overwrite real edits under category-level LWW.
+    const rows: CategoryRow[] = [];
+    seed.categories.forEach((category, position) => {
+      const id = categoryId(category);
+      if (!id) return;
+      rows.push({ id, category, position, updatedAt: SEED_UPDATED_AT, deletedAt: null });
+    });
+
+    await writeCategoryRows(rows);
   },
   async getVideoCatalogVersion() {
     return storedVersion(await db.plans.get(VIDEO_CATALOG_VERSION_KEY));
