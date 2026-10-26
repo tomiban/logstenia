@@ -208,9 +208,8 @@ export default function Metrics() {
   const rangeOpt = RANGE_OPTIONS.find((o) => o.key === range);
   const prevNote = win.previous ? `vs ${win.days} d previos` : 'histórico completo';
 
-  const hasDurationData = sessions.some((s) => (s.durationSec || 0) > 0);
-  const volumeValue = (w: (typeof volume)[number]) => (hasDurationData ? w.minutes : w.sessions);
-  const volumeUnit = hasDurationData ? 'min' : 'sesiones';
+  const volumeValue = (w: (typeof volume)[number]) => (hasDuration ? w.minutes : w.sessions);
+  const volumeUnit = hasDuration ? 'min' : 'sesiones';
   const volumeData = volume.map((w) => ({
     label: w.label,
     amount: volumeValue(w),
@@ -271,7 +270,7 @@ export default function Metrics() {
           </p>
           <Link
             to="/"
-            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-on-accent transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-on-accent transition-colors hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent"
           >
             Empezar a entrenar
           </Link>
@@ -358,8 +357,8 @@ export default function Metrics() {
           <p className="label-caps px-4 py-4 text-muted-foreground">sin sesiones registradas</p>
         ) : (
           <ul className="divide-y divide-border">
-            {[...recent].reverse().map((c, i) => (
-              <li key={`${c.summary.date}-${c.summary.planId}-${i}`} className="flex items-center gap-3 px-4 py-3">
+            {[...recent].reverse().map((c) => (
+              <li key={c.summary.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium">{c.summary.planName}</span>
@@ -468,7 +467,7 @@ export default function Metrics() {
                     <LineChart data={s.points} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
                       <XAxis dataKey="date" hide />
                       <YAxis hide domain={[0, 'dataMax']} />
-                      <Tooltip content={<ChartTooltip unit={UNIT_LABEL[s.unit]} />} />
+                      <Tooltip content={<ChartTooltip unit={UNIT_LABEL[s.unit]} />} cursor={{ stroke: 'var(--muted-surface)' }} />
                       <Line
                         type="linear"
                         dataKey="value"

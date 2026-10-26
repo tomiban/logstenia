@@ -359,17 +359,11 @@ export function anchorProgress(anchors: AnchorLike[], entries: MarkEntry[]): Anc
 
   for (const entry of entries) {
     const name = normalizeText(entry.exercise);
-    const entryId = (entry as any).exerciseId;
     let target = -1;
     let targetKey = '';
     keys.forEach((key, index) => {
       if (anchors[index].unidad !== entry.unit) return;
-      const anchor = anchors[index];
-      if (anchor.ejercicioId && entryId) {
-        if (anchor.ejercicioId !== entryId) return;
-      } else {
-        if (!name.startsWith(key as string)) return;
-      }
+      if (!name.startsWith(key as string)) return;
       if (String(key).length > targetKey.length) {
         target = index;
         targetKey = String(key);
@@ -484,6 +478,7 @@ export function delta(current: number, previous: number | null): string {
 }
 
 export interface SessionSummary {
+  id: string;
   date: string;
   planId: string;
   planName: string;
@@ -505,6 +500,7 @@ export function summarizeSession(session: SessionRecord): SessionSummary {
     else reps += value;
   }
   return {
+    id: session.id,
     date: session.date,
     planId: session.planId,
     planName: getProgram(session.planId)?.name ?? session.planId,

@@ -35,7 +35,6 @@ const LEVEL_LABEL: Record<string, string> = {
 
 interface ProgForm {
   name: string;
-  level: string;
   description: string;
   objectives: string[];
   rules: string[];
@@ -56,7 +55,7 @@ export default function Skill() {
 
   const progModal = useCrudModal<Program>();
   const [progForm, setProgForm] = useState<ProgForm>({
-    name: '', level: 'beginner', description: '', objectives: [], rules: [],
+    name: '', description: '', objectives: [], rules: [],
     frequency: '', restBetweenSessions: '', optional: false, tags: [],
   });
   const [deletingProg, setDeletingProg] = useState<{ id: string; name: string } | null>(null);
@@ -80,7 +79,7 @@ export default function Skill() {
 
   const openCreateProg = () => {
     setProgForm({
-      name: '', level: 'beginner', description: '', objectives: [], rules: [],
+      name: '', description: '', objectives: [], rules: [],
       frequency: '', restBetweenSessions: '', optional: false, tags: [],
     });
     progModal.openCreate();
@@ -89,7 +88,6 @@ export default function Skill() {
   const openEditProg = (p: Program) => {
     setProgForm({
       name: p.name,
-      level: p.level,
       description: p.description,
       objectives: p.objectives || [],
       rules: p.rules || [],
@@ -159,13 +157,13 @@ export default function Skill() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header>
         <BackLink to="/planes">Planes</BackLink>
         <div className="flex items-center justify-between gap-3 mt-2">
           <ContextMenu>
             <ContextMenuTrigger className="min-w-0 flex-1">
-              <h1 className="text-3xl font-extrabold tracking-tight font-heading">{cat.name}</h1>
+              <h1 className="text-3xl font-bold tracking-tight font-heading">{cat.name}</h1>
             </ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem onClick={openCatEdit}>Editar categoría</ContextMenuItem>
@@ -228,7 +226,7 @@ export default function Skill() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteProg}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDeleteProg}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -288,9 +286,9 @@ export default function Skill() {
 
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="default">{p.models.length} rutinas</Badge>
+                      <Badge variant="outline">{p.models.length} rutinas</Badge>
                       {tagChainsForCategory(cat.id).some(({ chain }) => chain.includes(p.id)) && (
-                        <Badge variant="secondary" className="bg-accent text-on-accent border-ink">En cadena</Badge>
+                        <Badge variant="outline">En cadena</Badge>
                       )}
                       {progression.reportFor(p.id)?.completed && (
                         <Badge className="border-ink bg-accent text-on-accent label-status">completado</Badge>
