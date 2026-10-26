@@ -78,7 +78,6 @@ export default function Program() {
   const report = progression.reportFor(p?.id ?? '');
   const unlocked = report?.unlocked ?? true;
   const lockReason = report && !report.unlocked ? describeLock(report) : null;
-  const levelOf = (programId: string) => report?.levels.find((l) => l.id === programId) ?? null;
 
   // program edit
 
@@ -101,6 +100,15 @@ export default function Program() {
   if (!p) return <p className="label-caps">Programa no encontrado.</p>;
 
   const { routines, special } = splitModels(p.models);
+
+  const chain = chainFor(p.id) ?? [];
+  const chainIndex = chain.indexOf(p.id);
+  const previous = chainIndex > 0 ? getProgram(chain[chainIndex - 1]) : null;
+  const next = report?.next ?? null;
+  const nextIsBeacon = started && !!next?.unlocked;
+  const exerciseCount = (model: Model) =>
+    model.blocks.reduce((count, block) => count + block.exercises.length, 0);
+  const detailPanels = [p.objectives.length > 0, p.rules.length > 0].filter(Boolean).length;
 
   const saveNewModel = async () => {
     if (!newModelName.trim()) return;
@@ -158,52 +166,67 @@ export default function Program() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">{p.name}</h1>
+              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">{p.name}</h1>
               {report?.completed && (
-                <Badge className="label-status border border-ink bg-accent text-on-accent">completado</Badge>
+                <Badge variant="outline" className="label-status">completado</Badge>
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-
-            <Button variant="accent" size="sm" onClick={() => setModelCreateOpen(true)}>
-              Nueva rutina
-            </Button>
-          </div>
+          <Button variant="outline" size="lg" onClick={() => setModelCreateOpen(true)}>
+            Nueva rutina
+          </Button>
         </div>
-        {report?.position != null && (
-          <p className="label-caps mt-3 text-muted-foreground">
-            Fase <span className="metric text-base text-foreground">{report.position}</span> de {report.total}
-            {report.next && (
-              <> · Siguiente: <span className="text-foreground">{report.next.name}</span></>
-            )}
-          </p>
-        )}
-        {(() => {
-          const ch = chainFor(p.id);
-          const idx = ch ? ch.indexOf(p.id) : -1;
-          const prevId = idx > 0 ? ch![idx - 1] : null;
-          const nextId = ch && idx >= 0 && idx < ch.length - 1 ? ch[idx + 1] : null;
-          if (!prevId && !nextId) return null;
-          return (
-            <div className="mt-2 flex flex-wrap gap-2 text-sm">
-              {prevId && (
-                <Link to={`/program/${prevId}`} className="text-muted-foreground hover:text-ink">
-                  ← Más fácil: {getProgram(prevId)?.name ?? prevId}
-                  {levelOf(prevId)?.completed && <span className="ml-1 text-accent">completado</span>}
-                </Link>
-              )}
-              {nextId && (
-                <Link to={`/program/${nextId}`} className="text-muted-foreground hover:text-ink">
-                  Más difícil: {getProgram(nextId)?.name ?? nextId}
-                  {levelOf(nextId)?.unlocked ? <span className="ml-1 text-accent">desbloqueado</span> : <span className="ml-1">bloqueado</span>} →
-                </Link>
-              )}
-            </div>
-          );
-        })()}
       </header>
+
+      {report?.position != null && (
+        <section className="border border-border bg-card p-3 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <div className="flex items-baseline gap-1.5">
+                <dt className="label-caps text-muted-foreground">Fase</dt>
+                <dd className="flex items-baseline gap-1">
+                  <span className="metric text-base text-foreground">{report.position}</span>
+                  <span className="label-caps text-muted-foreground">de {report.total}</span>
+                </dd>
+              </div>
+              {next && (
+                <div className="flex min-w-0 items-baseline gap-1.5">
+                  <dt className="label-caps text-muted-foreground">Siguiente</dt>
+                  <dd className="min-w-0 text-sm text-foreground">{next.name}</dd>
+                </div>
+              )}
+            </dl>
+            {next && (
+              <Badge
+                variant="outline"
+                className={next.unlocked ? 'label-status' : 'label-status text-muted-foreground'}
+              >
+                {next.unlocked ? 'desbloqueado' : 'bloqueado'}
+              </Badge>
+            )}
+          </div>
+
+          {next && !next.unlocked && (
+            <p className="text-sm text-muted-foreground">
+              Se abre cuando completes todas las rutinas de este nivel o superes sus marcas.
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            {next?.unlocked && (
+              <Link to={`/program/${next.id}`} className="inline-block">
+                <Button variant={nextIsBeacon ? 'accent' : 'outline'} size="lg">Ir al siguiente nivel</Button>
+              </Link>
+            )}
+            {previous && (
+              <Link to={`/program/${previous.id}`} className="inline-block">
+                <Button variant="ghost" size="lg">← Más fácil</Button>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
       <Dialog open={modelCreateOpen} onOpenChange={setModelCreateOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nueva rutina</DialogTitle></DialogHeader>
@@ -238,7 +261,7 @@ export default function Program() {
               <div className="space-y-1.5"><Label>Tiempo total (min)</Label><Input type="number" value={modelEdit.form.totalTimeMin} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, totalTimeMin: Number(e.target.value) } })} /></div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" className="h-4 w-4 accent-foreground" checked={modelEdit.form.benchmark} onChange={(e) => setModelEdit({ ...modelEdit!, form: { ...modelEdit!.form, benchmark: e.target.checked } })} />
-                Benchmark
+                Toma de marcas
               </label>
             </div>
           )}
@@ -263,9 +286,9 @@ export default function Program() {
       </AlertDialog>
 
       {!started && (
-        <div className="border border-ink bg-card p-3 flex items-center justify-between gap-3">
-          <span className="text-sm text-foreground">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
-          <Button variant="ink" size="lg" disabled={!unlocked} onClick={async () => {
+        <div className="border border-ink bg-card p-3 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">¿Empezar este plan? Se registra con 0% de progreso en Inicio.</span>
+          <Button variant="accent" size="lg" disabled={!unlocked} onClick={async () => {
             try {
               const r = await settingsRepository.get('startedPlans');
               const arr = (r?.value as string[]) || [];
@@ -295,77 +318,56 @@ export default function Program() {
 
       {progression.error && (
         <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
-          No se pudo leer el progreso: las fases y los niveles desbloqueados pueden verse reiniciados.
+          No se pudo leer el progreso: el nivel actual y los desbloqueos pueden verse reiniciados.
         </p>
       )}
 
-      {report?.next && (
-        <div className="border border-border bg-card p-3 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <span className="label-caps text-muted-foreground">Siguiente nivel</span>
-              <p className="font-heading text-base font-bold text-foreground">{report.next.name}</p>
-            </div>
-            {report.next.unlocked ? (
-              <Badge className="label-status border border-ink bg-accent text-on-accent">desbloqueado</Badge>
-            ) : (
-              <Badge variant="outline" className="label-status">bloqueado</Badge>
-            )}
-          </div>
-          {report.next.unlocked ? (
-            <Link to={`/program/${report.next.id}`} className="inline-block">
-              <Button variant="accent" size="lg">Ir al siguiente nivel</Button>
-            </Link>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Se abre cuando completes todas las rutinas de este nivel o superes sus marcas.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
-        <div className="bg-card p-3">
+      <div className="grid divide-y divide-border border border-border bg-card sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+        <div className="p-3">
           <span className="label-caps text-muted-foreground">Frecuencia</span>
           <p className="metric text-base text-foreground mt-1">{p.frequency}</p>
         </div>
-        <div className="bg-card p-3">
+        <div className="p-3">
           <span className="label-caps text-muted-foreground">Descanso entre sesiones</span>
           <p className="metric text-base text-foreground mt-1">{p.restBetweenSessions}</p>
         </div>
       </div>
 
       {(p.objectives.length > 0 || p.rules.length > 0 || (report?.anchors.length ?? 0) > 0) && (
-        <div className="border border-border bg-border">
-          <div className="grid sm:grid-cols-2 gap-px">
-            {p.objectives.length > 0 && (
-              <div className="bg-card p-3 space-y-1.5">
-                <span className="label-caps text-muted-foreground">Objetivos</span>
-                <ul className="space-y-1">
-                  {p.objectives.map((o) => (
-                    <li key={o} className="text-sm text-foreground">· {o}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {p.rules.length > 0 && (
-              <div className="bg-card p-3 space-y-1.5">
-                <span className="label-caps text-muted-foreground">Reglas</span>
-                <ul className="space-y-1">
-                  {p.rules.map((r) => (
-                    <li key={r} className="text-sm text-foreground">· {r}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+        <div className="border border-border bg-card">
+          {detailPanels > 0 && (
+            <div className={detailPanels === 2
+              ? 'grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0'
+              : 'grid'}>
+              {p.objectives.length > 0 && (
+                <div className="p-3 space-y-1.5">
+                  <span className="label-caps text-muted-foreground">Objetivos</span>
+                  <ul className="space-y-1">
+                    {p.objectives.map((o) => (
+                      <li key={o} className="text-sm text-foreground">· {o}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {p.rules.length > 0 && (
+                <div className="p-3 space-y-1.5">
+                  <span className="label-caps text-muted-foreground">Reglas</span>
+                  <ul className="space-y-1">
+                    {p.rules.map((r) => (
+                      <li key={r} className="text-sm text-foreground">· {r}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
           {(report?.anchors.length ?? 0) > 0 && (
-            <div className="bg-card p-3 space-y-2 border-t border-border">
+            <div className="border-t border-border p-3 space-y-2">
               <p className="text-sm text-muted-foreground">¿Te sentís preparado para avanzar de nivel? Tomá tus marcas: con estas se abre el nivel siguiente.</p>
               <ul className="space-y-1">
                 {report!.anchors.map((a) => (
                   <li key={`${a.ejercicio}-${a.objetivo}`} className="flex items-center gap-2 text-sm">
-                    <span className={a.met ? 'text-accent' : 'text-muted-foreground'}>{a.met ? '✓' : '○'}</span>
+                    <span className={a.met ? 'text-ink' : 'text-muted-foreground'}>{a.met ? '✓' : '○'}</span>
                     <span className="metric text-foreground">{a.objetivo}</span>
                     <span className="text-muted-foreground">{a.unidad === 'sec' ? 'seg' : 'reps'}</span>
                     <span className="text-foreground">{a.ejercicio}</span>
@@ -391,7 +393,7 @@ export default function Program() {
               <li key={m.id} className="flex items-center justify-between gap-3 border border-border bg-card px-3 py-2">
                 <div className="min-w-0">
                   <span className="block text-sm font-medium leading-tight text-foreground">{m.name}</span>
-                  <span className="label-status mt-1 inline-block text-muted-foreground">benchmark</span>
+                  <span className="label-status mt-1 inline-block text-muted-foreground">toma de marcas</span>
                 </div>
                 <Link to={`/routine/${m.id}`}>
                   <Button variant="outline" size="lg">Registrar marca</Button>
@@ -407,23 +409,40 @@ export default function Program() {
           <span className="label-caps text-foreground">Rutinas</span>
           <span className="metric text-sm text-muted-foreground">{routines.length}</span>
         </div>
+        {routines.length === 0 && (
+          <div className="border border-border bg-card p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Este programa todavía no tiene rutinas. Creá la primera para poder entrenarlo.
+            </p>
+            <Button variant="outline" size="lg" onClick={() => setModelCreateOpen(true)}>Nueva rutina</Button>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {routines.map((m) => (
             <ContextMenu key={m.id}>
               <ContextMenuTrigger className="block h-full">
-                <Card className="flex h-full flex-col gap-2 px-3 py-2 transition-colors hover:ring-ink">
+                <Card className="flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:ring-ink">
                   <div className="flex items-start justify-between gap-2">
                     <Link to={`/routine/${m.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium leading-tight">{m.name}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        <Badge variant="secondary" className="label-status">{m.totalTimeMin} min</Badge>
+                      <h3 className="text-sm font-medium leading-tight text-foreground">{m.name}</h3>
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="label-caps text-muted-foreground">Minutos</span>
+                          <p className="metric text-base text-foreground">{m.totalTimeMin > 0 ? m.totalTimeMin : '—'}</p>
+                        </div>
+                        <div>
+                          <span className="label-caps text-muted-foreground">Intensidad</span>
+                          <p className="metric text-base text-foreground">{m.intensity}</p>
+                        </div>
+                        <div>
+                          <span className="label-caps text-muted-foreground">Ejercicios</span>
+                          <p className="metric text-base text-foreground">{exerciseCount(m) > 0 ? exerciseCount(m) : '—'}</p>
+                        </div>
                       </div>
                       <RoutineTags routineId={m.id} />
                     </Link>
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                      <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

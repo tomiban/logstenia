@@ -18,9 +18,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { pluralForm } from '@/lib/format';
 
 export default function Planes() {
   const cats = useCategories();
+  const programCount = cats.reduce((count, category) => count + category.programs.length, 0);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -68,12 +70,17 @@ export default function Planes() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-heading">Planes</h1>
-          <p className="label-caps text-muted-foreground">progresiones por categoría</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="metric text-foreground">{cats.length}</span>{' '}
+            {pluralForm(cats.length, 'categoría', 'categorías')} ·{' '}
+            <span className="metric text-foreground">{programCount}</span>{' '}
+            {pluralForm(programCount, 'programa', 'programas')}
+          </p>
         </div>
-        <Button variant="accent" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button variant="accent" size="lg" onClick={() => setCreateOpen(true)}>
           Nueva categoría
         </Button>
       </header>
@@ -146,6 +153,17 @@ export default function Planes() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {cats.length === 0 && (
+        <div className="border border-border bg-card p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Todavía no hay categorías. Creá la primera para ordenar los programas que vas a entrenar.
+          </p>
+          <Button variant="outline" size="lg" onClick={() => setCreateOpen(true)}>
+            Nueva categoría
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cats.map((c) => (
           <ContextMenu key={c.id}>
@@ -156,11 +174,13 @@ export default function Planes() {
                     <h2 className="font-semibold">{c.name}</h2>
                     <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
                     <div className="mt-2 flex gap-2">
-                      <Badge variant="outline">{c.programs.length} progresiones</Badge>
+                      <Badge variant="outline" className="label-status">
+                        {c.programs.length} {pluralForm(c.programs.length, 'programa', 'programas')}
+                      </Badge>
                     </div>
                   </Link>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                    <DropdownMenuTrigger className="inline-flex h-11 w-11 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
