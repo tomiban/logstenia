@@ -154,6 +154,12 @@ protagonismo porque el negro la hace brillar. Los valores viven en el bloque `.d
 **The Beacon Rule.** El Voltage Lime ocupa ≤10% de cualquier pantalla. Su escasez es el punto:
 si dos elementos compiten en lima, uno está mal.
 
+**The Lime-is-a-Fill Rule.** El lima rellena, bordea y marca; **nunca es el color del texto sobre
+papel o superficie**. `#ccff00` sobre `#f0f0f0` da 1.03:1: no es una preferencia, es ilegible. El
+estado se escribe en tinta (`text-ink`/`text-foreground`) y el lima queda como marca al lado
+(cuadrado de 8px) o como relleno con `text-on-accent` encima. Los únicos textos lima admitidos son
+los que viven sobre el overlay negro del descanso.
+
 **The Ink-or-Paper Rule.** Un elemento es tinta sólida o papel, nunca un gris intermedio de
 relleno "para suavizar". El gris intermedio existe solo como texto muted.
 
@@ -168,7 +174,9 @@ dice "instrumento": legible en el cuerpo, mecánica y precisa en los números.
 
 ### Hierarchy
 - **Display** (Space Grotesk 700, ~1.5rem, tracking −0.02em): nombre del ejercicio en la sesión
-  guiada y títulos de pantalla.
+  guiada y títulos de pantalla. **Los siete `h1` de pantalla usan la misma escala:**
+  `font-heading text-2xl font-bold tracking-tight`. Un título de pantalla más grande que otro es
+  deriva, no énfasis.
 - **Heading** (Space Grotesk 700, tracking −0.02em): `h1–h4`; encabezados de tarjeta.
 - **Body** (Hanken Grotesk 400): texto corriente y celdas de tabla.
 - **Label** (JetBrains Mono 600, 11px, letter-spacing 0.08em, UPPERCASE, muted): etiquetas de
@@ -181,7 +189,8 @@ dice "instrumento": legible en el cuerpo, mecánica y precisa en los números.
 (`tabular-nums`). Los dígitos nunca deben bailar entre filas.
 
 **The Mono-means-data Rule.** El mono se reserva a números, labels y estados. Nunca se usa para
-prosa.
+prosa: una frase en `label-caps` obliga a deletrear cada palabra. La frase va en cuerpo
+(`text-sm text-muted-foreground`) y el número que contiene, en `.metric`.
 
 ## Layout
 
@@ -232,9 +241,11 @@ variante se aplica con `variant="..."`; el tamaño con `size="..."` (`xs` h-6, `
 - **Shape:** rectángulo, radio 0, borde 1px. Sin sombras, `transition-colors` únicamente.
 - **accent** (alias `default`): relleno Voltage Lime con texto On Accent (#111) y borde Ink — la
   acción principal de la pantalla (`Entrenar`, `Siguiente`, `Guardar`, `Crear`, `Agregar`,
-  `Iniciar rutina`, `Continuar`, `Usar tiempo`, `Exportar`). Hover suelta el relleno y deja un
+  `Iniciar rutina`, `Continuar`, `Exportar`, `saltar descanso`). Hover suelta el relleno y deja un
   contorno lima: texto Ink en claro, texto lima en oscuro. Es la única señal lima de la vista
-  (Beacon Rule).
+  (Beacon Rule). Los controles que viven **dentro de una fila o de una tarjeta** —`Usar tiempo`,
+  `Aplicar`, `confirmar`, `editar`, `+ serie`— no son la acción de la pantalla y van `outline` o
+  `ghost`.
 - **ink**: relleno Ink con texto On Ink (lima) y borde Ink. Estado activo / selección / nav
   activa. Hover invierte a lima/ink. En oscuro el relleno Ink es papel y el texto tinta.
 - **outline**: fondo transparente, borde Ink, texto Ink. Hover relleno Ink, texto On Ink.
@@ -259,7 +270,9 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
   borde propio.
 - **Timer control** (Runner, descanso): overlay siempre negro con texto lima (en ambos modos)
   `bg-on-accent text-accent`; `Button variant="outline"` con borde/texto lima para ±10s y
-  `Button variant="accent"` para "saltar descanso".
+  `Button variant="accent"` para "saltar descanso" (única acción del overlay). Dentro de la sesión,
+  el único accent es el botón de avance de la barra fija: el cronómetro y sus controles de fila van
+  `outline`.
 
 ### Chips / Badges
 - **Style:** fondo Voltage Lime + texto On Accent (#111) para el dato destacado (PR, énfasis
@@ -290,6 +303,12 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
   segmentados (borde 1px, divididos por `divide-x`), no como tabs con sombra.
 - **Default:** fondo blanco, texto muted. **Activa:** relleno Ink, texto Voltage Lime. Sin
   subrayados ni píldoras.
+- **Ajustes:** el disparador del header es un control fantasma compacto (glifo + el nombre del
+  perfil en `label-caps`, caja táctil de 44px). No es un botón delineado: el header no compite con
+  el CTA de la pantalla.
+- **Sesión guiada (`/run`):** la nav inferior se oculta. El runner trae su propia barra de control
+  fija (`fixed bottom-0 z-40`) con el único accent de la vista; dos barras fijas en 390px se tapan
+  entre sí.
 
 ### Signature: Telemetry readouts
 Los pares label/número que definen el sistema: `.label-caps` arriba, `.metric` abajo, alineados
@@ -322,6 +341,8 @@ el descanso (suena + vibra al llegar a 0).
   en la misma vista.
 - **Don't** rellenar con grises intermedios "para suavizar"; elegí tinta o papel, y dejá el gris
   solo para texto muted.
+- **Don't** escribir texto en lima sobre papel o superficie (The Lime-is-a-fill Rule): el estado
+  se escribe en tinta y el lima queda como marca.
 - **Don't** usar color como único portador de significado (el estado también va en texto/forma).
 
 ## Herramientas de diseño y precedencia
@@ -338,7 +359,10 @@ Cuando una herramienta externa de diseño opina sobre esta interfaz, la preceden
 4. `impeccable audit` — a11y, performance, responsive y theming; read-only.
 5. `web-design-guidelines` — patrones mecánicos de a11y y motion.
 
-Los hallazgos ya auditados viven en `design-plans/ui-audit-findings.md`.
+Los hallazgos ya auditados viven en `design-plans/ui-audit-findings.md` (código),
+`design-plans/critique-per-page.md` (heurísticas por pantalla) y
+`design-plans/ui-polish-render-pass.md` (crítica sobre capturas renderizadas, con el pulido
+posterior).
 
 ### Overrides explícitos
 
