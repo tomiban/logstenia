@@ -9,12 +9,9 @@
  */
 import type { Mutation } from './schema';
 import {
-  readExistingUpdatedAt,
   readPullPage,
   readRev,
-  rowKey,
-  writeMutations,
-  type AcceptedMutation,
+  writePush,
   type RowRecord,
 } from './queries';
 
@@ -65,25 +62,17 @@ export async function pushMutations(
 ): Promise<PushResult> {
   if (mutations.length === 0) return { rev: await readRev(db), applied: [], rejected: [] };
 
-  const existing = await readExistingUpdatedAt(owner, db, mutations);
-  const accepted: AcceptedMutation[] = [];
+  const { rev, accepted } = await writePush(owner, db, mutations);
+  const applied: string[] = [];
   const rejected: Rejection[] = [];
 
-  for (const [index, mutation] of mutations.entries()) {
-    const serverUpdatedAt = existing.get(rowKey(mutation.entity, mutation.id));
-    if (serverUpdatedAt !== undefined && isServerNewer(serverUpdatedAt, mutation.updatedAt)) {
-      rejected.push({ ref: `${mutation.entity}/${mutation.id}`, reason: 'stale_server_newer' });
-      continue;
-    }
-    accepted.push({ mutation, offset: index + 1 });
-  }
+  mutations.forEach((mutation, index) => {
+    const ref = `${mutation.entity}/${mutation.id}`;
+    if (accepted[index]) applied.push(ref);
+    else rejected.push({ ref, reason: 'stale_server_newer' });
+  });
 
-  const rev = await writeMutations(owner, db, mutations.length, accepted);
-  return {
-    rev,
-    applied: accepted.map(({ mutation }) => `${mutation.entity}/${mutation.id}`),
-    rejected,
-  };
+  return { rev, applied, rejected };
 }
 
 function toChange(row: RowRecord): Change {
@@ -97,10 +86,4 @@ function toChange(row: RowRecord): Change {
   };
 }
 
-function isServerNewer(serverUpdatedAt: string, clientUpdatedAt: string): boolean {
-  const serverTime = Date.parse(serverUpdatedAt);
-  const clientTime = Date.parse(clientUpdatedAt);
-  // A tie (and an ambiguous server timestamp) belongs to the client, keeping retries idempotent.
-  if (Number.isNaN(serverTime) || Number.isNaN(clientTime)) return false;
-  return serverTime > clientTime;
-}
+
