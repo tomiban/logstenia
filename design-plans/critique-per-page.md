@@ -146,6 +146,20 @@ hidratado (`:73,84`); touch targets de 28px y 32px (`:333,243,283,310`); iniciar
 irreversible (`:268-276`). P3: el ancla lee "20 reps Dominadas" — valor y unidad antes del sujeto
 (`:305-307`); "Rutinas" es un `span` sin `h2` (`:316`).
 
+## Estado (2026-10-26)
+
+Resueltos y commiteados: los tres P0 (métricas ya no queda en su skeleton, el nivel es un campo
+explícito del formulario, los benchmarks sin anclas son alcanzables), la affordance de las cards
+(hover sobre el ring que la card realmente pinta, más foco visible), los touch targets de gimnasio
+a 44px medidos en 390px, el nav inferior con el tratamiento activo documentado, el nav de
+escritorio marcando Planes en las rutas de detalle, y las mutaciones de Planes dejando de tragarse
+los errores.
+
+Sigue abierto, y es la parte de producto de esta pasada: los gráficos sin nombre accesible ni
+equivalente textual, el filtro de rango que sólo respetan dos bloques, el panel "Duración" que
+grafica series cuando no hay duraciones, el `0/0` sin sesiones comparables, la falta de ruta de
+edición/borrado para los benchmarks, y el recálculo por card en Skill.
+
 ## Convergencia con la auditoría de diseño
 
 Coincidencias independientes (suben la confianza a "confirmado por dos métodos"): prosa en mono

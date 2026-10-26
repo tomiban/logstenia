@@ -59,26 +59,31 @@ compartido. Read-only sobre código de producto: acá no se implementó nada.
 | m6 | El sparkline no pasa `cursor` al `Tooltip`, así que recharts dibuja su gris por defecto | DESIGN Dark mode: `--muted-surface` = "cursor de los charts"; los dos bar charts sí lo pasan (`Metrics:347,410`) | `cursor={{ stroke: 'var(--muted-surface)' }}` | `Metrics:471` |
 | m7 | Cuerpo de card con `p-4` encima del `py-16` del Card: 32px vertical contra 16px horizontal | DESIGN Cards: "Internal Padding: gap interno 16px"; `CardContent` es el owner (`px-(--card-spacing)`) | usar `CardContent` | `Runner:314`, `Runner:239` |
 
-## Estado de implementación (2026-10-26, sin commit)
+## Estado de implementación (2026-10-26)
 
-**Aplicado y verificado** (lint 0, 288 tests, build 0): F1 (5 destructivas), F4 (nav móvil sin
-subrayado lima, activo con relleno Ink + texto lima), F5 (`Label` primitivo con el label
-documentado), F6 (`ring-border` en card/dialog/select), F9 (gutter del header a `px-6`), F10 en
-`Program` y `Skill`, y los menores m1, m2 (incluido `AlertDialogTitle`), m3, m4, m5, m6.
+Rama `feat/ui-audit-fixes`. Todos los findings aplicados tienen gate GGA en verde, `npm test`
+(301 tests), `npm run build` y `npm run lint` limpios.
 
-**Finding nuevo, m4b** — el audit original no lo listó y lo detectó la ejecución: `Skill.tsx`
-tenía el gemelo del chip de m4, `<Badge variant="default">{p.models.length} rutinas</Badge>`, en
-lima. Mismo tratamiento: `variant="outline"`. Es una corrección al alcance de este reporte, no
-un cambio de criterio.
+**Aplicado**: F1 (destructivas, 5 sitios), F2 (prosa fuera del mono, 17 sitios), F3 (input de
+series a 44px), F4 (nav móvil con el tratamiento activo documentado), F5 (`Label` primitivo), F6
+(`ring-border` en card/dialog/select), F7 (banner de Program sobre superficie de card), F8 (cadena
+de Skill en outline), F9 (gutter del header), F10 en Program y Skill, y los menores m1, m2, m3,
+m4, m4b, m5, m6, m7.
 
-**Pendiente**: F2 (13 sitios; 6 en `Runner.tsx` y `Routine.tsx`, que otra sesión tiene tomados),
-F3 (input de series a 44px, mismo bloqueo), F7 (panel lima de `Program`), F8 (cadena de `Skill`
-en lima sólido), m7 (doble padding de card en `Runner`), y el `space-y-6` de `Routine.tsx`.
+**Pendiente**: F10 en `Routine.tsx` y una frase suya en `label-caps`; los dos van con ese archivo,
+que el gate rechaza por dead code ajeno (ver abajo).
 
-**Nota de e2e**: la suite está roja en `runner.e2e.ts` por el trabajo staged de otra sesión
-(`plans.ts` corre `await seedPlanTags()` antes del primer render). Ninguno de estos cambios toca
-la carga de planes. El smoke test que fallaba en la corrida completa pasa con `--workers=1`: era
-flakiness de paralelismo.
+**Decisiones cerradas**: Q1 — la paleta pastel de tags es una **excepción decidida por el usuario**
+y quedó escrita en `DESIGN.md` (chips + overrides). Q4 — el `max-w-full` anulaba el tope de 1152px:
+medido en navegador, computaba `max-width: 100%` y renderizaba 1440px; ahora computa 1152px.
+
+**Preguntas que siguen abiertas**: Q2 (terminología "progresiones" vs "programas"), Q3 (el trigger
+de ajustes dice `tomas`), Q5 (contraste de `text-accent` sobre papel), Q6 (grilla de Planes).
+
+**Bloqueo conocido**: `app/src/features/plans/Routine.tsx` tiene dos cambios propios de esta rama
+(F1 y F10) sin commitear porque el gate detecta un menú inalcanzable escrito por otra sesión
+(`:504`, un bloque `{editing && …}` anidado dentro de la rama `{!editing && …}`). Esa corrección le
+corresponde a quien escribió ese código.
 
 ## Improve first
 
