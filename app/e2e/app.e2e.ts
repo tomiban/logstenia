@@ -47,3 +47,18 @@ test('no hay entradas de datos en la pantalla de métricas', async ({ page }) =>
   await page.goto('/metrics');
   await expect(page.locator('input, select, textarea')).toHaveCount(0);
 });
+
+test('la página scrollea como un documento, con rueda y con teclado', async ({ page }) => {
+  await page.goto('/metrics');
+  await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible();
+
+  const scrollY = () => page.evaluate(() => window.scrollY);
+
+  await page.mouse.move(200, 400);
+  await page.mouse.wheel(0, 600);
+  await expect.poll(scrollY).toBeGreaterThan(0);
+
+  const afterWheel = await scrollY();
+  await page.keyboard.press('PageDown');
+  await expect.poll(scrollY).toBeGreaterThan(afterWheel);
+});

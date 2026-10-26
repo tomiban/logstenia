@@ -8,6 +8,9 @@ export default defineConfig({
   testMatch: '**/*.e2e.ts',
   fullyParallel: true,
   reporter: 'list',
+  /* The dev server compiles a route's lazy chunk on its first request; four parallel workers can
+     push that past the 5s default and fail a test that is really a cold start. */
+  expect: { timeout: 15_000 },
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',

@@ -37,7 +37,8 @@ No Python/scripts pipeline: the plan data is static JSON committed in the repo.
 - Routes: `/`, `/program/:id`, `/routine/:id`, `/run/:id`, `/metrics`,
   `/progress`, `/settings`.
 - Data model: `Category → Program → Model → Block → Exercise` (see
-  `app/src/types/index.ts`).
+  `app/src/types/index.ts`). UI copy names them **categoría → programa → rutina**; "progresión" is
+  only the chain concept ("cadena de progresión"), and "modelo"/"plan" stay out of user copy.
 - Descansos: salen del bloque (`restBetweenSetsSec` = entre series, `restBetweenExercisesSec` =
   entre ejercicios). `app/src/lib/rest.ts` los resuelve; el runner los informa dentro del
   ejercicio y no permite editarlos.
@@ -114,7 +115,8 @@ If FAILED, list: `file:line - rule violated - issue`.
 
 - Runner timer logic must be covered by unit tests (`steps.test.ts` pattern).
 - Tests assert observable behavior through the public interface.
-- UI verification goes through Playwright (`app/tests/`, `npm run test:e2e`): mobile
+- UI verification goes through Playwright (`app/e2e/`, `npm run test:e2e`; sync specs live in
+  `app/e2e-sync/` with their own config): mobile
   and desktop projects, dev server autostarted by the config.
 - Run `npm test`, `npm run test:e2e` and `npm run build` before declaring done.
 

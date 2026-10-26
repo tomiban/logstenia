@@ -53,7 +53,11 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-html, body, #root { height: 100%; max-width: 100%; overflow-x: hidden; }
+/* Horizontal clipping without a scroll container: `clip` keeps the document as the scroller, so
+   the wheel, PageDown and window.scrollY behave like any other page. `overflow-x: hidden` here
+   would turn html/body/#root into three nested scrollers and freeze document scrolling. */
+html, body { max-width: 100%; overflow-x: clip; }
+#root { min-height: 100%; max-width: 100%; }
 body {
   margin: 0;
   background: var(--bg);
