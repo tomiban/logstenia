@@ -53,6 +53,9 @@ function bestEffort(run: () => Promise<unknown>): void {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  /* The guided session owns the whole screen: its own control bar sits where the app nav usually
+     does, so the nav steps aside instead of stacking two bottom bars on a 390px phone. */
+  const immersive = pathname.startsWith('/run');
 
   useEffect(() => {
     bestEffort(() =>
@@ -65,7 +68,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0 overflow-x-hidden">
+    <div className={'min-h-screen ' + (immersive ? '' : 'pb-20 md:pb-0')}>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:border focus:border-foreground focus:bg-card focus:px-3 focus:py-2 focus:label-caps">Saltar al contenido</a>
       <header className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-6">
@@ -98,7 +101,10 @@ export default function Layout({ children }: { children: ReactNode }) {
       </main>
       <nav
         aria-label="Navegación principal"
-        className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background md:hidden"
+        className={
+          'fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background md:hidden' +
+          (immersive ? ' hidden' : '')
+        }
       >
         <ul className="mx-auto flex max-w-6xl items-stretch justify-around">
           {NAV.map((n) => (

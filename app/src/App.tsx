@@ -11,7 +11,11 @@ const Runner = lazy(() => import('./features/runner/Runner'));
 const Metrics = lazy(() => import('./features/metrics/Metrics'));
 
 function PageFallback() {
-  return <div className="py-8 text-center text-muted-foreground">Cargando…</div>;
+  return (
+    <div role="status" aria-busy="true" className="py-8 text-center text-sm text-muted-foreground">
+      Cargando…
+    </div>
+  );
 }
 
 export default function App() {
