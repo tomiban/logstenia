@@ -264,7 +264,7 @@ export default function Program() {
 
       {!started && (
         <div className="border border-ink bg-accent p-3 flex items-center justify-between gap-3">
-          <span className="label-caps text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
+          <span className="text-sm text-on-accent">¿Empezar este plan? Se registrará con 0% de progreso en Inicio.</span>
           <Button variant="ink" size="sm" disabled={!unlocked} onClick={async () => {
             try {
               const r = await settingsRepository.get('startedPlans');
@@ -282,19 +282,19 @@ export default function Program() {
       )}
 
       {saveError && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           {saveError}
         </p>
       )}
 
       {!unlocked && lockReason && (
         <div className="border border-ink bg-secondary p-3">
-          <p className="label-caps text-foreground">{lockReason}</p>
+          <p className="text-sm text-foreground">{lockReason}</p>
         </div>
       )}
 
       {progression.error && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           No se pudo leer el progreso: las fases y los niveles desbloqueados pueden verse reiniciados.
         </p>
       )}

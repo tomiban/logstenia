@@ -193,7 +193,7 @@ function BloqueNivel({ progression }: { progression: RunnerProgression | null })
         <div className="space-y-2 border border-border bg-secondary p-3">
           <p className="label-caps text-foreground">Todavía no desbloqueás {report.next.name}</p>
           <CriteriaList anchors={report.missing} />
-          <p className="label-caps text-muted-foreground">Volvé a tomar las marcas cuando las superes.</p>
+          <p className="text-sm text-muted-foreground">Volvé a tomar las marcas cuando las superes.</p>
         </div>
       </div>
     );
@@ -239,7 +239,7 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
       <div className="p-4 space-y-3">
         <BloqueNivel progression={progression} />
         {rows.length === 0 ? (
-          <p className="label-caps">no registraste series en este entrenamiento</p>
+          <p className="text-sm text-muted-foreground">no registraste series en este entrenamiento</p>
         ) : (
           rows.map((f: { exercise: string; unit: string; values: number[]; best: number; sets: number; pr: boolean; first: boolean }) => (
             <div key={f.exercise} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 last:border-0">
@@ -267,7 +267,7 @@ export default function Runner() {
   if (!r.res || !r.model || !r.program) return <p>Rutina no encontrada.</p>;
 
   const n = r.steps.length;
-  if (n === 0) return <Card><div className="p-4"><p className="label-caps">no se pudieron extraer los ejercicios de este entrenamiento</p></div></Card>;
+  if (n === 0) return <Card><div className="p-4"><p className="text-sm text-muted-foreground">no se pudieron extraer los ejercicios de este entrenamiento</p></div></Card>;
 
   if (r.restUntil != null && !r.finished) return (
     <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
@@ -283,14 +283,14 @@ export default function Runner() {
         <Button variant="outline" size="sm" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h + 10000 : null))}>+10s</Button>
       </div>
       <Button variant="accent" size="lg" className="label-caps" onClick={r.skipRest}>saltar descanso</Button>
-      {r.errorMessage ? <p role="alert" className="label-caps max-w-xs text-center opacity-80">{r.errorMessage}</p> : null}
+      {r.errorMessage ? <p role="alert" className="max-w-xs text-center text-sm opacity-80">{r.errorMessage}</p> : null}
     </div>
   );
 
   if (r.finished) return (
     <>
       {r.errorMessage ? (
-        <p role="alert" className="label-caps mb-4 border border-ink bg-accent px-4 py-3 text-on-accent">
+        <p role="alert" className="mb-4 border border-ink bg-accent px-4 py-3 text-sm text-on-accent">
           {r.errorMessage}
         </p>
       ) : null}

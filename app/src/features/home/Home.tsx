@@ -186,7 +186,7 @@ export default function Home() {
         </p>
       </header>
       {saveError && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           {saveError}
         </p>
       )}
@@ -218,7 +218,7 @@ export default function Home() {
               )}
             </div>
             {semana == null ? (
-              <p className="label-caps">cargá la fecha de inicio para ubicarte</p>
+              <p className="text-sm text-muted-foreground">cargá la fecha de inicio para ubicarte</p>
             ) : (
               <div className="space-y-2">
                 <div className="flex gap-1" role="img" aria-label={`Semana ${Math.min(semana, MESO.total)} de ${MESO.total}`}>
@@ -311,7 +311,7 @@ export default function Home() {
             </div>
           )}
           {startedPrograms.length === 0 ? (
-            <p className="label-caps text-muted-foreground">Todavía no registraste entrenamientos. Elegí un plan para empezar.</p>
+            <p className="text-sm text-muted-foreground">Todavía no registraste entrenamientos. Elegí un plan para empezar.</p>
           ) : (
             <ul className="space-y-2">
               {startedPrograms.map((p) => (
@@ -328,7 +328,7 @@ export default function Home() {
             </ul>
           )}
           {!warmup && !warmupRoutine && startedPrograms.length === 0 && (
-            <p className="label-caps text-muted-foreground">Etiquetá una rutina con "calentamiento" para verla acá.</p>
+            <p className="text-sm text-muted-foreground">Etiquetá una rutina con "calentamiento" para verla acá.</p>
           )}
         </div>
       </Card>

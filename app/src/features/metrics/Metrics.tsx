@@ -420,9 +420,9 @@ export default function Metrics() {
       {/* Marcas */}
       <Panel title="Marcas" meta={`${best.length} ejercicios · histórico`}>
         {best.length === 0 ? (
-          <p className="label-caps px-4 py-4 text-muted-foreground">
-            sin marcas todavía: aparecen cuando registrás el valor de una serie (segundos en isométricos,
-            reps en básicos)
+          <p className="px-4 py-4 text-sm text-muted-foreground">
+            <span className="label-caps text-muted-foreground">sin marcas todavía:</span> aparecen cuando registrás el
+            valor de una serie (segundos en isométricos, reps en básicos)
           </p>
         ) : (
           <>
@@ -451,7 +451,7 @@ export default function Metrics() {
       {/* Evolución por ejercicio */}
       <Panel title="Evolución por ejercicio" meta={`${series.length} con historial`}>
         {series.length === 0 ? (
-          <p className="label-caps px-4 py-4 text-muted-foreground">
+          <p className="px-4 py-4 text-sm text-muted-foreground">
             con dos registros del mismo ejercicio vas a ver acá la curva de progreso
           </p>
         ) : (

@@ -243,13 +243,13 @@ export default function Skill() {
       {cat.programs.length === 0 && <p className="text-sm text-muted-foreground">Sin progresiones curadas aún.</p>}
 
       {saveError && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           {saveError}
         </p>
       )}
 
       {progression.error && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           No se pudo leer el progreso: los niveles completados y bloqueados pueden verse reiniciados.
         </p>
       )}
