@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import Cronometro from './Cronometro';
 import type { SessionSet } from '@/repositories';
+import { isTimedExercise } from '@/lib/exercise';
+import Cronometro from './Cronometro';
 import { num } from './runnerLogic';
 import { type WorkoutStep } from './steps';
 import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue } from './useRunner';
@@ -35,8 +36,7 @@ function ExerciseStep({
   const list = values;
   const [editing, setEditing] = useState<Set<number>>(new Set());
 
-  const isTimed = (!!exercise.timeSec && !exercise.reps)
-    || (Array.isArray(exercise.tags) && exercise.tags.includes('isometricos'));
+  const isTimed = isTimedExercise(exercise);
 
   const alreadyRegistered = (i: number) => sets.some((l) =>
     l.exercise === exercise.name && l.setIndex === i + 1 && l.bloqueOrden === step.blockIdx);

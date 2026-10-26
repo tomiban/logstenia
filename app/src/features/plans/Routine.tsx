@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Block, BlockType, Exercise, Intensity } from '@/types';
 import { BackLink } from '@/components/BackLink';
 import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, reorderExercises, moveExercise, allModels } from './plans';
@@ -7,7 +7,6 @@ import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
 import { nextBlockId } from './blocks';
 import { MoreHorizontal, GripVertical, Pencil, X } from 'lucide-react';
-import { addTag } from '@/lib/tags';
 import Video from './Video';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -103,24 +102,6 @@ export default function Routine() {
   const [bankOpen, setBankOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [urlEdit, setUrlEdit] = useState<{ bi: number; ei: number; url: string } | null>(null);
-
-  useEffect(() => {
-    if (!res) return;
-    const { model } = res;
-    (async () => {
-      try {
-        for (const b of model.blocks) {
-          for (const e of b.exercises) {
-            if (e.name.toLowerCase().includes('hold') || e.timeSec) {
-              await addTag('exercise', e.id || e.name, 'isometricos');
-            }
-          }
-        }
-      } catch {
-        setSaveError('No se pudieron etiquetar los ejercicios isométricos.');
-      }
-    })();
-  }, [id, res?.model?.blocks?.length]);
 
   if (!res) return <p className="label-caps">Rutina no encontrada.</p>;
   const { model, program } = res;
