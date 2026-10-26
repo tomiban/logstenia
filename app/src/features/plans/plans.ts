@@ -3,6 +3,7 @@ import plansJson from '@/data/plans.json';
 import { plansRepository } from '@/data/plansRepository';
 import { onPulledRows } from '@/repositories/sync/engine';
 import { addTag } from '@/lib/tags';
+import { nextBlockId, migrateBlocksToIds, assignBlockIds } from './blocks';
 
 // In-memory cache (storage-agnostic: backed by plansRepository).
 let data: PlanData = plansJson as PlanData;
@@ -75,11 +76,19 @@ export async function initPlans(): Promise<void> {
       await plansRepository.setVideoCatalogVersion(VIDEO_CATALOG_VERSION);
     }
   } else {
-    data = plansJson as PlanData;
+    // Fresh install: the ids go in before seeding so the frozen SEED_UPDATED_AT stamp
+    // survives (decision L8). A seed re-saved with `now` would win last-write-wins
+    // against a real edit made on another device.
+    data = structuredClone(plansJson) as PlanData;
+    assignBlockIds(data);
     await plansRepository.seedIfEmpty(data);
     await plansRepository.setVideoCatalogVersion(VIDEO_CATALOG_VERSION);
   }
   rebuildIndexes();
+  // Before the first render: `main.tsx` awaits this function, so every block already
+  // has its stable id when the first screen draws (Layout repeats the call on mount
+  // for the path where init fails and the app renders anyway).
+  await migrateBlocksToIds();
   notify();
   // Seed tags declared on models (idempotent).
   for (const c of data.categories) {
@@ -343,7 +352,10 @@ export async function deleteModel(id: string): Promise<void> {
 // Block
 export async function createBlock(modelId: string, block: Block): Promise<void> {
   const entry = modelIndex.get(modelId);
-  if (entry) entry.model.blocks.push(block);
+  if (entry) {
+    if (!block.id) block.id = nextBlockId(block.type, entry.model.blocks);
+    entry.model.blocks.push(block);
+  }
   await persistPlans();
 }
 export async function updateBlock(modelId: string, blockIndex: number, patch: Partial<Block>): Promise<void> {

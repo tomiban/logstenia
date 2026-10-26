@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { createSettingsRepository } from '@/repositories';
 import { migrateMarksToIds } from '@/features/progress/marks';
+import { migrateBlocksToIds } from '@/features/plans/blocks';
 import { SettingsMenu } from '@/features/settings/SettingsMenu';
 
 const settingsRepository = createSettingsRepository();
@@ -31,12 +32,25 @@ function Icon({ name }: { name: string }) {
   }
 }
 
+/**
+ * Best-effort boot work: applying the saved theme and the lazy id migrations. A failure here
+ * leaves the stored data readable and the migration retries on the next mount, so it is swallowed
+ * on purpose instead of turning into an error banner on every screen. The `<html>` class is set
+ * imperatively because React does not own that node; Tailwind's dark mode reads it from there.
+ */
+function bestEffort(run: () => Promise<unknown>): void {
+  void run().catch(() => undefined);
+}
+
 export default function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
-    settingsRepository.get('theme').then(s => {
-      if (s?.value === 'dark') document.documentElement.classList.add('dark');
-    }).catch(() => {});
-    migrateMarksToIds().catch(() => {});
+    bestEffort(() =>
+      settingsRepository.get('theme').then((saved) => {
+        if (saved?.value === 'dark') document.documentElement.classList.add('dark');
+      }),
+    );
+    bestEffort(migrateMarksToIds);
+    bestEffort(migrateBlocksToIds);
   }, []);
 
   return (

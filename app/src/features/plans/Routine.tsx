@@ -1,9 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { Block, BlockType, Exercise, Intensity } from '@/types';
 import { BackLink } from '@/components/BackLink';
 import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, reorderExercises, moveExercise, allModels } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
+import { nextBlockId } from './blocks';
 import { MoreHorizontal, GripVertical, Pencil, X } from 'lucide-react';
 import { addTag } from '@/lib/tags';
 import Video from './Video';
@@ -35,6 +37,43 @@ function youtubeId(url: string): string | null {
 
 const BLOCK_TYPES = ['single', 'biseries', 'superseries'] as const;
 
+/** The select hands back a string; anything outside the three block types falls back to `single`. */
+function toBlockType(raw: string | null | undefined): BlockType {
+  return raw === 'biseries' ? 'biseries' : raw === 'superseries' ? 'superseries' : 'single';
+}
+
+/** The select hands back a string; anything outside the three levels falls back to the first. */
+function toIntensity(raw: string | null | undefined): Intensity {
+  return raw === '2' ? 2 : raw === '3' ? 3 : 1;
+}
+
+/** Fields the model dialog round-trips; the number input hands back a string. */
+interface ModelForm {
+  name: string;
+  intensity: Intensity;
+  totalTimeMin: string;
+}
+
+/** Fields the block dialogs round-trip; the number inputs hand back strings. */
+interface BlockForm {
+  type: BlockType;
+  sets: string;
+  restBetweenSetsSec: string;
+  restBetweenExercisesSec: string;
+}
+
+/** Fields the exercise dialogs round-trip; `timeSec` is a string because the input is one. */
+interface ExerciseForm {
+  name: string;
+  reps: string;
+  timeSec: string;
+  cadence: string;
+  notes: string;
+}
+
+const EMPTY_BLOCK_FORM: BlockForm = { type: 'single', sets: '1', restBetweenSetsSec: '60', restBetweenExercisesSec: '' };
+const EMPTY_EXERCISE_FORM: ExerciseForm = { name: '', reps: '', timeSec: '', cadence: '', notes: '' };
+
 export default function Routine() {
   const { id } = useParams();
   usePlansVersion();
@@ -43,21 +82,22 @@ export default function Routine() {
 
   // model edit
   const [modelEditOpen, setModelEditOpen] = useState(false);
-  const [modelForm, setModelForm] = useState<any>(null);
+  const [modelForm, setModelForm] = useState<ModelForm | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // block create/edit
   const [blockCreateOpen, setBlockCreateOpen] = useState(false);
-  const [newBlock, setNewBlock] = useState<any>({ type: 'single', sets: 1, restBetweenSetsSec: 60, restBetweenExercisesSec: '' });
-  const [blockEdit, setBlockEdit] = useState<{ index: number; form: any } | null>(null);
+  const [newBlock, setNewBlock] = useState<BlockForm>(EMPTY_BLOCK_FORM);
+  const [blockEdit, setBlockEdit] = useState<{ index: number; form: BlockForm } | null>(null);
   const [blockDelete, setBlockDelete] = useState<number | null>(null);
 
   // exercise create/edit
   const [exCreate, setExCreate] = useState<{ blockIndex: number } | null>(null);
-  const [newEx, setNewEx] = useState<any>({ name: '', reps: '', timeSec: '', cadence: '', notes: '' });
-  const [exEdit, setExEdit] = useState<{ bi: number; ei: number; form: any } | null>(null);
+  const [newEx, setNewEx] = useState<ExerciseForm>(EMPTY_EXERCISE_FORM);
+  const [exEdit, setExEdit] = useState<{ bi: number; ei: number; form: ExerciseForm } | null>(null);
   const [exDelete, setExDelete] = useState<{ bi: number; ei: number } | null>(null);
   const [drag, setDrag] = useState<{ bi: number; ei: number } | null>(null);
-  const [dragPayload, setDragPayload] = useState<{ kind: 'bank' | 'routine'; ex?: any; bi?: number; ei?: number } | null>(null);
+  const [dragPayload, setDragPayload] = useState<{ kind: 'bank' | 'routine'; ex?: Exercise; bi?: number; ei?: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ bi: number } | null>(null);
   const [search, setSearch] = useState('');
   const [bankOpen, setBankOpen] = useState(false);
@@ -68,12 +108,16 @@ export default function Routine() {
     if (!res) return;
     const { model } = res;
     (async () => {
-      for (const b of model.blocks) {
-        for (const e of b.exercises) {
-          if (e.name.toLowerCase().includes('hold') || e.timeSec) {
-            await addTag('exercise', e.id || e.name, 'isometricos');
+      try {
+        for (const b of model.blocks) {
+          for (const e of b.exercises) {
+            if (e.name.toLowerCase().includes('hold') || e.timeSec) {
+              await addTag('exercise', e.id || e.name, 'isometricos');
+            }
           }
         }
+      } catch {
+        setSaveError('No se pudieron etiquetar los ejercicios isométricos.');
       }
     })();
   }, [id, res?.model?.blocks?.length]);
@@ -90,33 +134,44 @@ export default function Routine() {
   );
 
   const openModelEdit = () => {
-    setModelForm({ name: model.name, intensity: model.intensity, totalTimeMin: model.totalTimeMin });
+    setModelForm({ name: model.name, intensity: model.intensity, totalTimeMin: String(model.totalTimeMin) });
     setModelEditOpen(true);
   };
   const saveModelEdit = async () => {
     if (!modelForm) return;
-    await updateModel(model.id, {
-      name: modelForm.name.trim(),
-      intensity: Number(modelForm.intensity) as any,
-      totalTimeMin: Number(modelForm.totalTimeMin),
-    });
-    setModelEditOpen(false);
-    setModelForm(null);
+    try {
+      await updateModel(model.id, {
+        name: modelForm.name.trim(),
+        intensity: modelForm.intensity,
+        totalTimeMin: Number(modelForm.totalTimeMin),
+      });
+      setSaveError(null);
+      setModelEditOpen(false);
+      setModelForm(null);
+    } catch {
+      setSaveError('No se pudieron guardar los datos de la rutina.');
+    }
   };
 
   const saveNewBlock = async () => {
-    const block: any = {
+    const block: Block = {
+      id: nextBlockId(newBlock.type, model.blocks),
       type: newBlock.type,
       sets: Number(newBlock.sets) || 1,
       restBetweenSetsSec: Number(newBlock.restBetweenSetsSec) || 0,
       exercises: [],
     };
-    if (newBlock.restBetweenExercisesSec !== '' && newBlock.restBetweenExercisesSec != null) {
+    if (newBlock.restBetweenExercisesSec !== '') {
       block.restBetweenExercisesSec = Number(newBlock.restBetweenExercisesSec);
     }
-    await createBlock(model.id, block);
-    setNewBlock({ type: 'single', sets: 1, restBetweenSetsSec: 60, restBetweenExercisesSec: '' });
-    setBlockCreateOpen(false);
+    try {
+      await createBlock(model.id, block);
+      setSaveError(null);
+      setNewBlock(EMPTY_BLOCK_FORM);
+      setBlockCreateOpen(false);
+    } catch {
+      setSaveError('No se pudo agregar el bloque.');
+    }
   };
 
   const openBlockEdit = (i: number) => {
@@ -125,48 +180,59 @@ export default function Routine() {
       index: i,
       form: {
         type: b.type,
-        sets: b.sets,
-        restBetweenSetsSec: b.restBetweenSetsSec,
-        restBetweenExercisesSec: b.restBetweenExercisesSec ?? '',
+        sets: String(b.sets),
+        restBetweenSetsSec: String(b.restBetweenSetsSec),
+        restBetweenExercisesSec: b.restBetweenExercisesSec == null ? '' : String(b.restBetweenExercisesSec),
       },
     });
   };
   const saveBlockEdit = async () => {
     if (!blockEdit) return;
     const f = blockEdit.form;
-    const patch: any = {
+    const patch: Partial<Block> = {
       type: f.type,
       sets: Number(f.sets) || 1,
       restBetweenSetsSec: Number(f.restBetweenSetsSec) || 0,
+      restBetweenExercisesSec: f.restBetweenExercisesSec === '' ? undefined : Number(f.restBetweenExercisesSec),
     };
-    if (f.restBetweenExercisesSec !== '' && f.restBetweenExercisesSec != null) {
-      patch.restBetweenExercisesSec = Number(f.restBetweenExercisesSec);
-    } else {
-      patch.restBetweenExercisesSec = undefined;
+    try {
+      await updateBlock(model.id, blockEdit.index, patch);
+      setSaveError(null);
+      setBlockEdit(null);
+    } catch {
+      setSaveError('No se pudo guardar el bloque.');
     }
-    await updateBlock(model.id, blockEdit.index, patch);
-    setBlockEdit(null);
   };
   const confirmDeleteBlock = async () => {
     if (blockDelete === null) return;
-    await deleteBlock(model.id, blockDelete);
-    setBlockDelete(null);
+    try {
+      await deleteBlock(model.id, blockDelete);
+      setSaveError(null);
+      setBlockDelete(null);
+    } catch {
+      setSaveError('No se pudo borrar el bloque.');
+    }
   };
 
   const saveNewEx = async () => {
     if (!exCreate || !newEx.name.trim()) return;
     const bi = exCreate.blockIndex;
     const block = model.blocks[bi];
-    const existing = new Set(block.exercises.map((e: any) => e.id).filter(Boolean));
+    const existing = new Set(block.exercises.map((e) => e.id).filter((eid): eid is string => Boolean(eid)));
     const id = uniqueId(newEx.name, existing);
-    const ex: any = { id, name: newEx.name.trim() };
+    const ex: Exercise = { id, name: newEx.name.trim() };
     if (newEx.reps.trim()) ex.reps = newEx.reps.trim();
     if (newEx.timeSec !== '') ex.timeSec = Number(newEx.timeSec);
     if (newEx.cadence.trim()) ex.cadence = newEx.cadence.trim();
     if (newEx.notes.trim()) ex.notes = newEx.notes.trim();
-    await createExercise(model.id, bi, ex);
-    setNewEx({ name: '', reps: '', timeSec: '', cadence: '', notes: '' });
-    setExCreate(null);
+    try {
+      await createExercise(model.id, bi, ex);
+      setSaveError(null);
+      setNewEx(EMPTY_EXERCISE_FORM);
+      setExCreate(null);
+    } catch {
+      setSaveError('No se pudo crear el ejercicio.');
+    }
   };
 
   const openExEdit = (bi: number, ei: number) => {
@@ -176,7 +242,7 @@ export default function Routine() {
       form: {
         name: e.name,
         reps: e.reps ?? '',
-        timeSec: e.timeSec ?? '',
+        timeSec: e.timeSec == null ? '' : String(e.timeSec),
         cadence: e.cadence ?? '',
         notes: e.notes ?? '',
       },
@@ -185,18 +251,30 @@ export default function Routine() {
   const saveExEdit = async () => {
     if (!exEdit) return;
     const f = exEdit.form;
-    const patch: any = { name: f.name.trim() };
-    patch.reps = f.reps.trim() || undefined;
-    patch.timeSec = f.timeSec === '' ? undefined : Number(f.timeSec);
-    patch.cadence = f.cadence.trim() || undefined;
-    patch.notes = f.notes.trim() || undefined;
-    await updateExercise(model.id, exEdit.bi, exEdit.ei, patch);
-    setExEdit(null);
+    const patch: Partial<Exercise> = {
+      name: f.name.trim(),
+      reps: f.reps.trim() || undefined,
+      timeSec: f.timeSec === '' ? undefined : Number(f.timeSec),
+      cadence: f.cadence.trim() || undefined,
+      notes: f.notes.trim() || undefined,
+    };
+    try {
+      await updateExercise(model.id, exEdit.bi, exEdit.ei, patch);
+      setSaveError(null);
+      setExEdit(null);
+    } catch {
+      setSaveError('No se pudo guardar el ejercicio.');
+    }
   };
   const confirmDeleteEx = async () => {
     if (!exDelete) return;
-    await deleteExercise(model.id, exDelete.bi, exDelete.ei);
-    setExDelete(null);
+    try {
+      await deleteExercise(model.id, exDelete.bi, exDelete.ei);
+      setSaveError(null);
+      setExDelete(null);
+    } catch {
+      setSaveError('No se pudo borrar el ejercicio.');
+    }
   };
 
   const saveUrlEdit = async () => {
@@ -204,14 +282,19 @@ export default function Routine() {
     const { bi, ei, url } = urlEdit;
     const id = youtubeId(url.trim());
     const ex = model.blocks[bi].exercises[ei];
-    if (id) {
-      await updateExercise(model.id, bi, ei, {
-        video: { id, title: ex.name, channel: '', url: `https://www.youtube.com/watch?v=${id}`, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` },
-      });
-    } else if (url.trim() === '') {
-      await updateExercise(model.id, bi, ei, { video: undefined });
+    try {
+      if (id) {
+        await updateExercise(model.id, bi, ei, {
+          video: { id, title: ex.name, channel: '', url: `https://www.youtube.com/watch?v=${id}`, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` },
+        });
+      } else if (url.trim() === '') {
+        await updateExercise(model.id, bi, ei, { video: undefined });
+      }
+      setSaveError(null);
+      setUrlEdit(null);
+    } catch {
+      setSaveError('No se pudo guardar el video.');
     }
-    setUrlEdit(null);
   };
 
   return (
@@ -258,6 +341,12 @@ export default function Routine() {
         </div>
       </header>
 
+      {saveError && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          {saveError}
+        </p>
+      )}
+
       <Dialog open={modelEditOpen} onOpenChange={setModelEditOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar rutina</DialogTitle></DialogHeader>
@@ -266,7 +355,7 @@ export default function Routine() {
               <div className="space-y-1.5"><Label>Nombre</Label><Input value={modelForm.name} onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })} /></div>
               <div className="space-y-1.5">
                 <Label>Intensidad</Label>
-                <Select value={String(modelForm.intensity)} onValueChange={(v) => setModelForm({ ...modelForm, intensity: (v ?? "") as string })}>
+                <Select value={String(modelForm.intensity)} onValueChange={(v) => setModelForm({ ...modelForm, intensity: toIntensity(v) })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">1</SelectItem>
@@ -291,7 +380,7 @@ export default function Routine() {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
-              <Select value={newBlock.type} onValueChange={(v) => setNewBlock({ ...newBlock, type: (v ?? "") as string })}>
+              <Select value={newBlock.type} onValueChange={(v) => setNewBlock({ ...newBlock, type: toBlockType(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -316,7 +405,7 @@ export default function Routine() {
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label>Tipo</Label>
-                <Select value={blockEdit.form.type} onValueChange={(v) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, type: (v ?? "") as string } })}>
+                <Select value={blockEdit.form.type} onValueChange={(v) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, type: toBlockType(v) } })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -420,7 +509,7 @@ export default function Routine() {
       {!editing && (
       <div className="space-y-4">
         {model.blocks.map((b, i) => (
-          <section key={i} className="border border-border">
+          <section key={b.id} className="border border-border">
             <ContextMenu>
               <ContextMenuTrigger className="block">
                 <div className="border-b border-border bg-secondary px-3 py-2 flex flex-wrap items-center justify-between gap-2">
@@ -478,16 +567,16 @@ export default function Routine() {
                 if (!drag) return;
                 if (drag.bi === i) {
                   const last = Math.max(0, b.exercises.length - 1);
-                  if (drag.ei !== last) reorderExercises(model.id, i, drag.ei, last).then(() => setDrag(null));
+                  if (drag.ei !== last) reorderExercises(model.id, i, drag.ei, last).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
                   else setDrag(null);
                 } else {
-                  moveExercise(model.id, drag.bi, drag.ei, i, b.exercises.length).then(() => setDrag(null));
+                  moveExercise(model.id, drag.bi, drag.ei, i, b.exercises.length).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
                 }
               }}
             >
               {b.exercises.map((e, j) => (
                 <li
-                  key={j}
+                  key={e.id ?? `${e.name}-${j}`}
                   draggable={editing}
                   onDragStart={() => { if (editing) setDrag({ bi: i, ei: j }); }}
                   onDragOver={(ev) => ev.preventDefault()}
@@ -497,9 +586,9 @@ export default function Routine() {
                     if (!drag) { setDrag(null); return; }
                     if (drag.bi === i && drag.ei === j) { setDrag(null); return; }
                     if (drag.bi === i) {
-                      reorderExercises(model.id, i, drag.ei, j).then(() => setDrag(null));
+                      reorderExercises(model.id, i, drag.ei, j).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
                     } else {
-                      moveExercise(model.id, drag.bi, drag.ei, i, j).then(() => setDrag(null));
+                      moveExercise(model.id, drag.bi, drag.ei, i, j).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
                     }
                   }}
                   className={`px-3 py-3 bg-card cursor-move ${drag?.bi === i && drag?.ei === j ? 'opacity-50' : ''}`}
@@ -606,18 +695,18 @@ export default function Routine() {
           )}
           {model.blocks.map((b, i) => (
             <section
-              key={i}
+              key={b.id}
               onDragOver={(ev) => { ev.preventDefault(); setDropTarget({ bi: i }); }}
               onDragLeave={() => setDropTarget(null)}
               onDrop={(ev) => {
                 ev.preventDefault();
                 if (!dragPayload) return;
                 if (dragPayload.kind === 'bank' && dragPayload.ex) {
-                  const existing = new Set(b.exercises.map((e: any) => e.id).filter(Boolean));
+                  const existing = new Set(b.exercises.map((e) => e.id).filter((eid): eid is string => Boolean(eid)));
                   const id = uniqueId(dragPayload.ex.name, existing);
-                  createExercise(model.id, i, { ...dragPayload.ex, id }).then(() => setDragPayload(null));
+                  createExercise(model.id, i, { ...dragPayload.ex, id }).then(() => setDragPayload(null)).catch(() => setSaveError('No se pudo agregar el ejercicio.'));
                 } else if (dragPayload.kind === 'routine' && dragPayload.bi !== undefined && dragPayload.ei !== undefined && dragPayload.bi !== i) {
-                  moveExercise(model.id, dragPayload.bi, dragPayload.ei, i, b.exercises.length).then(() => setDragPayload(null));
+                  moveExercise(model.id, dragPayload.bi, dragPayload.ei, i, b.exercises.length).then(() => setDragPayload(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
                 }
                 setDropTarget(null);
               }}
@@ -635,7 +724,7 @@ export default function Routine() {
                 )}
                 {b.exercises.map((e, j) => (
                   <div
-                    key={j}
+                    key={e.id ?? `${e.name}-${j}`}
                     draggable
                     onDragStart={() => setDragPayload({ kind: 'routine', bi: i, ei: j, ex: e })}
                     onDragEnd={() => setDragPayload(null)}

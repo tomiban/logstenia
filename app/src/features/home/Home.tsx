@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '@/hooks/usePlans';
-import type { Category, Program } from '@/types';
+import type { Category, Model, Program } from '@/types';
 import { createProgressRepository, createSessionRepository, createSettingsRepository } from '@/repositories';
 import type { MarkRecord, ProgressRecord, SessionRecord } from '@/repositories';
 import { Card } from '@/components/ui/card';
@@ -38,8 +38,9 @@ export default function Home() {
   const [progress, setProgress] = useState<ProgressRecord[]>([]);
   const [startedPlanIds, setStartedPlanIds] = useState<string[]>([]);
   const [marks, setMarks] = useState<MarkRecord[]>([]);
-  const [warmupRoutine, setWarmupRoutine] = useState<{ prog: any; model: any } | null>(null);
+  const [warmupRoutine, setWarmupRoutine] = useState<{ prog: Program; model: Model } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -51,6 +52,7 @@ export default function Home() {
         const sp = await settingsRepository.get('startedPlans');
         setStartedPlanIds((sp?.value as string[]) || []);
       } catch {
+        setSaveError('No se pudieron cargar tus datos.');
       } finally {
         setLoading(false);
       }
@@ -59,7 +61,7 @@ export default function Home() {
 
   useEffect(() => {
     if (mesoInicio) {
-      getMarks(mesoInicio).then(setMarks).catch(() => {});
+      getMarks(mesoInicio).then(setMarks).catch(() => setSaveError('No se pudieron leer las marcas del mesociclo.'));
     }
   }, [mesoInicio]);
 
@@ -82,13 +84,17 @@ export default function Home() {
 
   useEffect(() => {
     (async () => {
-      const ids = await targetsByTag('calentamiento', 'routine');
-      const candidates: { prog: any; model: any }[] = [];
-      for (const c of cats) for (const p of c.programs) for (const m of p.models) {
-        if (ids.includes(m.id)) candidates.push({ prog: p, model: m });
+      try {
+        const ids = await targetsByTag('calentamiento', 'routine');
+        const candidates: { prog: Program; model: Model }[] = [];
+        for (const c of cats) for (const p of c.programs) for (const m of p.models) {
+          if (ids.includes(m.id)) candidates.push({ prog: p, model: m });
+        }
+        if (candidates.length === 0) { setWarmupRoutine(null); return; }
+        setWarmupRoutine(candidates[Math.floor(Math.random() * candidates.length)]);
+      } catch {
+        setSaveError('No se pudo elegir el calentamiento.');
       }
-      if (candidates.length === 0) { setWarmupRoutine(null); return; }
-      setWarmupRoutine(candidates[Math.floor(Math.random() * candidates.length)]);
     })();
   }, [cats]);
 
@@ -122,12 +128,22 @@ export default function Home() {
   const toggleWarmup = async () => {
     const v = !warmup;
     setWarmupState(v);
-    await setWarmup(v);
+    try {
+      await setWarmup(v);
+      setSaveError(null);
+    } catch {
+      setSaveError('No se pudo guardar el calentamiento.');
+    }
   };
 
   const onMesoChange = async (v: string) => {
     setMesoInicioState(v);
-    await setMesoInicio(v);
+    try {
+      await setMesoInicio(v);
+      setSaveError(null);
+    } catch {
+      setSaveError('No se pudo guardar el inicio del mesociclo.');
+    }
   };
 
   const ultimas = (() => {
@@ -169,6 +185,11 @@ export default function Home() {
           {ahora.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' })}
         </p>
       </header>
+      {saveError && (
+        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+          {saveError}
+        </p>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <div className="border-b border-border px-4 py-2">
@@ -203,7 +224,7 @@ export default function Home() {
                 <div className="flex gap-1" role="img" aria-label={`Semana ${Math.min(semana, MESO.total)} de ${MESO.total}`}>
                   {Array.from({ length: MESO.total }, (_, i) => (
                     <div
-                      key={i}
+                      key={`semana-${i + 1}`}
                       className={
                         'h-2 flex-1 ' +
                         (i + 1 < Math.min(semana, MESO.total)

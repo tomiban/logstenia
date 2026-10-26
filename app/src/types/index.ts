@@ -27,6 +27,7 @@ export interface Exercise {
 }
 
 export interface Block {
+  id?: string;
   type: BlockType;
   sets: number;
   restBetweenSetsSec: number;
