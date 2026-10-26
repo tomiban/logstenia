@@ -10,11 +10,13 @@ import {
   getProgram,
   getModel,
   getPlansVersion,
+  getPlansRefreshError,
   allPrograms,
   saveData,
   subscribePlans,
   syncBundledVideos,
 } from './plans';
+import { plansRepository } from '@/data/plansRepository';
 
 // The catalogue refreshes on the sync engine's pulled-rows notification, so the engine is
 // replaced by a recorder that lets each test deliver the entities a pull would report.
@@ -153,5 +155,29 @@ describe('plans cache refresh on pulled rows (spec S8, finding L7)', () => {
     expect(getPlansVersion()).toBe(version);
     expect(getCategories().map((category) => category.id)).toEqual(before);
     expect(getCategory('pulled')).toBeUndefined();
+  });
+
+  it('keeps the previous catalogue and exposes the failure when the refresh read fails', async () => {
+    const before = getCategories().map((category) => category.id);
+    const spy = vi
+      .spyOn(plansRepository, 'load')
+      .mockRejectedValueOnce(new Error('indexeddb unavailable'));
+
+    notifyPulled(['plans']);
+    await vi.waitFor(() => {
+      expect(getPlansRefreshError()).toBeInstanceOf(Error);
+    });
+    spy.mockRestore();
+
+    // The screenshot keeps the old catalogue instead of blanking it.
+    expect(getCategories().map((category) => category.id)).toEqual(before);
+    expect(getPlansVersion()).toBeGreaterThan(0);
+
+    // The next successful pull clears the recorded failure.
+    await storeCategory(pulled, 0);
+    notifyPulled(['plans']);
+    await vi.waitFor(() => {
+      expect(getPlansRefreshError()).toBeNull();
+    });
   });
 });

@@ -104,18 +104,33 @@ export async function persistPlans(): Promise<void> {
  * Re-reads the catalogue from storage (spec S8, finding L7). A pull writes category rows
  * straight to IndexedDB, behind this cache, so without this the screen keeps showing the
  * old catalogue until a reload.
+ *
+ * Resolves `false` when nothing was stored, leaving the previous catalogue in place: an
+ * emptied catalogue must not blank the screen (same trade-off as deleting the last category).
  */
-export async function refreshPlansFromStore(): Promise<void> {
+export async function refreshPlansFromStore(): Promise<boolean> {
   const stored = await plansRepository.load();
-  if (!stored) return;
+  if (!stored) return false;
   data = stored;
   rebuildIndexes();
   notify();
+  return true;
+}
+
+let refreshError: unknown = null;
+
+/** Last failed catalogue refresh after a pull, or `null`. Observable, unlike a swallowed rejection. */
+export function getPlansRefreshError(): unknown {
+  return refreshError;
 }
 
 // Pulled category rows invalidate the cache; other entities leave the catalogue alone.
 onPulledRows((entities) => {
-  if (entities.includes('plans')) void refreshPlansFromStore();
+  if (!entities.includes('plans')) return;
+  void refreshPlansFromStore().then(
+    () => { refreshError = null; },
+    (error: unknown) => { refreshError = error; },
+  );
 });
 
 // ---- read (sync, from cache) ----

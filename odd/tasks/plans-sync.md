@@ -108,3 +108,38 @@ bajo carga. El síntoma es siempre el mismo — la página queda en `Cargando…
 lazy) cuando el `expect` de 5 s vence — y ocurre igual antes y después de los cambios de este
 feature (base: 1-3 fallos por corrida; con `--retries=2`: 34/34). El fix de fondo es precargar la
 ruta o subir el timeout del chunk, no acumular retries para siempre.
+
+L10 (review nativo de T4, `approved` y burned): el candidato completo (44 archivos, ~3400 líneas) no
+entra en el presupuesto del reviewer (`lens_context_budget_exceeded`, que **no** se puede reintentar
+ni truncar). Se revisó T4 solo con `baseRef=3d73238` (4 archivos, 287 líneas, tier medium) y el
+resto de los commits ya tenía su gate por unidad. Cuatro findings non-blocking, dos reales:
+
+- **R3-a**: al tipar `normalizeBlockType(block: Block)` se quitó el guard `!block`. Ningún caller lo
+  alcanza con `null`, pero es robustez perdida a cambio de nada; decidir si se repone.
+- **R3-b**: el refresh de catálogo tras un pull traga el error de `load()`. Es el mismo patrón que el
+  bug de autosave del runner: una lectura que falla deja estado viejo en silencio. Aplicar el mismo
+  criterio (arrancar sin datos y avisar, no quedarse callado).
+
+L11 (limitaciones conocidas del catálogo sincronizado, no bloqueantes):
+
+- **Vaciado que resucita**: `load()` devuelve `null` cuando no quedan filas vivas, así que borrar
+  *todas* las categorías hace que el próximo `initPlans()` las re-siembre desde `plans.json`. Falta
+  un flag persistido que distinga "nunca sembrado" de "vaciado por el usuario".
+- **Posiciones duplicadas**: si dos dispositivos reordenan categorías distintas a la vez, ambos
+  `position` pueden colisionar y el orden cae a la estabilidad del sort. Fuera del alcance de S7.
+- **Última categoría borrada**: si un pull borra la última, el refresh retorna temprano y la UI queda
+  vieja hasta recargar. Deliberado: limpiar el cache haría que el próximo write tombstone todo.
+
+L12 (cierre de los findings del review de T4):
+
+- **R3-a resuelto sin reponer el guard**: `normalizeBlockType(block: Block)` recibe siempre un bloque
+  existente (los cinco callers iteran bloques o los reciben ya resueltos), así que un `!block` sería
+  código muerto que contradice la firma. Se mantiene el tipo estricto en vez de un guard que no puede
+  dispararse.
+- **R3-b resuelto**: el refresh tras un pull ya no deja la promesa sin dueño. Si la lectura falla, se
+  conserva el catálogo anterior (mismo criterio que la última categoría) y el fallo queda observable en
+  `getPlansRefreshError()`, que el próximo pull exitoso limpia.
+- **Vaciado que resucita, resuelto**: `plansRepository` persiste un marcador `catalogue-seeded` y
+  `seedIfEmpty` no siembra si ya se sembró alguna vez. Un catálogo guardado antes de existir el marcador
+  se adopta como sembrado en el próximo init, así que vaciarlo también queda vacío. El marcador es local
+  (no viaja por sync): cada dispositivo sabe si alguna vez tuvo catálogo.

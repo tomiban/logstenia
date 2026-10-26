@@ -136,10 +136,16 @@ interface CategoryDocumentRow {
 }
 
 /** Catalogue metadata row: `{ id: 'video-catalog-version', version }`. */
+/**
+ * Metadata row, never a category document: `version` marks the video-catalogue version row and
+ * `seeded` the marker that keeps an emptied catalogue from being re-seeded. Both are optional
+ * because one row carries one of them.
+ */
 interface PlansMetaRow {
   [field: string]: unknown;
   id: string;
-  version: number;
+  version?: number;
+  seeded?: boolean;
 }
 
 export type PlansRow = CategoryDocumentRow | PlansMetaRow;

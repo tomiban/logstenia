@@ -264,6 +264,29 @@ describe('plansRepository.seedIfEmpty', () => {
     expect(entries.map((entry) => entry.id).sort()).toEqual(['cardio', 'movilidad']);
     expect(entries.every((entry) => entry.updatedAt === SEED_UPDATED_AT)).toBe(true);
   });
+
+  it('does not resurrect a catalogue the user emptied on purpose', async () => {
+    const seed = { categories: [cardio, movilidad] };
+    await plansRepository.seedIfEmpty(seed);
+
+    await plansRepository.save({ categories: [] });
+    expect(await plansRepository.load()).toBeNull();
+    expect(await plansRepository.getSeeded()).toBe(true);
+
+    await plansRepository.seedIfEmpty(seed);
+    expect(await liveCategoryIds()).toEqual([]);
+  });
+
+  it('treats a catalogue stored before the flag existed as already seeded', async () => {
+    await putRows([
+      { id: 'cardio', category: cardio, position: 0, updatedAt: T_LOCAL, deletedAt: null },
+    ]);
+
+    await plansRepository.seedIfEmpty({ categories: [movilidad] });
+
+    expect(await plansRepository.getSeeded()).toBe(true);
+    expect(await liveCategoryIds()).toEqual(['cardio']);
+  });
 });
 
 describe('plansRepository merge per category (spec S7)', () => {

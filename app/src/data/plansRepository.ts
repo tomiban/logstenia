@@ -11,6 +11,13 @@ export interface PlansRepository {
   load(): Promise<PlansData | null>;
   save(data: PlansData): Promise<void>;
   seedIfEmpty(seed: PlansData): Promise<void>;
+  /**
+   * False only before the catalogue was ever seeded. An emptied catalogue must stay empty:
+   * without this flag the next init would treat "the user deleted every category" as
+   * "nothing was ever stored" and resurrect the bundled seed.
+   */
+  getSeeded(): Promise<boolean>;
+  setSeeded(): Promise<void>;
   getVideoCatalogVersion(): Promise<number>;
   setVideoCatalogVersion(version: number): Promise<void>;
 }
@@ -21,6 +28,7 @@ import { enqueueOutbox, withOutboxWrite } from '../repositories/sync/outbox';
 
 const STORE = 'plans';
 const VIDEO_CATALOG_VERSION_KEY = 'video-catalog-version';
+const SEEDED_KEY = 'catalogue-seeded';
 
 /**
  * Frozen timestamp of the bundled seed (spec S8, decision L8). The seed is a catalogue
@@ -80,6 +88,21 @@ function isSameValue(a: unknown, b: unknown): boolean {
 
 async function readCategoryRows(): Promise<(PlansRow & CategoryRow)[]> {
   return ((await db.plans.toArray()) as PlansRow[]).filter(isCategoryRow);
+}
+
+/** Whether the catalogue was seeded at least once (the marker row is metadata, not a category). */
+async function readSeeded(): Promise<boolean> {
+  return (await db.plans.get(SEEDED_KEY)) != null;
+}
+
+async function writeSeeded(): Promise<void> {
+  await db.plans.put({ id: SEEDED_KEY, seeded: true });
+}
+
+/** A catalogue stored before this flag existed counts as seeded, so emptying it stays empty. */
+async function adoptSeededFlag(): Promise<void> {
+  if (await readSeeded()) return;
+  await writeSeeded();
 }
 
 /**
@@ -160,7 +183,11 @@ export const idbPlansRepository: PlansRepository = {
   },
   async seedIfEmpty(seed) {
     const existing = await this.load();
-    if (existing) return;
+    if (existing) {
+      await adoptSeededFlag();
+      return;
+    }
+    if (await readSeeded()) return;
 
     // Stamped here instead of through `save()`: an ordinary save uses the current time,
     // and a seed carrying `now` would overwrite real edits under category-level LWW.
@@ -172,7 +199,10 @@ export const idbPlansRepository: PlansRepository = {
     });
 
     await writeCategoryRows(rows);
+    await writeSeeded();
   },
+  getSeeded: readSeeded,
+  setSeeded: writeSeeded,
   async getVideoCatalogVersion() {
     return storedVersion(await db.plans.get(VIDEO_CATALOG_VERSION_KEY));
   },
