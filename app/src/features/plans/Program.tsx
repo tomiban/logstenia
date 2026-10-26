@@ -149,7 +149,7 @@ export default function Program() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <BackLink to="/">Volver</BackLink>
       </div>
@@ -257,7 +257,7 @@ export default function Program() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteModel}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDeleteModel}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

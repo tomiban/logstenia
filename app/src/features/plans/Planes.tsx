@@ -54,7 +54,7 @@ export default function Planes() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight font-heading">Planes</h1>
+          <h1 className="text-2xl font-bold tracking-tight font-heading">Planes</h1>
           <p className="label-caps text-muted-foreground">progresiones por categoría</p>
         </div>
         <Button variant="accent" size="sm" onClick={() => setCreateOpen(true)}>
@@ -119,7 +119,7 @@ export default function Planes() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDelete}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -134,7 +134,7 @@ export default function Planes() {
                     <h2 className="font-semibold">{c.name}</h2>
                     <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
                     <div className="mt-2 flex gap-2">
-                      <Badge variant="default">{c.programs.length} progresiones</Badge>
+                      <Badge variant="outline">{c.programs.length} progresiones</Badge>
                     </div>
                   </Link>
                   <DropdownMenu>
