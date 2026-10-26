@@ -73,6 +73,13 @@ npx wrangler d1 execute logstenia-sync --remote \
 Las revisiones (`rev`) se copian sin cambios, así que el primer pull de cada dispositivo es
 un no-op y nadie pierde el cursor.
 
+> **Aplicá el esquema y desplegá el Worker en la misma ventana.** Una migración que el Worker
+desplegado tiene que entender no se aplica sola: entre `migrations apply` y `wrangler deploy`
+la versión vieja sigue corriendo contra el esquema nuevo, y `/api/sync` falla en cada request.
+Pasó el 26 de octubre: `0002_owner.sql` entró a producción mientras el Worker activo era del
+23, así que el sync estuvo roto hasta que se desplegó el código que conoce `owner`. Si la
+migración y el deploy no pueden ir juntos, hacé el deploy primero y la migración después.
+
 **Recién después de verificar el aislamiento** agregá el resto de los emails a la política de
 Access (§3). Habilitarlos antes de este paso deja a todas las personas escribiendo el mismo
 conjunto de filas.
