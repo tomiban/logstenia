@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { createSettingsRepository } from '@/repositories';
@@ -13,6 +13,17 @@ const NAV = [
   { id: 'planes', label: 'Planes', path: '/planes', icon: 'plans' },
   { id: 'metrics', label: 'Métricas', path: '/metrics', icon: 'metrics' },
 ];
+
+/** Detail routes a nav item owns, so the catalog stays highlighted while you are inside it. */
+const NAV_OWNED_ROUTES: Record<string, string[]> = {
+  planes: ['/planes', '/program', '/routine', '/skill'],
+};
+
+function navIsActive(id: string, path: string, pathname: string): boolean {
+  const owned = NAV_OWNED_ROUTES[id];
+  if (!owned) return pathname === path;
+  return owned.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
+}
 
 function Icon({ name }: { name: string }) {
   const common = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -41,6 +52,8 @@ function bestEffort(run: () => Promise<unknown>): void {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+
   useEffect(() => {
     bestEffort(() =>
       settingsRepository.get('theme').then((saved) => {
@@ -65,9 +78,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               <NavLink
                 key={n.id}
                 to={n.path}
-                className={({ isActive }) =>
+                className={
                   'label-caps h-11 inline-flex items-center justify-center gap-2 px-4 transition-colors ' +
-                  (isActive
+                  (navIsActive(n.id, n.path, pathname)
                     ? 'bg-primary text-primary-foreground dark:bg-foreground dark:text-background'
                     : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground')
                 }
@@ -92,9 +105,9 @@ export default function Layout({ children }: { children: ReactNode }) {
             <li key={n.id} className="flex-1">
               <NavLink
                 to={n.path}
-                className={({ isActive }) =>
+                className={
                   'flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-1 text-center transition-colors ' +
-                  (isActive
+                  (navIsActive(n.id, n.path, pathname)
                     ? 'bg-primary text-primary-foreground dark:bg-foreground dark:text-background'
                     : 'text-muted-foreground hover:text-foreground')
                 }
