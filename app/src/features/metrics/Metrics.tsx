@@ -10,7 +10,6 @@ import {
   anchoredEntries,
   bestMarks,
   collectMarks,
-  comparisonsWithin,
   compareSessions,
   computeTelemetry,
   dayLabel,
@@ -24,7 +23,7 @@ import {
   sessionMeasure,
   sessionsWithin,
   trendOf,
-  volumeWeeks,
+  volumeChartWindow,
   weeklyVolume,
   windowsFor,
   type BestMark,
@@ -185,8 +184,8 @@ function ChartTable({ caption, rows }: { caption: string; rows: readonly ChartRo
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.label}-${row.value}-${index}`}>
+          {rows.map((row) => (
+            <tr key={row.id}>
               <td className="py-1 tabular-nums text-muted-foreground">{row.label}</td>
               <td className="metric tabular-nums py-1 text-right text-foreground">{nf.format(row.value)}</td>
             </tr>
@@ -283,22 +282,27 @@ export default function Metrics() {
 
   const telemetry = computeTelemetry(sessions, win);
   const measureInfo = sessionMeasure(inRange);
-  const weeks = volumeWeeks(win);
+  const { weeks, capped: volumeCapped } = volumeChartWindow(win);
   const volume = weeklyVolume(inRange, weeks, today);
   const best = bestMarks(anchored, today);
   const dist = planDistribution(sessions, win.current);
 
-  const comparisons = comparisonsWithin(compareSessions(sessions), win);
+  const comparisons = compareSessions(sessions, win);
   const recent = comparisons.slice(-SESSIONS_SHOWN);
   const comparable = recent.filter((c) => c.gained !== null);
   const gained = comparable.filter((c) => c.gained).length;
   const newBests = recent.reduce((total, c) => total + c.newBests.length, 0);
   const measure = (c: SessionComparison) => (measureInfo.key === 'duracion' ? c.summary.durationMin : c.summary.series);
+  const measureDeltaNote = (c: SessionComparison) => {
+    const value = measureInfo.key === 'duracion' ? c.durationDelta : c.seriesDelta;
+    return value === null ? 'sin comparación' : `${signed(value)} vs anterior`;
+  };
   const bestSession = recent.reduce<SessionComparison | null>(
     (bestOne, c) => (bestOne === null || measure(c) > measure(bestOne) ? c : bestOne),
     null,
   );
   const sessionData = recent.map((c) => ({
+    id: c.summary.id,
     label: dayLabel(c.summary.date),
     amount: measure(c),
     marker: c.gained === true ? ('lime' as const) : undefined,
@@ -323,6 +327,7 @@ export default function Metrics() {
 
   const sessionMeta = `${recent.length === comparisons.length ? nf.format(comparisons.length) : `${nf.format(recent.length)} de ${nf.format(comparisons.length)}`} ${pluralForm(comparisons.length, 'sesión', 'sesiones')} · ${rangeTag}`;
   const weeksLabel = `${nf.format(weeks)} ${pluralForm(weeks, 'semana', 'semanas')}`;
+  const volumeWindowLabel = volumeCapped ? `últimas ${weeksLabel}` : weeksLabel;
 
   const sessionValues = sessionData.map((d) => d.amount);
   const sessionTrend = trendOf(sessionValues);
@@ -333,7 +338,7 @@ export default function Metrics() {
 
   const volumeValues = volumeData.map((d) => d.amount);
   const peak = volumeData[volumeValues.indexOf(Math.max(...volumeValues))];
-  const volumeChartLabel = `${volumeNoun} por semana, ${weeksLabel} del rango elegido: máximo ${nf.format(peak.amount)} en la semana del ${peak.label}, tendencia ${TREND_WORD[trendOf(volumeValues)]}.`;
+  const volumeChartLabel = `${volumeNoun} por semana, ${volumeWindowLabel}${volumeCapped ? '' : ' del rango elegido'}: máximo ${nf.format(peak.amount)} en la semana del ${peak.label}, tendencia ${TREND_WORD[trendOf(volumeValues)]}.`;
 
   const sinSesiones = sessions.length === 0;
 
@@ -401,7 +406,7 @@ export default function Metrics() {
             deltaNote={prevNote}
           />
           <Readout
-            label="Racha"
+            label="Racha · histórico"
             value={nf.format(telemetry.streak)}
             unit={pluralForm(telemetry.streak, 'día', 'días')}
             note={
@@ -523,11 +528,11 @@ export default function Metrics() {
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="metric text-lg tabular-nums text-foreground">
-                    {nf.format(c.summary.durationMin)}{' '}
-                    <span className="label-caps text-muted-foreground">min</span>
+                    {nf.format(measure(c))}{' '}
+                    <span className="label-caps text-muted-foreground">{measureInfo.unit}</span>
                   </div>
                   <div className="label-caps mt-1 text-muted-foreground">
-                    {c.durationDelta === null ? 'sin comparación' : `${signed(c.durationDelta)} vs anterior`}
+                    {measureDeltaNote(c)}
                   </div>
                 </div>
               </li>
@@ -537,7 +542,7 @@ export default function Metrics() {
       </Panel>
 
       {/* Weekly volume */}
-      <Panel title="Volumen por semana" meta={`${volumeUnit} · ${weeksLabel}`}>
+      <Panel title="Volumen por semana" meta={`${volumeUnit} · ${volumeWindowLabel}`}>
         <div className="p-4">
           {inRange.length === 0 ? (
             <p className="text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
@@ -561,7 +566,7 @@ export default function Metrics() {
               </div>
               <ChartLegend markers={[{ marker: 'ink', text: 'semana en curso' }]} />
               <ChartTable
-                caption={`Volumen por semana, ${weeksLabel}`}
+                caption={`Volumen por semana, ${volumeWindowLabel}`}
                 rows={volumeRows(volume, volumeUnit)}
               />
             </>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { Intensity, Model } from '@/types';
+import { toIntensity } from '@/lib/intensity';
 import { BackLink } from '@/components/BackLink';
 import { getProgram, createModel, deleteModel, updateModel } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
@@ -63,11 +64,6 @@ interface ModelEditForm {
   benchmark: boolean;
 }
 
-/** The select hands back a string; anything outside the three levels falls back to the first. */
-function toIntensity(raw: string | null | undefined): Intensity {
-  return raw === '2' ? 2 : raw === '3' ? 3 : 1;
-}
-
 export default function Program() {
   const { id } = useParams();
   usePlansVersion();
@@ -85,15 +81,19 @@ export default function Program() {
   const [modelCreateOpen, setModelCreateOpen] = useState(false);
   const [newModelName, setNewModelName] = useState('');
   const [modelEdit, setModelEdit] = useState<{ id: string; form: ModelEditForm } | null>(null);
-  const [modelDelete, setModelDelete] = useState<{ id: string; name: string } | null>(null);
+  const [modelDelete, setModelDelete] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!p) return;
     (async () => {
-      const r = await settingsRepository.get('startedPlans');
-      const arr = (r?.value as string[]) || [];
-      setStarted(arr.includes(p.id));
+      try {
+        const r = await settingsRepository.get('startedPlans');
+        const arr = (r?.value as string[]) || [];
+        setStarted(arr.includes(p.id));
+      } catch {
+        setSaveError('No se pudo leer si este plan ya está empezado.');
+      }
     })();
   }, [p]);
 
@@ -148,7 +148,7 @@ export default function Program() {
   const confirmDeleteModel = async () => {
     if (!modelDelete) return;
     try {
-      await deleteModel(modelDelete.id);
+      await deleteModel(modelDelete);
       setSaveError(null);
       setModelDelete(null);
     } catch {
@@ -395,9 +395,21 @@ export default function Program() {
                   <span className="block text-sm font-medium leading-tight text-foreground">{m.name}</span>
                   <span className="label-status mt-1 inline-block text-muted-foreground">toma de marcas</span>
                 </div>
-                <Link to={`/routine/${m.id}`}>
-                  <Button variant="outline" size="lg">Registrar marca</Button>
-                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Link to={`/routine/${m.id}`}>
+                    <Button variant="outline" size="lg">Registrar marca</Button>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openModelEdit(m)}>Editar</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive" onClick={() => setModelDelete(m.id)}>Borrar</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </li>
             ))}
           </ul>
@@ -448,7 +460,7 @@ export default function Program() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openModelEdit(m)}>Editar</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => setModelDelete({ id: m.id, name: m.name })}>Borrar</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setModelDelete(m.id)}>Borrar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -463,7 +475,7 @@ export default function Program() {
                   </ContextMenuSubContent>
                 </ContextMenuSub>
                 <ContextMenuSeparator />
-                <ContextMenuItem className="text-destructive" onClick={() => setModelDelete({ id: m.id, name: m.name })}>Borrar</ContextMenuItem>
+                <ContextMenuItem className="text-destructive" onClick={() => setModelDelete(m.id)}>Borrar</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           ))}
