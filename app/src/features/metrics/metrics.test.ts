@@ -22,8 +22,7 @@ import {
   earliestDay,
   sessionsWithin,
   marksWithin,
-  comparisonsWithin,
-  volumeWeeks,
+  volumeChartWindow,
   sessionMeasure,
   trendOf,
 } from './metrics';
@@ -123,11 +122,37 @@ describe('marksWithin', () => {
   });
 });
 
-describe('comparisonsWithin', () => {
-  it('keeps only the compared sessions inside the selected range', () => {
-    const all = compareSessions([ses('2026-10-20'), ses('2026-10-18'), ses('2026-08-01')]);
-    const win = windowsFor('7d', '2026-10-20');
-    expect(comparisonsWithin(all, win).map((c) => c.summary.date)).toEqual(['2026-10-18', '2026-10-20']);
+describe('compareSessions scoped to a range', () => {
+  const win = windowsFor('30d', '2026-10-20');
+
+  it('does not compare an in-range session against a predecessor outside the range', () => {
+    const comparisons = compareSessions(
+      [
+        ses('2026-09-01', { planId: 'a', durationSec: 1800 }),
+        ses('2026-10-05', { planId: 'a', durationSec: 3600 }),
+      ],
+      win,
+    );
+
+    expect(comparisons.map((c) => c.summary.date)).toEqual(['2026-10-05']);
+    expect(comparisons[0].previous).toBeNull();
+    expect(comparisons[0].durationDelta).toBeNull();
+    expect(comparisons[0].gained).toBeNull();
+  });
+
+  it('still compares two sessions that are both inside the range', () => {
+    const comparisons = compareSessions(
+      [
+        ses('2026-10-01', { planId: 'a', durationSec: 1800 }),
+        ses('2026-10-05', { planId: 'a', durationSec: 3600 }),
+      ],
+      win,
+    );
+
+    expect(comparisons.map((c) => c.summary.date)).toEqual(['2026-10-01', '2026-10-05']);
+    expect(comparisons[1].previous?.date).toBe('2026-10-01');
+    expect(comparisons[1].durationDelta).toBe(30);
+    expect(comparisons[1].gained).toBe(true);
   });
 });
 
@@ -146,15 +171,18 @@ describe('earliestDay', () => {
   });
 });
 
-describe('volumeWeeks', () => {
-  it('counts the weeks the selected range covers', () => {
-    expect(volumeWeeks(windowsFor('7d', '2026-10-20'))).toBe(2);
-    expect(volumeWeeks(windowsFor('30d', '2026-10-20'))).toBe(5);
+describe('volumeChartWindow', () => {
+  it('reports the real week count of a range the chart can show whole', () => {
+    expect(volumeChartWindow(windowsFor('7d', '2026-10-20'))).toEqual({ weeks: 2, capped: false });
+    expect(volumeChartWindow(windowsFor('30d', '2026-10-20'))).toEqual({ weeks: 5, capped: false });
   });
 
-  it('caps a long history so the weekly chart stays readable', () => {
-    expect(volumeWeeks(windowsFor('90d', '2026-10-20'))).toBe(13);
-    expect(volumeWeeks(windowsFor('all', '2026-10-20', '2026-01-05'))).toBe(13);
+  it('reports the cap when the range is wider than the chart can show', () => {
+    expect(volumeChartWindow(windowsFor('90d', '2026-10-20'))).toEqual({ weeks: 13, capped: true });
+    expect(volumeChartWindow(windowsFor('all', '2026-10-20', '2026-01-05'))).toEqual({
+      weeks: 13,
+      capped: true,
+    });
   });
 });
 

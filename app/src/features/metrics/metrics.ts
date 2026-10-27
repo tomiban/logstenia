@@ -92,11 +92,6 @@ export function marksWithin(entries: MarkEntry[], win: RangeWindows): MarkEntry[
   return entries.filter((e) => inWindow(e.date.slice(0, 10), win.current));
 }
 
-/** Compared sessions inside the selected range. */
-export function comparisonsWithin(list: SessionComparison[], win: RangeWindows): SessionComparison[] {
-  return list.filter((c) => inWindow(c.summary.date.slice(0, 10), win.current));
-}
-
 export interface Telemetry {
   sessions: number;
   minutes: number;
@@ -176,12 +171,25 @@ function mondayOf(isoDay: string): string {
 /** Widest weekly chart that still prints a legible date under every bar. */
 export const MAX_VOLUME_WEEKS = 13;
 
-/** Weeks the selected range covers, so the weekly chart never plots outside it. */
-export function volumeWeeks(win: RangeWindows): number {
+export interface VolumeChartWindow {
+  /** Weeks the chart plots. */
+  weeks: number;
+  /** True when the readability cap drops part of the selected range. */
+  capped: boolean;
+}
+
+/** Weeks the selected range covers, before the readability cap applies. */
+function weeksSpanned(win: RangeWindows): number {
   const span = mondayOf(win.current.end);
   const start = mondayOf(win.current.start);
   const weeks = Math.round((Date.parse(span) - Date.parse(start)) / (7 * 86400000)) + 1;
-  return Math.min(MAX_VOLUME_WEEKS, Math.max(1, weeks));
+  return Math.max(1, weeks);
+}
+
+/** What the weekly chart really shows, so its meta never claims a wider range. */
+export function volumeChartWindow(win: RangeWindows): VolumeChartWindow {
+  const spanned = weeksSpanned(win);
+  return { weeks: Math.min(MAX_VOLUME_WEEKS, spanned), capped: spanned > MAX_VOLUME_WEEKS };
 }
 
 export function dayLabel(isoDay: string): string {
@@ -599,10 +607,12 @@ export interface SessionComparison {
   newBests: string[];
 }
 
-function previousIndex(sorted: SessionRecord[], index: number): number | null {
+function previousIndex(sorted: SessionRecord[], index: number, win?: RangeWindows): number | null {
   const planId = sorted[index].planId;
   for (let j = index - 1; j >= 0; j--) {
-    if (sorted[j].planId === planId) return j;
+    if (sorted[j].planId !== planId) continue;
+    if (win && !inWindow(sorted[j].date.slice(0, 10), win.current)) continue;
+    return j;
   }
   return null;
 }
@@ -610,8 +620,12 @@ function previousIndex(sorted: SessionRecord[], index: number): number | null {
 /**
  * Compares every session against the previous one of the same plan and flags the
  * sessions that were gained: more time, or the same time with more work.
+ *
+ * A window scopes the comparison to the selected range: only in-range sessions are
+ * returned, and a session finds its baseline among in-range sessions too, so a delta
+ * never spans the range boundary. New bests stay historical, like the streak.
  */
-export function compareSessions(sessions: SessionRecord[]): SessionComparison[] {
+export function compareSessions(sessions: SessionRecord[], win?: RangeWindows): SessionComparison[] {
   const sorted = [...sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const summaries = sorted.map(summarizeSession);
   const bestSoFar = new Map<string, number>();
@@ -620,7 +634,7 @@ export function compareSessions(sessions: SessionRecord[]): SessionComparison[] 
   for (let i = 0; i < sorted.length; i++) {
     const session = sorted[i];
     const current = summaries[i];
-    const prevIndex = previousIndex(sorted, i);
+    const prevIndex = previousIndex(sorted, i, win);
     const previous = prevIndex === null ? null : summaries[prevIndex];
     const durationDelta = previous ? current.durationMin - previous.durationMin : null;
     const seriesDelta = previous ? current.series - previous.series : null;
@@ -638,6 +652,8 @@ export function compareSessions(sessions: SessionRecord[]): SessionComparison[] 
       }
       if (value > previousBest) bestSoFar.set(key, value);
     }
+
+    if (win && !inWindow(current.date.slice(0, 10), win.current)) continue;
 
     out.push({ summary: current, previous, durationDelta, seriesDelta, gained, newBests: [...new Set(newBests)] });
   }
