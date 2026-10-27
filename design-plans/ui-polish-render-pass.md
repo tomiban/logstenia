@@ -149,15 +149,34 @@ real o rompe una regla nombrada · **P2** pulido · **P3** detalle.
 Aplicado y verificado el 2026-10-26 sobre la misma rama:
 
 - `npm run build` (tsc -b + vite build + PWA): limpio.
-- `npm run lint` (oxlint): 0 errores; quedan 19 warnings, todos preexistentes (refs y
-  exhaustive-deps en `useRunner`, primitivas de librería).
-- `npm test`: 29 archivos, **335 tests** en verde (eran 301 al empezar: 34 casos nuevos para
-  `pluralForm`, `restLabel`, `formatDayMonth`, `countPendingSets`, `progressionChainsForCategory` y el
-  recorte por rango de las métricas).
-- `npx playwright test`: **40 tests** en verde en `mobile` y `desktop`, incluido el nuevo test que
-  exige que el documento scrollee con rueda **y** con teclado.
+- `npm run lint` (oxlint): 0 errores y 19 warnings, todos preexistentes (refs, pureza y
+  `exhaustive-deps` en `useRunner`, más las primitivas de librería).
+- `npm test`: 29 archivos, **342 tests** en verde (eran 301 antes de la pasada). Los casos nuevos
+  cubren los helpers de copy (`pluralForm`, `restLabel`, `formatDayMonth`), el conteo de series del
+  runner (`countPendingSets`, `skipDialogCopy`), la cadena de progresión
+  (`progressionChainsForCategory`) y el recorte por rango de las métricas.
+- `npx playwright test`: **40 tests** en verde en `mobile` y `desktop`, incluido el test que exige
+  que el documento scrollee con rueda **y** con teclado.
 - Capturas de verificación después del pulido: las siete rutas otra vez en 390px y 1440px, claro y
   oscuro. Las que dirigieron los últimos arreglos (V1, V2, V4) son las de `/metrics` y `/skill`.
+
+## Revisión nativa (RDD)
+
+El candidato que agrupa todas las pasadas del worktree (63 archivos, 4265 líneas) **excede el
+presupuesto de contexto del revisor nativo**: `lens_context_budget_exceeded` en preflight, sin
+autoridad creada y sin nada que reparar. El runtime acota sólo el **inicio** del rango, no el final,
+así que no existe una forma de revisar la mitad inicial de esta pasada por separado.
+
+Lo que sí se revisó: el tramo de **1610 líneas en 18 archivos** (Planes, Program, Routine, Runner,
+Skill, e2e y docs), con las lentes de legibilidad y confiabilidad, en la línea
+`review-6171df46cb0ec603`. Resultado: **aprobado**, autoridad consumida con
+`gentle-ai.review-acknowledged/v1`, **cero hallazgos bloqueantes**.
+
+Quedaron seis hallazgos advisory, todos no bloqueantes. Dos se cerraron en un work unit posterior
+(el `key` de las filas de ejercicio, con `exerciseKey`, y el test de la rama `typed` de
+`skipDialogCopy`, ahora movida a `runnerLogic.ts`). Los otros cuatro siguen abiertos como trabajo
+posterior: la afirmación de este mismo reporte que el revisor leyó como inexacta (corregida en esta
+edición), la legibilidad de `useRunner.ts:420` y `Runner.tsx:52`, y el orden de entrega.
 
 Riesgo del cambio, por la lista del contrato: **ítem 3** — cambia contratos que otros ya consumen:
 copy y nombres de UI que la suite e2e asertaba (`descanso por serie 90s`, `Finalizar entrenamiento`,

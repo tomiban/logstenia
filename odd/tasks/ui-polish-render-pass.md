@@ -113,3 +113,13 @@ pass are, in order, and each is reviewable on its own:
 
 Slice boundary for a PR: from the first `feat(copy)` commit to the `docs(design)` commit. Anything
 before it belongs to the previous passes and should be reviewed (or merged) separately.
+
+L13. Revisión nativa (RDD). El candidato agregado del worktree (63 archivos, 4265 líneas) excede el
+presupuesto de contexto del revisor: `lens_context_budget_exceeded` en preflight, sin autoridad y sin
+nada que reparar; el runtime acota sólo el inicio del rango, así que la mitad inicial de la pasada no
+puede revisarse por separado. Se revisó y aprobó el tramo de 1610 líneas en 18 archivos
+(`review-6171df46cb0ec603`, lentes legibilidad y confiabilidad, autoridad consumida). De sus seis
+hallazgos advisory se cerraron dos acá: el `key` de las filas de ejercicio (`exerciseKey` en
+`blocks.ts`, con tests) y el test de la rama `typed` de `skipDialogCopy` (movida a `runnerLogic.ts`).
+Siguen abiertos el orden de entrega en slices y dos sugerencias de legibilidad
+(`useRunner.ts:420`, `Runner.tsx:52`).
