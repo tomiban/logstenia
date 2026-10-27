@@ -131,11 +131,10 @@ body {
 }
 
 /* Sliders: use palette accent instead of browser default (blue). */
+/* Sliders carry the beacon: this rule is unlayered on purpose, so it wins over any utility
+   `accent-*` class and there is one place that decides the color. */
 input[type="range"] {
-  accent-color: var(--ink);
-}
-.dark input[type="range"] {
-  accent-color: var(--voltage-lime);
+  accent-color: var(--accent);
 }
 input[type="range"]::-webkit-slider-runnable-track {
   background: var(--muted-surface);

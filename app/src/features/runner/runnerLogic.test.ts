@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, skipDialogCopy } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, setUnlocked, skipDialogCopy } from './runnerLogic';
 import type { SessionSet } from '@/db';
 import type { Exercise } from '@/types';
 
@@ -113,5 +113,35 @@ describe('skipDialogCopy', () => {
     expect(skipDialogCopy({ typed: 2, empty: 1 })).toBe(
       'Tenés 2 series cargadas sin confirmar y 1 serie vacía. Si continuás, las cargadas se registran y las vacías se omiten.',
     );
+  });
+});
+
+describe('setUnlocked', () => {
+  const biserie: Exercise[] = [
+    { name: 'A', reps: '8' },
+    { name: 'B', timeSec: 20 },
+  ];
+
+  it('always opens the first row of every exercise', () => {
+    expect(setUnlocked([], 0, biserie, 0)).toBe(true);
+  });
+
+  it('waits for the whole round, not just for this exercise\'s own previous set', () => {
+    // A completed its set 1 but B did not: in a biserie the round is not over.
+    expect(setUnlocked([serie('A', 1)], 0, biserie, 1)).toBe(false);
+  });
+
+  it('opens the next row once every exercise of the block registered that round', () => {
+    expect(setUnlocked([serie('A', 1), serie('B', 1)], 0, biserie, 1)).toBe(true);
+  });
+
+  it('keeps a single-exercise block working as before', () => {
+    const simple: Exercise[] = [{ name: 'A', reps: '8' }];
+    expect(setUnlocked([], 0, simple, 1)).toBe(false);
+    expect(setUnlocked([serie('A', 1)], 0, simple, 1)).toBe(true);
+  });
+
+  it('does not mix blocks', () => {
+    expect(setUnlocked([serie('A', 1, 1), serie('B', 1, 1)], 0, biserie, 1)).toBe(false);
   });
 });

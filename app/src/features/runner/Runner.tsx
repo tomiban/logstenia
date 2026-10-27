@@ -9,7 +9,7 @@ import { isTimedExercise } from '@/lib/exercise';
 import { pluralForm } from '@/lib/format';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import Cronometro from './Cronometro';
-import { num, skipDialogCopy } from './runnerLogic';
+import { buscarSerie, num, setUnlocked, skipDialogCopy } from './runnerLogic';
 import { type WorkoutStep } from './steps';
 import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue } from './useRunner';
 
@@ -48,8 +48,8 @@ function ExerciseStep({
         ? 'mantenimiento máx.'
         : '—';
 
-  const alreadyRegistered = (i: number) => sets.some((l) =>
-    l.exercise === exercise.name && l.setIndex === i + 1 && l.bloqueOrden === step.blockIdx);
+  /* One lookup for "is this set registered": the same helper `setUnlocked` and the rest logic use. */
+  const alreadyRegistered = (i: number) => buscarSerie(sets, exercise.name, step.blockIdx, i + 1) !== undefined;
 
   const setAt = (i: number, v: string) => {
     setValues(list.map((x, j) => (j === i ? { ...x, value: v } : x)));
@@ -106,8 +106,8 @@ function ExerciseStep({
 
       <div className="divide-y divide-border">
         {list.map((v, i) => {
-          const previousRegistered = i === 0 || alreadyRegistered(i - 1);
-          const enabled = i === 0 || previousRegistered;
+          /* The round is the unit of a block: the next row waits for every exercise, not just this one. */
+          const enabled = setUnlocked(sets, step.blockIdx, step.block.exercises, i);
           const mark = marks[`${step.blockIdx}#${step.exIdx}#${i + 1}`];
           return (
             <div key={v.id} className="flex flex-wrap items-center gap-3 py-2">
@@ -117,7 +117,7 @@ function ExerciseStep({
                   <input type="range" min={0} max={maxSeconds} step={1} value={v.value || 0}
                     onChange={(e) => { if (!enabled) return; setAt(i, e.target.value); }}
                     disabled={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i))}
-                    className="min-w-0 flex-1 disabled:opacity-40 accent-ink" aria-label={`Segundos serie ${i + 1}`} />
+                    className="min-w-0 flex-1 disabled:opacity-40" aria-label={`Segundos serie ${i + 1}`} />
                   <span className="metric w-16 shrink-0 text-right text-foreground">{v.value || 0}s</span>
                 </div>
               ) : (

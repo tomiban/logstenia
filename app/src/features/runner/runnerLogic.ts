@@ -20,17 +20,11 @@ export function buscarSerie(
   );
 }
 
-/** Series waiting on the user: typed-but-unconfirmed (registered on continue) and empty (skipped). */
-export interface SkipDialogCounts {
-  typed: number;
-  empty: number;
-}
-
 /**
  * What `Continuar` really does: it registers the values already typed and skips the empty series.
  * The two numbers in the sentence are the ones the dialog gate uses, so they cannot disagree.
  */
-export function skipDialogCopy({ typed, empty }: SkipDialogCounts): string {
+export function skipDialogCopy({ typed, empty }: PendingSets): string {
   const loaded = `${typed} ${pluralForm(typed, 'serie cargada', 'series cargadas')}`;
   const blank = `${empty} ${pluralForm(empty, 'serie vacía', 'series vacías')}`;
   if (typed === 0) {
@@ -81,6 +75,22 @@ export function rondaCompleta(
 ): boolean {
   return ejercicios.length > 0 && ejercicios.every((ex) =>
     buscarSerie(sets, ex.name, bloqueOrden, setIndex) !== undefined);
+}
+
+/**
+ * Whether one set row can be filled. The first row of every exercise is always open; the next one
+ * waits for the whole previous round of the block, not just for this exercise's own previous set.
+ * Without that rule a biserie lets you walk one exercise to its last set while its partner is still
+ * on the first, which is not how the block is trained.
+ */
+export function setUnlocked(
+  sets: SessionSet[],
+  bloqueOrden: number,
+  ejercicios: Exercise[],
+  row: number,
+): boolean {
+  if (row <= 0) return true;
+  return rondaCompleta(sets, bloqueOrden, ejercicios, row);
 }
 
 /** Tells whether `setIndex` is the last round of the block (no rows left after it). */
