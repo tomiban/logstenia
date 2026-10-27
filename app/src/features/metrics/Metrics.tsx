@@ -377,7 +377,7 @@ export default function Metrics() {
           </p>
           <Link
             to="/"
-            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-on-accent transition-colors hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent"
+            className="label-caps mt-4 inline-flex h-11 items-center border border-ink bg-accent px-4 text-on-accent transition-colors hover:bg-ink hover:text-on-ink hover:border-ink"
           >
             Empezar a entrenar
           </Link>

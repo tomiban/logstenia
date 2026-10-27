@@ -241,9 +241,10 @@ variante se aplica con `variant="..."`; el tamaño con `size="..."` (`xs` h-6, `
 - **Shape:** rectángulo, radio 0, borde 1px. Sin sombras, `transition-colors` únicamente.
 - **accent** (alias `default`): relleno Voltage Lime con texto On Accent (#111) y borde Ink — la
   acción principal de la pantalla (`Entrenar`, `Siguiente`, `Guardar`, `Crear`, `Agregar`,
-  `Iniciar rutina`, `Continuar`, `Exportar`, `saltar descanso`). Hover suelta el relleno y deja un
-  contorno lima: texto Ink en claro, texto lima en oscuro. Es la única señal lima de la vista
-  (Beacon Rule). Los controles que viven **dentro de una fila o de una tarjeta** —`Usar tiempo`,
+  `Iniciar rutina`, `Continuar`, `Exportar`, `saltar descanso`). Hover **invierte a relleno Ink**:
+  texto lima en claro, texto tinta sobre papel en oscuro. La baliza no se va, cambia de lugar (del
+  relleno a la etiqueta), y el feedback es inequívoco; soltar el relleno y dejar un contorno lima se
+  leía como un botón apagado. Es la única señal lima de la vista (Beacon Rule). Los controles que viven **dentro de una fila o de una tarjeta** —`Usar tiempo`,
   `Aplicar`, `confirmar`, `editar`, `+ serie`— no son la acción de la pantalla y van `outline` o
   `ghost`.
 - **ink**: relleno Ink con texto On Ink (lima) y borde Ink. Estado activo / selección / nav
