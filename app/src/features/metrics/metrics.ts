@@ -184,7 +184,7 @@ export function volumeWeeks(win: RangeWindows): number {
   return Math.min(MAX_VOLUME_WEEKS, Math.max(1, weeks));
 }
 
-function dayLabel(isoDay: string): string {
+export function dayLabel(isoDay: string): string {
   const [, m, d] = isoDay.split('-');
   return `${d}/${m}`;
 }
@@ -374,7 +374,7 @@ export interface GoalDerivation {
 export interface AnchorLike {
   ejercicio: string; // display name
   match?: string; // optional exercise-name prefix used to match marks (defaults to ejercicio)
-  ejercicioId?: string; // preferred: match marks by exercise id
+  ejercicioId?: string; // exercise slug the anchor definitions carry; marks match by name
   unidad: 'sec' | 'reps';
   objetivo: number;
 }
@@ -393,11 +393,27 @@ export interface AnchorProgress {
 export function dedupeAnchors(anchors: AnchorLike[]): AnchorLike[] {
   const byKey = new Map<string, AnchorLike>();
   for (const anchor of anchors) {
-    const key = `${normalizeText(anchor.match ?? anchor.ejercicio)}|${anchor.unidad}`;
+    const key = `${anchorPrefix(anchor)}|${anchor.unidad}`;
     const existing = byKey.get(key);
     if (!existing || anchor.objetivo > existing.objetivo) byKey.set(key, anchor);
   }
   return [...byKey.values()];
+}
+
+/** Normalized exercise name an anchor measures (its `match` prefix when declared). */
+function anchorPrefix(anchor: AnchorLike): string {
+  return normalizeText(anchor.match ?? anchor.ejercicio);
+}
+
+/** True when the anchor measures the record: same unit and a name that starts with the anchor name. */
+export function matchesAnchor(anchor: AnchorLike, entry: MarkEntry): boolean {
+  if (anchor.unidad !== entry.unit) return false;
+  return normalizeText(entry.exercise).startsWith(anchorPrefix(anchor));
+}
+
+/** Records of the exercises the anchors actually measure; the anchored panels only show these. */
+export function anchoredEntries(anchors: AnchorLike[], entries: MarkEntry[]): MarkEntry[] {
+  return entries.filter((entry) => anchors.some((anchor) => matchesAnchor(anchor, entry)));
 }
 
 /**
@@ -405,21 +421,20 @@ export function dedupeAnchors(anchors: AnchorLike[]): AnchorLike[] {
  * specific anchor it matches, so one anchor never steals another one's records.
  */
 export function anchorProgress(anchors: AnchorLike[], entries: MarkEntry[]): AnchorProgress[] {
-  const keys = anchors.map((a) => a.ejercicioId ?? normalizeText(a.match ?? a.ejercicio));
+  const keys = anchors.map(anchorPrefix);
   const best = new Map<number, { value: number; source: string }>();
 
   for (const entry of entries) {
-    const name = normalizeText(entry.exercise);
     let target = -1;
     let targetKey = '';
-    keys.forEach((key, index) => {
-      if (anchors[index].unidad !== entry.unit) return;
-      if (!name.startsWith(key as string)) return;
-      if (String(key).length > targetKey.length) {
+    for (let index = 0; index < anchors.length; index++) {
+      if (!matchesAnchor(anchors[index], entry)) continue;
+      const key = keys[index];
+      if (key.length > targetKey.length) {
         target = index;
-        targetKey = String(key);
+        targetKey = key;
       }
-    });
+    }
     if (target < 0) continue;
     const current = best.get(target);
     if (!current || entry.value > current.value) {

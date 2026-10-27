@@ -9,7 +9,10 @@ import {
   computeGoals,
   deriveGoal,
   anchorProgress,
+  anchoredEntries,
   dedupeAnchors,
+  dayLabel,
+  matchesAnchor,
   planDistribution,
   compareSessions,
   exerciseSeries,
@@ -24,6 +27,8 @@ import {
   sessionMeasure,
   trendOf,
 } from './metrics';
+import type { AnchorLike, MarkEntry } from './metrics';
+import { ANCLAS } from '@/features/progress/marks';
 import type { SessionRecord } from '@/db';
 
 const ses = (date: string, over: Partial<SessionRecord> = {}): SessionRecord => ({
@@ -546,7 +551,154 @@ describe('anchorProgress', () => {
     const progress = anchorProgress(anchors, entries);
     expect(progress.find((p) => p.exercise === 'Tuck planche')!.current).toBe(0);
   });
+
+  it('matches records through the match prefix of the anchor', () => {
+    const withMatch = dedupeAnchors([
+      {
+        ejercicio: 'Handstand pared',
+        ejercicioId: 'handstand-pared',
+        match: 'Hold de pino en pared',
+        unidad: 'sec' as const,
+        objetivo: 30,
+      },
+    ]);
+    const entries = collectMarks(
+      [
+        ses('2026-10-01', {
+          sets: [
+            {
+              exercise: 'Hold de pino en pared (talones apoyados)',
+              setIndex: 1,
+              value: '20',
+              unit: 'sec',
+              bloqueOrden: 0,
+              orden: 0,
+            },
+          ],
+        }),
+      ],
+      [],
+    );
+    expect(anchorProgress(withMatch, entries)[0]).toMatchObject({
+      current: 20,
+      source: 'Hold de pino en pared (talones apoyados)',
+    });
+  });
 });
+
+describe('anchorProgress with the anchors the plan measures', () => {
+  const entries = collectMarks(
+    [
+      ses('2026-10-01', {
+        sets: [
+          { exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 },
+          { exercise: 'Hold Tuck Adv. FL (banda en cadera)', setIndex: 1, value: '14', unit: 'sec', bloqueOrden: 0, orden: 1 },
+          { exercise: 'Hold de pino en pared', setIndex: 1, value: '40', unit: 'sec', bloqueOrden: 0, orden: 2 },
+        ],
+      }),
+    ],
+    [],
+  );
+
+  it('reports the progress of the three anchors that only declared an exercise slug', () => {
+    const progress = anchorProgress(ANCLAS, entries);
+    expect(progress.map((p) => [p.exercise, p.current, p.reached])).toEqual([
+      ['Tuck planche', 12, true],
+      ['Tuck adv front lever', 14, true],
+      ['Handstand pared', 40, true],
+      ['Dominadas pronas', 0, false],
+    ]);
+  });
+});
+
+describe('matchesAnchor', () => {
+  const planche: AnchorLike = { ejercicio: 'Tuck planche', unidad: 'sec', objetivo: 10 };
+  const entry = (over: Partial<MarkEntry> = {}): MarkEntry => ({
+    exercise: 'Tuck planche',
+    value: 8,
+    unit: 'sec',
+    date: '2026-10-01',
+    source: 'sesion',
+    ...over,
+  });
+
+  it('matches an entry of the same unit whose name starts with the anchor name', () => {
+    expect(matchesAnchor(planche, entry({ exercise: 'Tuck planche (progresión)' }))).toBe(true);
+  });
+
+  it('rejects an entry measured in another unit', () => {
+    expect(matchesAnchor(planche, entry({ unit: 'reps' }))).toBe(false);
+  });
+
+  it('rejects an entry for an exercise the anchor does not name', () => {
+    expect(matchesAnchor(planche, entry({ exercise: 'Flexiones Diamante', unit: 'reps' }))).toBe(false);
+  });
+
+  it('uses the match prefix when the anchor declares one', () => {
+    const handstand: AnchorLike = {
+      ejercicio: 'Handstand pared',
+      match: 'Hold de pino en pared',
+      unidad: 'sec',
+      objetivo: 30,
+    };
+    expect(matchesAnchor(handstand, entry({ exercise: 'Hold de pino en pared (talones apoyados)' }))).toBe(true);
+  });
+});
+
+describe('anchoredEntries', () => {
+  const anchors = dedupeAnchors([
+    { ejercicio: 'Dominadas pronas', unidad: 'reps' as const, objetivo: 10 },
+    { ejercicio: 'Tuck planche', unidad: 'sec' as const, objetivo: 10 },
+  ]);
+  const entries = collectMarks(
+    [
+      ses('2026-10-01', {
+        sets: [
+          { exercise: 'Flexiones Diamante', setIndex: 1, value: '12', unit: 'reps', bloqueOrden: 0, orden: 0 },
+          { exercise: 'Tuck planche', setIndex: 1, value: '8', unit: 'sec', bloqueOrden: 1, orden: 0 },
+        ],
+      }),
+      ses('2026-10-02', {
+        sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'reps', bloqueOrden: 0, orden: 0 }],
+      }),
+    ],
+    [
+      {
+        id: 'mark-1',
+        updatedAt: '2026-10-03T12:00:00.000Z',
+        exercise: 'Dominadas pronas',
+        unit: 'reps',
+        value: 9,
+        mesoInicio: '2026-10',
+        date: '2026-10-03',
+      },
+    ],
+  );
+
+  it('leaves out of the marks panel an exercise no anchor measures', () => {
+    const panel = bestMarks(anchoredEntries(anchors, entries), '2026-10-20');
+    expect(panel.map((m) => m.exercise).sort()).toEqual(['Dominadas pronas', 'Tuck planche']);
+  });
+
+  it('leaves out of the evolution panel an exercise no anchor measures', () => {
+    const panel = exerciseSeries(anchoredEntries(anchors, entries));
+    expect(panel.map((s) => s.exercise).sort()).toEqual(['Dominadas pronas', 'Tuck planche']);
+  });
+
+  it('keeps every record of an exercise the anchors measure', () => {
+    expect(anchoredEntries(anchors, entries).map((e) => `${e.exercise}|${e.unit}`)).toEqual([
+      'Tuck planche|sec',
+      'Dominadas pronas|reps',
+    ]);
+  });
+});
+
+describe('dayLabel', () => {
+  it('prints the day and the month of an iso day', () => {
+    expect(dayLabel('2026-10-05')).toBe('05/10');
+  });
+});
+
 describe('unitForExercise', () => {
   it('reads the unit from the plan catalog', () => {
     expect(unitForExercise('Tuck planche')).toBe('sec');

@@ -7,11 +7,13 @@ import type { MarkRecord, SessionRecord } from '@/repositories';
 import {
   RANGE_OPTIONS,
   anchorProgress,
+  anchoredEntries,
   bestMarks,
   collectMarks,
   comparisonsWithin,
   compareSessions,
   computeTelemetry,
+  dayLabel,
   dedupeAnchors,
   delta,
   earliestDay,
@@ -33,6 +35,14 @@ import {
 import { ANCLAS } from '@/features/progress/marks';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartTooltip, ValueTick } from '@/components/ui/chart';
+import {
+  measureRows,
+  seriesRows,
+  volumeRows,
+  weekValue,
+  type ChartRow,
+  type VolumeUnit,
+} from './chartData';
 import { cn } from '@/lib/utils';
 import { pluralForm } from '@/lib/format';
 
@@ -55,19 +65,8 @@ interface ChartMarker {
   text: string;
 }
 
-interface ChartRow {
-  id: string;
-  label: string;
-  value: number;
-}
-
 function todayIso(): string {
   return toISODate();
-}
-
-function dayLabel(isoDay: string): string {
-  const [, m, d] = isoDay.split('-');
-  return `${d}/${m}`;
 }
 
 function signed(value: number): string {
@@ -161,14 +160,15 @@ function ChartLegend({ markers = [], note }: { markers?: ChartMarker[]; note?: s
           ))}
         </p>
       ) : null}
-      {/* Una nota es una frase: va en cuerpo, no en el mono de los datos. */}
+      {/* A note is a sentence: body copy, not the data face. */}
       {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
     </div>
   );
 }
 
 /** The same values the chart draws, readable without hover. */
-function ChartTable({ caption, rows, unit }: { caption: string; rows: ChartRow[]; unit: string }) {
+function ChartTable({ caption, rows }: { caption: string; rows: readonly ChartRow[] }) {
+  const unit = rows[0]?.unit ?? '';
   return (
     <details className="mt-3 border-t border-border pt-2">
       <summary className="label-caps cursor-pointer text-muted-foreground">ver valores</summary>
@@ -185,8 +185,8 @@ function ChartTable({ caption, rows, unit }: { caption: string; rows: ChartRow[]
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
+          {rows.map((row, index) => (
+            <tr key={`${row.label}-${row.value}-${index}`}>
               <td className="py-1 tabular-nums text-muted-foreground">{row.label}</td>
               <td className="metric tabular-nums py-1 text-right text-foreground">{nf.format(row.value)}</td>
             </tr>
@@ -279,12 +279,13 @@ export default function Metrics() {
   const inRange = sessionsWithin(sessions, win);
   const entries = collectMarks(sessions, marks);
   const rangeEntries = marksWithin(entries, win);
+  const anchored = anchoredEntries(ANCHORS, rangeEntries);
 
   const telemetry = computeTelemetry(sessions, win);
   const measureInfo = sessionMeasure(inRange);
   const weeks = volumeWeeks(win);
   const volume = weeklyVolume(inRange, weeks, today);
-  const best = bestMarks(rangeEntries, today);
+  const best = bestMarks(anchored, today);
   const dist = planDistribution(sessions, win.current);
 
   const comparisons = comparisonsWithin(compareSessions(sessions), win);
@@ -302,7 +303,7 @@ export default function Metrics() {
     amount: measure(c),
     marker: c.gained === true ? ('lime' as const) : undefined,
   }));
-  const series = exerciseSeries(rangeEntries).filter((s) => s.points.length > 1);
+  const series = exerciseSeries(anchored).filter((s) => s.points.length > 1);
   const anchors = anchorProgress(ANCHORS, rangeEntries).sort(
     (a, b) => Number(b.reached) - Number(a.reached) || b.pct - a.pct,
   );
@@ -312,12 +313,11 @@ export default function Metrics() {
   const prevNote = win.previous ? `vs los ${win.days} días previos` : 'histórico completo';
   const subtitle = win.previous ? `${rangeOpt?.label} · contra los ${win.days} días previos` : rangeOpt?.label;
 
-  const volumeUnit = measureInfo.key === 'duracion' ? 'min' : 'sesiones';
+  const volumeUnit: VolumeUnit = measureInfo.key === 'duracion' ? 'min' : 'sesiones';
   const volumeNoun = measureInfo.key === 'duracion' ? 'minutos' : 'sesiones';
-  const volumeValue = (w: (typeof volume)[number]) => (measureInfo.key === 'duracion' ? w.minutes : w.sessions);
   const volumeData = volume.map((w) => ({
     label: w.label,
-    amount: volumeValue(w),
+    amount: weekValue(w, volumeUnit),
     marker: w.current ? ('ink' as const) : undefined,
   }));
 
@@ -384,7 +384,7 @@ export default function Metrics() {
         </section>
       ) : null}
 
-      {/* Telemetría del período */}
+      {/* Period telemetry */}
       <section className="border border-border" aria-label="Telemetría del período">
         <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">
           <Readout
@@ -423,7 +423,7 @@ export default function Metrics() {
         </div>
       </section>
 
-      {/* Sesiones ganadas */}
+      {/* Sessions won */}
       <section className="border border-border" aria-label="Sesiones ganadas">
         <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
           <Readout
@@ -461,7 +461,7 @@ export default function Metrics() {
         </div>
       </section>
 
-      {/* Duración por sesión */}
+      {/* Duration per session */}
       <Panel title={measureInfo.title} meta={sessionMeta}>
         {recent.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
@@ -492,18 +492,13 @@ export default function Metrics() {
             />
             <ChartTable
               caption={`${measureInfo.title}, ${sessionMeta}`}
-              rows={recent.map((c) => ({
-                id: c.summary.id,
-                label: dayLabel(c.summary.date),
-                value: measure(c),
-              }))}
-              unit={measureInfo.unit}
+              rows={measureRows(sessionData, measureInfo.unit)}
             />
           </div>
         )}
       </Panel>
 
-      {/* Comparación por sesión */}
+      {/* Session comparison */}
       <Panel title="Comparación por sesión" meta={sessionMeta}>
         {recent.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">sin sesiones en el rango elegido</p>
@@ -541,7 +536,7 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Volumen semanal */}
+      {/* Weekly volume */}
       <Panel title="Volumen por semana" meta={`${volumeUnit} · ${weeksLabel}`}>
         <div className="p-4">
           {inRange.length === 0 ? (
@@ -567,20 +562,19 @@ export default function Metrics() {
               <ChartLegend markers={[{ marker: 'ink', text: 'semana en curso' }]} />
               <ChartTable
                 caption={`Volumen por semana, ${weeksLabel}`}
-                rows={volume.map((w) => ({ id: w.start, label: w.label, value: volumeValue(w) }))}
-                unit={volumeUnit}
+                rows={volumeRows(volume, volumeUnit)}
               />
             </>
           )}
         </div>
       </Panel>
 
-      {/* Marcas */}
+      {/* Marks */}
       <Panel title="Marcas" meta={`${nf.format(best.length)} ${pluralForm(best.length, 'ejercicio', 'ejercicios')} · ${rangeTag}`}>
         {best.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted-foreground">
-            sin marcas en este rango: aparecen cuando registrás el valor de una serie (segundos en isométricos,
-            reps en básicos)
+            <span className="label-caps text-muted-foreground">faltan marcas de los ejercicios que medís:</span>{' '}
+            aparecen cuando registrás el valor de una serie (segundos en isométricos, reps en básicos)
           </p>
         ) : (
           <>
@@ -606,7 +600,7 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Evolución por ejercicio */}
+      {/* Progress per exercise */}
       <Panel
         title="Evolución por ejercicio"
         meta={`${nf.format(series.length)} con historial · ${rangeTag}`}
@@ -658,12 +652,7 @@ export default function Metrics() {
                   </div>
                   <ChartTable
                     caption={`Evolución de ${s.exercise}`}
-                    rows={s.points.map((point, index) => ({
-                      id: `${point.date}-${index}`,
-                      label: dayLabel(point.date),
-                      value: point.value,
-                    }))}
-                    unit={UNIT_LABEL[s.unit]}
+                    rows={seriesRows(s.points, UNIT_LABEL[s.unit])}
                   />
                 </li>
               );
@@ -672,7 +661,7 @@ export default function Metrics() {
         )}
       </Panel>
 
-      {/* Metas: tus anclas de progresión */}
+      {/* Goals: your progression anchors */}
       <Panel title="Metas" meta={`${nf.format(anchors.length)} anclas · ${rangeTag}`}>
         <ul className="divide-y divide-border">
           {anchors.map((anchor) => (
@@ -702,7 +691,7 @@ export default function Metrics() {
         </ul>
       </Panel>
 
-      {/* Distribución por plan */}
+      {/* Distribution per plan */}
       <Panel
         title="Sesiones por plan"
         meta={`${nf.format(dist.length)} ${pluralForm(dist.length, 'plan', 'planes')} · ${rangeTag}`}
