@@ -33,6 +33,13 @@ export function skipDialogCopy({ typed, empty }: PendingSets): string {
   return `Tenés ${loaded} sin confirmar y ${blank}. Si continuás, las cargadas se registran y las vacías se omiten.`;
 }
 
+/** A hold in whole seconds, never outside the exercise's own ceiling. */
+export function clampSeconds(value: string | number | undefined, max: number): number {
+  const seconds = Number(value ?? 0);
+  if (!Number.isFinite(seconds) || max <= 0) return 0;
+  return Math.min(max, Math.max(0, Math.round(seconds)));
+}
+
 /** One pending decision about a set: what the user typed, and what is already registered. */
 export interface PendingSet {
   value: string;

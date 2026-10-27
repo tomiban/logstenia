@@ -9,7 +9,7 @@ import { isTimedExercise } from '@/lib/exercise';
 import { pluralForm } from '@/lib/format';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import Cronometro from './Cronometro';
-import { buscarSerie, num, setUnlocked, skipDialogCopy } from './runnerLogic';
+import { buscarSerie, clampSeconds, num, setUnlocked, skipDialogCopy } from './runnerLogic';
 import { type WorkoutStep } from './steps';
 import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue } from './useRunner';
 
@@ -23,6 +23,9 @@ type ExerciseStepProps = {
   marks: Record<string, Mark>;
   blocked: boolean;
 };
+
+/** Ceiling for a hold the plan does not time ("mantenimiento máx."). */
+const STANDARD_HOLD_SECONDS = 60;
 
 function ExerciseStep({
   step,
@@ -39,7 +42,7 @@ function ExerciseStep({
   const [editing, setEditing] = useState<Set<number>>(new Set());
 
   const isTimed = isTimedExercise(exercise);
-  const maxSeconds = Math.max(20, (exercise.timeSec ?? 0) * 2);
+  const maxSeconds = exercise.timeSec ?? STANDARD_HOLD_SECONDS;
   const objetivo = exercise.timeSec
     ? restLabel(exercise.timeSec)
     : exercise.reps
@@ -51,15 +54,19 @@ function ExerciseStep({
   /* One lookup for "is this set registered": the same helper `setUnlocked` and the rest logic use. */
   const alreadyRegistered = (i: number) => buscarSerie(sets, exercise.name, step.blockIdx, i + 1) !== undefined;
 
-  const setAt = (i: number, v: string) => {
-    setValues(list.map((x, j) => (j === i ? { ...x, value: v } : x)));
+  /** A timed set never holds more than the exercise's ceiling, whatever wrote the value. */
+  const writeValue = (i: number, v: string) => {
+    const value = isTimed ? String(clampSeconds(v, maxSeconds)) : v;
+    setValues(list.map((x, j) => (j === i ? { ...x, value } : x)));
   };
 
   /** Registers the set: `useRunner` opens the set rest once the block round is complete. */
   const confirmSet = (i: number) => {
     const v = list[i];
-    if (!v || !v.value) return;
-    register(i + 1, v.value);
+    if (!v) return;
+    const value = isTimed ? String(clampSeconds(v.value, maxSeconds)) : v.value;
+    if (!value) return;
+    register(i + 1, value);
   };
 
   return (
@@ -94,7 +101,7 @@ function ExerciseStep({
         <Cronometro modo="crono" objetivo={exercise.timeSec} onUsar={(s: number) => {
           const libre = list.findIndex((v) => !v.value);
           const idx = libre !== -1 ? libre : list.length - 1;
-          setAt(idx, String(s));
+          writeValue(idx, String(s));
         }} usarDisabled={false} />
       )}
 
@@ -110,38 +117,43 @@ function ExerciseStep({
           const enabled = setUnlocked(sets, step.blockIdx, step.block.exercises, i);
           const mark = marks[`${step.blockIdx}#${step.exIdx}#${i + 1}`];
           return (
-            <div key={v.id} className="flex flex-wrap items-center gap-3 py-2">
-              <span className="label-status w-8 text-muted-foreground">S{i + 1}</span>
-              {isTimed ? (
-                <div className={`flex min-w-0 flex-1 items-center gap-3 ${!enabled ? 'pointer-events-none opacity-40' : ''}`}>
+            <div key={v.id} className="py-2">
+              <div className="grid grid-cols-[2rem_minmax(0,1fr)_3.5rem] items-center gap-3">
+                <span className="label-status text-muted-foreground">S{i + 1}</span>
+                {isTimed ? (
                   <input type="range" min={0} max={maxSeconds} step={1} value={v.value || 0}
-                    onChange={(e) => { if (!enabled) return; setAt(i, e.target.value); }}
+                    onChange={(e) => { if (!enabled) return; writeValue(i, e.target.value); }}
                     disabled={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i))}
-                    className="min-w-0 flex-1 disabled:opacity-40" aria-label={`Segundos serie ${i + 1}`} />
-                  <span className="metric w-16 shrink-0 text-right text-foreground">{v.value || 0}s</span>
-                </div>
-              ) : (
-                <div className={!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : ''}>
-                  <Input type="number" className="h-11 min-w-24 flex-1" value={v.value || ''} onChange={(e) => setAt(i, e.target.value)} placeholder="reps" />
-                </div>
-              )}
-              {enabled && v.value && (
-                alreadyRegistered(i) && !editing.has(i) ? (
-                  <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
-                    onClick={() => setEditing((prev) => new Set(prev).add(i))}>editar</Button>
+                    style={{ backgroundImage: `linear-gradient(to right, var(--accent) ${fillPercent(clampSeconds(v.value, maxSeconds), maxSeconds)}%, var(--muted-surface) ${fillPercent(clampSeconds(v.value, maxSeconds), maxSeconds)}%)` }}
+                    className="w-full disabled:opacity-40" aria-label={`Segundos serie ${i + 1}`} />
                 ) : (
-                  <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
-                    onClick={() => { confirmSet(i); setEditing((prev) => { const n = new Set(prev); n.delete(i); return n; }); }}>
-                    confirmar
-                  </Button>
-                )
-              )}
-              {mark === 'pr' && (
-                <Badge className="label-status border border-ink bg-accent text-on-accent">▲ nuevo PR</Badge>
-              )}
-              {mark === 'first' && (
-                <Badge className="label-status border border-ink text-ink">primera marca</Badge>
-              )}
+                  <Input type="number"
+                    className={'h-11 w-full ' + (!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : '')}
+                    value={v.value || ''} onChange={(e) => writeValue(i, e.target.value)} placeholder="reps" />
+                )}
+                <span className="metric text-right text-foreground">{isTimed ? `${clampSeconds(v.value, maxSeconds)}s` : ''}</span>
+              </div>
+              {(enabled && v.value) || mark ? (
+                <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+                  {mark === 'pr' && (
+                    <Badge className="label-status border border-ink bg-accent text-on-accent">▲ nuevo PR</Badge>
+                  )}
+                  {mark === 'first' && (
+                    <Badge className="label-status border border-ink text-ink">primera marca</Badge>
+                  )}
+                  {enabled && v.value && (
+                    alreadyRegistered(i) && !editing.has(i) ? (
+                      <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
+                        onClick={() => setEditing((prev) => new Set(prev).add(i))}>editar</Button>
+                    ) : (
+                      <Button variant="ghost" size="lg" className="label-caps" disabled={blocked}
+                        onClick={() => { confirmSet(i); setEditing((prev) => { const n = new Set(prev); n.delete(i); return n; }); }}>
+                        confirmar
+                      </Button>
+                    )
+                  )}
+                </div>
+              ) : null}
             </div>
           );
         })}
@@ -154,6 +166,12 @@ function ExerciseStep({
       </div>
     </div>
   );
+}
+
+/** How much of the rail is filled: the slider paints it, the component only supplies the number. */
+function fillPercent(seconds: number, max: number): number {
+  if (!Number.isFinite(seconds) || max <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((seconds / max) * 100)));
 }
 
 function CriteriaList({ anchors }: { anchors: RunnerProgression['report']['anchors'] }) {

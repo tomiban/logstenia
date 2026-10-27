@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, setUnlocked, skipDialogCopy } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, setUnlocked, clampSeconds, skipDialogCopy } from './runnerLogic';
 import type { SessionSet } from '@/db';
 import type { Exercise } from '@/types';
 
@@ -143,5 +143,20 @@ describe('setUnlocked', () => {
 
   it('does not mix blocks', () => {
     expect(setUnlocked([serie('A', 1, 1), serie('B', 1, 1)], 0, biserie, 1)).toBe(false);
+  });
+});
+
+describe('clampSeconds', () => {
+  it('keeps a value inside the ceiling', () => {
+    expect(clampSeconds('8', 10)).toBe(8);
+    expect(clampSeconds('20', 10)).toBe(10);
+  });
+  it('never goes below zero and never returns NaN', () => {
+    expect(clampSeconds('-5', 10)).toBe(0);
+    expect(clampSeconds('', 10)).toBe(0);
+    expect(clampSeconds('abc', 10)).toBe(0);
+  });
+  it('rounds to whole seconds', () => {
+    expect(clampSeconds('7.6', 10)).toBe(8);
   });
 });

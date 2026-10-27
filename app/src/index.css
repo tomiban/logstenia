@@ -131,16 +131,40 @@ body {
 }
 
 /* Sliders: use palette accent instead of browser default (blue). */
-/* Sliders carry the beacon: this rule is unlayered on purpose, so it wins over any utility
-   `accent-*` class and there is one place that decides the color. */
+/* Slider: the rail in Muted Surface, the filled part in the beacon and a square ink thumb.
+   `accent-color` is not enough here — the browser then paints the track with its own derived
+   colour and the slider stops reading as the system. The filled width comes from an inline
+   `--fill` set by the component, the only dynamic value allowed inline. */
 input[type="range"] {
-  accent-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+  height: 36px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 8px;
+  cursor: pointer;
 }
-input[type="range"]::-webkit-slider-runnable-track {
-  background: var(--muted-surface);
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 24px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 24px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
 }
 input[type="range"]::-moz-range-track {
-  background: var(--muted-surface);
+  background: transparent;
+}
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 @layer base {

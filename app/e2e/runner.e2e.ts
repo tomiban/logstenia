@@ -20,11 +20,11 @@ test('los descansos de la rutina no se editan en el runner', async ({ page }) =>
   await expect(page.getByLabel('Descanso entre ejercicios en segundos')).toHaveCount(0);
 });
 
-test('el slider de tiempo cubre el objetivo prescrito del ejercicio', async ({ page }) => {
+test('el slider de tiempo sigue el objetivo prescrito del ejercicio', async ({ page }) => {
   await page.goto('/run/pl-r2');
 
-  // pl-r2 prescribes 20s: the control must be able to register the target, not fall short.
-  await expect(page.getByLabel('Segundos serie 1')).toHaveAttribute('max', '40');
+  // pl-r2 prescribes 20s: the ceiling is the prescribed hold, not an arbitrary number.
+  await expect(page.getByLabel('Segundos serie 1')).toHaveAttribute('max', '20');
 });
 
 // cardio-r1: superseries of 3 rounds with 60s of rest and no rest between exercises.
