@@ -526,7 +526,7 @@ export default function Routine() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteBlock}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDeleteBlock}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -595,7 +595,7 @@ export default function Routine() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteEx}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDeleteEx}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
