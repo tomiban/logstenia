@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useId, useState } from 'react';
 import type { Block, BlockType, Exercise, Intensity } from '@/types';
+import { toIntensity } from '@/lib/intensity';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { BackLink } from '@/components/BackLink';
@@ -39,11 +40,6 @@ const BLOCK_TYPES = ['single', 'biseries', 'superseries'] as const;
 /** The select hands back a string; anything outside the three block types falls back to `single`. */
 function toBlockType(raw: string | null | undefined): BlockType {
   return raw === 'biseries' ? 'biseries' : raw === 'superseries' ? 'superseries' : 'single';
-}
-
-/** The select hands back a string; anything outside the three levels falls back to the first. */
-function toIntensity(raw: string | null | undefined): Intensity {
-  return raw === '2' ? 2 : raw === '3' ? 3 : 1;
 }
 
 /** A block header: where the block sits in the routine, its shape, then its numbers as telemetry. */
@@ -387,7 +383,7 @@ export default function Routine() {
   };
 
   return (
-    <div className={showStartBar ? 'space-y-6 pb-28 md:pb-20' : 'space-y-6'}>
+    <div className={showStartBar ? 'space-y-4 pb-28 md:pb-20' : 'space-y-4'}>
       <div>
         <BackLink to={`/program/${program.id}`}>{program.name}</BackLink>
       </div>

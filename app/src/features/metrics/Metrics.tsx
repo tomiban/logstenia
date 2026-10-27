@@ -294,6 +294,10 @@ export default function Metrics() {
   const gained = comparable.filter((c) => c.gained).length;
   const newBests = recent.reduce((total, c) => total + c.newBests.length, 0);
   const measure = (c: SessionComparison) => (measureInfo.key === 'duracion' ? c.summary.durationMin : c.summary.series);
+  const measureDeltaNote = (c: SessionComparison) => {
+    const value = measureInfo.key === 'duracion' ? c.durationDelta : c.seriesDelta;
+    return value === null ? 'sin comparación' : `${signed(value)} vs anterior`;
+  };
   const bestSession = recent.reduce<SessionComparison | null>(
     (bestOne, c) => (bestOne === null || measure(c) > measure(bestOne) ? c : bestOne),
     null,
@@ -523,11 +527,11 @@ export default function Metrics() {
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="metric text-lg tabular-nums text-foreground">
-                    {nf.format(c.summary.durationMin)}{' '}
-                    <span className="label-caps text-muted-foreground">min</span>
+                    {nf.format(measure(c))}{' '}
+                    <span className="label-caps text-muted-foreground">{measureInfo.unit}</span>
                   </div>
                   <div className="label-caps mt-1 text-muted-foreground">
-                    {c.durationDelta === null ? 'sin comparación' : `${signed(c.durationDelta)} vs anterior`}
+                    {measureDeltaNote(c)}
                   </div>
                 </div>
               </li>
