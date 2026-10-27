@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, skipDialogCopy } from './runnerLogic';
 import type { SessionSet } from '@/db';
 import type { Exercise } from '@/types';
 
@@ -93,5 +93,25 @@ describe('countPendingSets', () => {
 
   it('reports nothing pending for an empty list of sets', () => {
     expect(countPendingSets([])).toEqual({ typed: 0, empty: 0 });
+  });
+});
+
+describe('skipDialogCopy', () => {
+  it('reports only the empty series when nothing was typed', () => {
+    expect(skipDialogCopy({ typed: 0, empty: 3 })).toBe(
+      'Quedan 3 series vacías. Si continuás, se omiten.',
+    );
+  });
+
+  it('agrees in the singular for a single empty series', () => {
+    expect(skipDialogCopy({ typed: 0, empty: 1 })).toBe(
+      'Queda 1 serie vacía. Si continuás, se omite.',
+    );
+  });
+
+  it('says the typed series get registered, not omitted', () => {
+    expect(skipDialogCopy({ typed: 2, empty: 1 })).toBe(
+      'Tenés 2 series cargadas sin confirmar y 1 serie vacía. Si continuás, las cargadas se registran y las vacías se omiten.',
+    );
   });
 });

@@ -1,3 +1,4 @@
+import { pluralForm } from '@/lib/format';
 import type { SessionSet } from '@/repositories';
 import type { Exercise } from '@/types';
 
@@ -17,6 +18,25 @@ export function buscarSerie(
   return sets.find(
     (l) => l.exercise === ejercicio && l.setIndex === setIndex && l.bloqueOrden === bloqueOrden,
   );
+}
+
+/** Series waiting on the user: typed-but-unconfirmed (registered on continue) and empty (skipped). */
+export interface SkipDialogCounts {
+  typed: number;
+  empty: number;
+}
+
+/**
+ * What `Continuar` really does: it registers the values already typed and skips the empty series.
+ * The two numbers in the sentence are the ones the dialog gate uses, so they cannot disagree.
+ */
+export function skipDialogCopy({ typed, empty }: SkipDialogCounts): string {
+  const loaded = `${typed} ${pluralForm(typed, 'serie cargada', 'series cargadas')}`;
+  const blank = `${empty} ${pluralForm(empty, 'serie vacía', 'series vacías')}`;
+  if (typed === 0) {
+    return `${pluralForm(empty, 'Queda', 'Quedan')} ${blank}. Si continuás, ${pluralForm(empty, 'se omite', 'se omiten')}.`;
+  }
+  return `Tenés ${loaded} sin confirmar y ${blank}. Si continuás, las cargadas se registran y las vacías se omiten.`;
 }
 
 /** One pending decision about a set: what the user typed, and what is already registered. */

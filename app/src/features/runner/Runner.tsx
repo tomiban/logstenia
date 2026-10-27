@@ -9,19 +9,9 @@ import { isTimedExercise } from '@/lib/exercise';
 import { pluralForm } from '@/lib/format';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import Cronometro from './Cronometro';
-import { num } from './runnerLogic';
+import { num, skipDialogCopy } from './runnerLogic';
 import { type WorkoutStep } from './steps';
-import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue, type SkipDialog } from './useRunner';
-
-/** What `Continuar` really does: it registers the values already typed and skips the empty series. */
-function skipDialogCopy({ typed, empty }: SkipDialog): string {
-  const loaded = `${typed} ${pluralForm(typed, 'serie cargada', 'series cargadas')}`;
-  const blank = `${empty} ${pluralForm(empty, 'serie vacía', 'series vacías')}`;
-  if (typed === 0) {
-    return `${pluralForm(empty, 'Queda', 'Quedan')} ${blank}. Si continuás, ${pluralForm(empty, 'se omite', 'se omiten')}.`;
-  }
-  return `Tenés ${loaded} sin confirmar y ${blank}. Si continuás, las cargadas se registran y las vacías se omiten.`;
-}
+import { newSetValue, useRunner, type Mark, type RunnerProgression, type SetValue } from './useRunner';
 
 type ExerciseStepProps = {
   step: WorkoutStep;

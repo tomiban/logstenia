@@ -7,7 +7,7 @@ import { BackLink } from '@/components/BackLink';
 import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, reorderExercises, moveExercise, allModels } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
-import { nextBlockId } from './blocks';
+import { exerciseKey, nextBlockId } from './blocks';
 import { MoreHorizontal, GripVertical, Pencil, X } from 'lucide-react';
 import Video from './Video';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -647,7 +647,7 @@ export default function Routine() {
             >
               {b.exercises.map((e, j) => (
                 <li
-                  key={e.id ?? `${e.name}-${e.reps ?? ''}-${e.timeSec ?? ''}`}
+                  key={exerciseKey(b.exercises, j)}
                   draggable={editing}
                   onDragStart={() => { if (editing) setDrag({ bi: i, ei: j }); }}
                   onDragOver={(ev) => ev.preventDefault()}
@@ -779,7 +779,7 @@ export default function Routine() {
                 )}
                 {b.exercises.map((e, j) => (
                   <div
-                    key={e.id ?? `${e.name}-${e.reps ?? ''}-${e.timeSec ?? ''}`}
+                    key={exerciseKey(b.exercises, j)}
                     draggable
                     onDragStart={() => setDragPayload({ kind: 'routine', bi: i, ei: j, ex: e })}
                     onDragEnd={() => setDragPayload(null)}

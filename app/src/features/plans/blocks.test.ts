@@ -4,7 +4,7 @@ import type { Block, Model, PlanData } from '@/types';
 import { getDB } from '@/db/open';
 import { plansRepository, SEED_UPDATED_AT } from '@/data/plansRepository';
 import { createBlock, getData, getModel, initPlans, saveData } from './plans';
-import { migrateBlocksToIds } from './blocks';
+import { migrateBlocksToIds, exerciseKey } from './blocks';
 
 const MODEL_ID = 'bloques-r1';
 
@@ -186,5 +186,30 @@ describe('createBlock', () => {
     await createBlock(MODEL_ID, bloque({ id: 'bloque-importado' }));
 
     expect(bloquesEnMemoria().map((b) => b.id)).toEqual(['bloque-importado']);
+  });
+});
+
+describe('exerciseKey', () => {
+  it('uses the stored id when the exercise has one', () => {
+    const list = [{ id: 'ex-1', name: 'Flexiones' }, { id: 'ex-2', name: 'Flexiones' }];
+    expect(exerciseKey(list, 0)).toBe('ex-1');
+    expect(exerciseKey(list, 1)).toBe('ex-2');
+  });
+
+  it('keeps the key of a row that moves when a legacy row has no id', () => {
+    const before = [{ name: 'Flexiones', reps: '8' }, { name: 'Fondos', reps: '6' }];
+    const after = [{ name: 'Fondos', reps: '6' }, { name: 'Flexiones', reps: '8' }];
+    const flexiones = exerciseKey(before, 0);
+    expect(exerciseKey(after, 1)).toBe(flexiones);
+  });
+
+  it('tells apart two legacy rows with the same prescription', () => {
+    const list = [{ name: 'Flexiones', reps: '8' }, { name: 'Flexiones', reps: '8' }];
+    expect(exerciseKey(list, 0)).not.toBe(exerciseKey(list, 1));
+  });
+
+  it('changes the key when the prescription changes', () => {
+    const list = [{ name: 'Flexiones', reps: '8' }];
+    expect(exerciseKey(list, 0)).not.toBe(exerciseKey([{ name: 'Flexiones', reps: '10' }], 0));
   });
 });
