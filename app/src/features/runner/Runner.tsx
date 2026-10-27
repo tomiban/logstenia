@@ -139,7 +139,7 @@ function ExerciseStep({
                     <Badge className="label-status border border-ink bg-accent text-on-accent">▲ nuevo PR</Badge>
                   )}
                   {mark === 'first' && (
-                    <Badge className="label-status border border-ink text-ink">primera marca</Badge>
+                    <Badge variant="outline" className="label-status">primera marca</Badge>
                   )}
                   {enabled && v.value && (
                     alreadyRegistered(i) && !editing.has(i) ? (
@@ -287,7 +287,7 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
               </div>
               <div className="flex items-center gap-3">
                 {f.pr && <Badge className="label-status border border-ink bg-accent text-on-accent">▲ PR</Badge>}
-                {f.first && <Badge className="label-status border border-ink text-ink">primera marca</Badge>}
+                {f.first && <Badge variant="outline" className="label-status">primera marca</Badge>}
                 <span className="metric text-xl text-foreground">{f.best} {f.unit}</span>
               </div>
             </div>
