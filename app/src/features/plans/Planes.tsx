@@ -18,49 +18,78 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { pluralForm } from '@/lib/format';
 
 export default function Planes() {
   const cats = useCategories();
+  const programCount = cats.reduce((count, category) => count + category.programs.length, 0);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
   const [editing, setEditing] = useState<{ id: string; name: string; desc: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const saveNew = async () => {
     if (!newName.trim()) return;
     const existing = new Set(cats.map((c) => c.id));
     const id = uniqueId(newName, existing);
-    await createCategory({ id, name: newName.trim(), description: newDesc.trim(), programs: [] });
-    setNewName('');
-    setNewDesc('');
-    setCreateOpen(false);
+    try {
+      await createCategory({ id, name: newName.trim(), description: newDesc.trim(), programs: [] });
+      setSaveError(null);
+      setNewName('');
+      setNewDesc('');
+      setCreateOpen(false);
+    } catch {
+      setSaveError('No se pudo crear la categoría.');
+    }
   };
 
   const saveEdit = async () => {
     if (!editing || !editing.name.trim()) return;
-    await updateCategory(editing.id, { name: editing.name.trim(), description: editing.desc.trim() });
-    setEditing(null);
+    try {
+      await updateCategory(editing.id, { name: editing.name.trim(), description: editing.desc.trim() });
+      setSaveError(null);
+      setEditing(null);
+    } catch {
+      setSaveError('No se pudo guardar la categoría.');
+    }
   };
 
   const confirmDelete = async () => {
     if (!deleting) return;
-    await deleteCategory(deleting.id);
-    setDeleting(null);
+    try {
+      await deleteCategory(deleting.id);
+      setSaveError(null);
+      setDeleting(null);
+    } catch {
+      setSaveError('No se pudo borrar la categoría.');
+    }
   };
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight font-heading">Planes</h1>
-          <p className="label-caps text-muted-foreground">progresiones por categoría</p>
+          <h1 className="text-2xl font-bold tracking-tight font-heading">Planes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="metric text-foreground">{cats.length}</span>{' '}
+            {pluralForm(cats.length, 'categoría', 'categorías')} ·{' '}
+            <span className="metric text-foreground">{programCount}</span>{' '}
+            {pluralForm(programCount, 'programa', 'programas')}
+          </p>
         </div>
-        <Button variant="accent" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button variant="accent" size="lg" onClick={() => setCreateOpen(true)}>
           Nueva categoría
         </Button>
       </header>
+
+      {saveError && (
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
+          {saveError}
+        </p>
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
@@ -119,26 +148,39 @@ export default function Planes() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Borrar</AlertDialogAction>
+            <AlertDialogAction variant="destructive" onClick={confirmDelete}>Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {cats.length === 0 && (
+        <div className="border border-border bg-card p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Todavía no hay categorías. Creá la primera para ordenar los programas que vas a entrenar.
+          </p>
+          <Button variant="outline" size="lg" onClick={() => setCreateOpen(true)}>
+            Nueva categoría
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cats.map((c) => (
           <ContextMenu key={c.id}>
             <ContextMenuTrigger className="block h-full">
-              <Card className="p-4 h-full transition-colors hover:border-ink">
+              <Card className="p-4 h-full transition-colors hover:ring-ink">
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1">
+                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                     <h2 className="font-semibold">{c.name}</h2>
                     <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
                     <div className="mt-2 flex gap-2">
-                      <Badge variant="default">{c.programs.length} progresiones</Badge>
+                      <Badge variant="outline" className="label-status">
+                        {c.programs.length} {pluralForm(c.programs.length, 'programa', 'programas')}
+                      </Badge>
                     </div>
                   </Link>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                    <DropdownMenuTrigger className="inline-flex h-11 w-11 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

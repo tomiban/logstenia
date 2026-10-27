@@ -1,4 +1,5 @@
 import { db, withWrite, type EntityName, type WriteTransaction } from '@/db';
+import type { InsertRow } from '../types';
 import { enqueueOutbox, isLocalOnlySettingKey, withOutboxWrite } from '../sync/outbox';
 import { syncKeyField, type SyncMutation } from '../sync/types';
 
@@ -90,7 +91,7 @@ export abstract class DexieRepository<T> {
     });
   }
 
-  async bulkPut(rows: T[]): Promise<void> {
+  async bulkPut(rows: InsertRow<T>[]): Promise<void> {
     const normalized = rows.map((row) => normalizeSyncRow(this.entity, row));
     await withOutboxWrite(this.entity, async (tx) => {
       const store = tx.objectStore(this.entity);

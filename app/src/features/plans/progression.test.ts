@@ -6,6 +6,7 @@ import {
   chainFor,
   completedProgramsFrom,
   describeLock,
+  progressionChainsForCategory,
   reportFrom,
   touchedAnchors,
   type ProgressionData,
@@ -275,6 +276,48 @@ describe('describeLock', () => {
     expect(report.unlocked).toBe(false);
     expect(describeLock(report)).toContain('Fuerza Principiante');
     expect(describeLock(report)).toContain('Dominadas pronas ≥ 10 reps');
+  });
+});
+
+describe('progressionChainsForCategory', () => {
+  it('ordena la cadena estática que decide los bloqueos, no solo las cadenas de etiquetas', () => {
+    const { groups, slots } = progressionChainsForCategory('planche');
+
+    expect(groups).toEqual([
+      ['planche-tuck', 'planche-tuckadv', 'planche-straddle', 'planche-full'],
+    ]);
+    expect(slots.get('planche-straddle')).toEqual({ position: 3, total: 4 });
+  });
+
+  it('muestra una cadena una sola vez aunque la compartan todos sus programas', () => {
+    const { groups } = progressionChainsForCategory('fuerza');
+
+    expect(groups).toEqual([
+      ['fuerza-principiantes', 'fuerza-intermedios', 'fuerza-avanzados'],
+    ]);
+  });
+
+  it('numera cada programa en el mismo orden que la cadena que lo bloquea', () => {
+    const cadena = chainFor('handstand-principiante') ?? [];
+    const { groups, slots } = progressionChainsForCategory('handstand');
+
+    expect(groups).toEqual([cadena]);
+    for (const [idx, id] of cadena.entries()) {
+      expect(slots.get(id)).toEqual({ position: idx + 1, total: cadena.length });
+      expect(reportFrom(id, datos([])).position).toBe(idx + 1);
+    }
+    expect(cadena.length).toBe(3);
+  });
+
+  it('no inventa una cadena para una categoría de un solo programa', () => {
+    const { groups, slots } = progressionChainsForCategory('cardio');
+
+    expect(groups).toEqual([]);
+    expect(slots.size).toBe(0);
+  });
+
+  it('devuelve nada para una categoría inexistente', () => {
+    expect(progressionChainsForCategory('no-existe')).toEqual({ groups: [], slots: new Map() });
   });
 });
 

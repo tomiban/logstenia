@@ -47,17 +47,31 @@ export interface AxisTickProps {
   data?: ChartDatum[];
 }
 
-/** Axis tick that prints the value above the date, with a marker for the current period. */
+/** How many bars may skip their date label: a `dd/mm` under every bar collides on a 390px phone. */
+function labelStride(count: number): number {
+  return count > 8 ? Math.ceil(count / 6) : 1;
+}
+
+/**
+ * Axis tick that prints the value above the date, with a marker for the current period. Every bar
+ * keeps its value — that is the data — while the date is printed on a stride and always on the last
+ * bar, so the axis stays legible at phone width.
+ */
 export function ValueTick({ x = 0, y = 0, index = 0, payload, data = [] }: AxisTickProps) {
   const item = data[index];
   const label = item?.label ?? (typeof payload?.value === 'string' ? payload.value : undefined);
+  const stride = labelStride(data.length);
+  /* Align the stride to the last bar: it always prints, and the label before it keeps its distance. */
+  const showLabel = (data.length - 1 - index) % stride === 0;
+  /* The first and last labels would hang off the plot area if they stayed centred. */
+  const anchor = index === 0 ? 'start' : index === data.length - 1 ? 'end' : 'middle';
   return (
     <g transform={`translate(${x},${y})`}>
-      <text textAnchor="middle" dy={12} className="metric text-foreground" fill="currentColor" fontSize={12}>
+      <text textAnchor={anchor} dy={12} className="metric text-foreground" fill="currentColor" fontSize={12}>
         {item?.amount ?? 0}
       </text>
-      <text textAnchor="middle" dy={26} className="label-status text-muted-foreground" fill="currentColor" fontSize={10}>
-        {label}
+      <text textAnchor={anchor} dy={26} className="label-status text-muted-foreground" fill="currentColor" fontSize={10}>
+        {showLabel ? label : ''}
       </text>
       {item?.marker === 'lime' ? (
         <rect x={-4} y={32} width={8} height={8} fill="var(--voltage-lime)" />

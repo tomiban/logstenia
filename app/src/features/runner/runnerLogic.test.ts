@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { num, buscarSerie, rondaCompleta, esUltimaVuelta } from './runnerLogic';
+import { num, buscarSerie, rondaCompleta, esUltimaVuelta, countPendingSets, setUnlocked, clampSeconds, skipDialogCopy } from './runnerLogic';
 import type { SessionSet } from '@/db';
 import type { Exercise } from '@/types';
 
@@ -65,5 +65,98 @@ describe('esUltimaVuelta', () => {
   it('no es la última cuando todavía quedan vueltas por delante', () => {
     expect(esUltimaVuelta([3, 3], 1)).toBe(false);
     expect(esUltimaVuelta([4, 3], 3)).toBe(false);
+  });
+});
+
+describe('countPendingSets', () => {
+  it('counts an empty set only when nothing was typed and nothing was registered', () => {
+    expect(
+      countPendingSets([
+        { value: '', registeredValue: null },
+        { value: '', registeredValue: '5' },
+      ]),
+    ).toEqual({ typed: 0, empty: 1 });
+  });
+
+  it('counts a typed value as pending while it differs from the registered one', () => {
+    expect(
+      countPendingSets([
+        { value: '6', registeredValue: null },
+        { value: '7', registeredValue: '6' },
+      ]),
+    ).toEqual({ typed: 2, empty: 0 });
+  });
+
+  it('ignores a typed value that already matches what was registered', () => {
+    expect(countPendingSets([{ value: '6', registeredValue: '6' }])).toEqual({ typed: 0, empty: 0 });
+  });
+
+  it('reports nothing pending for an empty list of sets', () => {
+    expect(countPendingSets([])).toEqual({ typed: 0, empty: 0 });
+  });
+});
+
+describe('skipDialogCopy', () => {
+  it('reports only the empty series when nothing was typed', () => {
+    expect(skipDialogCopy({ typed: 0, empty: 3 })).toBe(
+      'Quedan 3 series vacías. Si continuás, se omiten.',
+    );
+  });
+
+  it('agrees in the singular for a single empty series', () => {
+    expect(skipDialogCopy({ typed: 0, empty: 1 })).toBe(
+      'Queda 1 serie vacía. Si continuás, se omite.',
+    );
+  });
+
+  it('says the typed series get registered, not omitted', () => {
+    expect(skipDialogCopy({ typed: 2, empty: 1 })).toBe(
+      'Tenés 2 series cargadas sin confirmar y 1 serie vacía. Si continuás, las cargadas se registran y las vacías se omiten.',
+    );
+  });
+});
+
+describe('setUnlocked', () => {
+  const biserie: Exercise[] = [
+    { name: 'A', reps: '8' },
+    { name: 'B', timeSec: 20 },
+  ];
+
+  it('always opens the first row of every exercise', () => {
+    expect(setUnlocked([], 0, biserie, 0)).toBe(true);
+  });
+
+  it('waits for the whole round, not just for this exercise\'s own previous set', () => {
+    // A completed its set 1 but B did not: in a biserie the round is not over.
+    expect(setUnlocked([serie('A', 1)], 0, biserie, 1)).toBe(false);
+  });
+
+  it('opens the next row once every exercise of the block registered that round', () => {
+    expect(setUnlocked([serie('A', 1), serie('B', 1)], 0, biserie, 1)).toBe(true);
+  });
+
+  it('keeps a single-exercise block working as before', () => {
+    const simple: Exercise[] = [{ name: 'A', reps: '8' }];
+    expect(setUnlocked([], 0, simple, 1)).toBe(false);
+    expect(setUnlocked([serie('A', 1)], 0, simple, 1)).toBe(true);
+  });
+
+  it('does not mix blocks', () => {
+    expect(setUnlocked([serie('A', 1, 1), serie('B', 1, 1)], 0, biserie, 1)).toBe(false);
+  });
+});
+
+describe('clampSeconds', () => {
+  it('keeps a value inside the ceiling', () => {
+    expect(clampSeconds('8', 10)).toBe(8);
+    expect(clampSeconds('20', 10)).toBe(10);
+  });
+  it('never goes below zero and never returns NaN', () => {
+    expect(clampSeconds('-5', 10)).toBe(0);
+    expect(clampSeconds('', 10)).toBe(0);
+    expect(clampSeconds('abc', 10)).toBe(0);
+  });
+  it('rounds to whole seconds', () => {
+    expect(clampSeconds('7.6', 10)).toBe(8);
   });
 });

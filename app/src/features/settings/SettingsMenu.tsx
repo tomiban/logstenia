@@ -192,13 +192,27 @@ export function SettingsMenu() {
       <Button
         ref={buttonRef}
         type="button"
-        variant="outline"
+        variant="ghost"
         size="lg"
-        className="label-caps"
+        className="label-caps gap-2"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
+        <svg
+          aria-hidden="true"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+          <path d="M14 4v6M8 14v6" />
+        </svg>
         tomas
       </Button>
 

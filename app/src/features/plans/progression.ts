@@ -129,26 +129,48 @@ export function tagChainFor(programId: string): string[] | null {
   return null;
 }
 
-export function tagChainsForCategory(categoryId: string): { tag: string; chain: string[] }[] {
-  const cat = getCategory(categoryId);
-  if (!cat) return [];
-  const tagSet = new Set<string>();
-  for (const p of cat.programs) for (const t of p.tags || []) tagSet.add(t);
-  const out: { tag: string; chain: string[] }[] = [];
-  for (const tag of [...tagSet].sort()) {
-    const members = cat.programs.filter((q) => (q.tags || []).includes(tag));
-    if (members.length < 2) continue;
-    out.push({ tag, chain: sortByLevel(members) });
-  }
-  return out;
-}
-
 export function chainFor(programId: string): string[] | null {
   const key = chainKey(programId);
   if (key) return PROGRESSION_CHAINS[key];
   const tagChain = tagChainFor(programId);
   if (tagChain) return tagChain;
   return dynamicChainFor(programId);
+}
+
+export interface ChainSlot {
+  /** 1-based position of the program inside its chain. */
+  position: number;
+  total: number;
+}
+
+export interface CategoryChains {
+  /** Chains the category is judged by, easiest → hardest, each one listed once. */
+  groups: string[][];
+  /** Slot of every program that belongs to one of those chains. */
+  slots: Map<string, ChainSlot>;
+}
+
+/**
+ * The chains `chainFor` judges this category by, so the order a screen shows is the same one
+ * that decides what is blocked: the slot of a program matches `reportFrom`'s position. A chain
+ * appears once, never one group per member.
+ */
+export function progressionChainsForCategory(categoryId: string): CategoryChains {
+  const groups: string[][] = [];
+  const slots = new Map<string, ChainSlot>();
+  const category = getCategory(categoryId);
+  if (!category) return { groups, slots };
+  const seen = new Set<string>();
+  for (const program of category.programs) {
+    const chain = chainFor(program.id);
+    if (!chain || chain.length < 2) continue;
+    const key = chain.join('>');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    groups.push(chain);
+    chain.forEach((id, index) => slots.set(id, { position: index + 1, total: chain.length }));
+  }
+  return { groups, slots };
 }
 
 export function isBenchmark(modelId: string, modelName?: string): boolean {

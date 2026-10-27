@@ -4,7 +4,7 @@
 - Created: 2026-10-20
 - Surface: Routine runner — sticky bottom action bar (`/run/:id`)
 - Source commit: unavailable (working tree has no commits; branch `feat/logstenia`, all files untracked)
-- Design source: `docs/DESIGN.md` — "The Timing Board" (Layout: container padding, mobile-first)
+- Design source: `DESIGN.md` — "The Timing Board" (Layout: container padding, mobile-first)
 - Governing rule: container padding contract — `app/src/components/Layout.tsx` main uses `px-4` on mobile and `sm:px-6` on ≥640px; DESIGN.md specifies 24px (`px-6`) lateral padding.
 
 ## Goal

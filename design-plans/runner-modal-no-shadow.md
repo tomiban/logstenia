@@ -4,8 +4,8 @@
 - Created: 2026-10-20
 - Surface: Routine runner — pending-sets confirmation modal (`/run/:id`)
 - Source commit: unavailable (working tree has no commits; branch `feat/logstenia`, all files untracked)
-- Design source: `docs/DESIGN.md` (root `DESIGN.md` is identical) — "The Timing Board"
-- Governing rule: "The No-Shadow Rule" — `docs/DESIGN.md` → Elevation & Depth: "Ninguna superficie usa `box-shadow` en reposo."
+- Design source: `DESIGN.md` — "The Timing Board"
+- Governing rule: "The No-Shadow Rule" — `DESIGN.md` → Elevation & Depth: "Ninguna superficie usa `box-shadow` en reposo."
 
 ## Goal
 Eliminate the only `box-shadow` in the traced runner surface so the pending-sets modal conforms to the No-Shadow Rule, relying on tonal layering and the hairline border instead.

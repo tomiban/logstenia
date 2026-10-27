@@ -1,4 +1,5 @@
 import { createSettingsRepository, createTagRepository } from '@/repositories';
+import type { InsertRow, TagRecord } from '@/repositories';
 
 export type TagTargetType = 'exercise' | 'routine' | 'program';
 export const TAGS_CHANGED_EVENT = 'logstenia:tags-changed';
@@ -24,6 +25,34 @@ export async function addTag(targetType: TagTargetType, targetId: string, tag: s
   if (rows.some((r) => r.tag === t)) return;
   await tagRepository.add({ targetType, targetId, tag: t });
   notifyTagsChanged();
+}
+
+/**
+ * Idempotent bulk seed of the tags a plan declares: writes only the pairs that have no live
+ * row, in one transaction, so a catalogue of hundreds of exercises costs one write instead of
+ * one per exercise. Silent by design — it runs before the first render, so no screen is
+ * listening yet.
+ */
+export async function seedTags(
+  targetType: TagTargetType,
+  entries: Iterable<readonly [string, readonly string[]]>,
+): Promise<void> {
+  const stored = await tagRepository.list();
+  const present = new Set(
+    stored.filter((row) => row.targetType === targetType).map((row) => `${row.targetId}\u0000${row.tag}`),
+  );
+
+  const missing: InsertRow<TagRecord>[] = [];
+  for (const [targetId, tags] of entries) {
+    for (const tag of tags) {
+      const t = tag.trim().toLowerCase();
+      if (!t || present.has(`${targetId}\u0000${t}`)) continue;
+      present.add(`${targetId}\u0000${t}`);
+      missing.push({ targetType, targetId, tag: t });
+    }
+  }
+
+  if (missing.length > 0) await tagRepository.bulkPut(missing);
 }
 
 export async function removeTag(targetType: TagTargetType, targetId: string, tag: string): Promise<void> {

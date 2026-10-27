@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '@/hooks/usePlans';
 import type { Category, Model, Program } from '@/types';
-import { createProgressRepository, createSessionRepository, createSettingsRepository } from '@/repositories';
-import type { MarkRecord, ProgressRecord, SessionRecord } from '@/repositories';
+import { createSessionRepository, createSettingsRepository } from '@/repositories';
+import type { MarkRecord, SessionRecord } from '@/repositories';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,12 +22,13 @@ import {
 import { getMarks } from '@/features/progress/marks';
 import { targetsByTag } from '@/lib/tags';
 import { useNow } from '@/hooks/useNow';
+import { formatDayMonth } from '@/lib/date';
+import { pluralForm } from '@/lib/format';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const settingsRepository = createSettingsRepository();
 const sessionRepository = createSessionRepository();
-const progressRepository = createProgressRepository();
 
 export default function Home() {
   const navigate = useNavigate();
@@ -35,12 +36,12 @@ export default function Home() {
   const [mesoInicio, setMesoInicioState] = useState('');
   const [warmup, setWarmupState] = useState(false);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [progress, setProgress] = useState<ProgressRecord[]>([]);
   const [startedPlanIds, setStartedPlanIds] = useState<string[]>([]);
   const [marks, setMarks] = useState<MarkRecord[]>([]);
   const [warmupRoutine, setWarmupRoutine] = useState<{ prog: Program; model: Model } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -48,22 +49,22 @@ export default function Home() {
         setMesoInicioState(await getMesoInicio());
         setWarmupState(await getWarmup());
         setSessions(await sessionRepository.list());
-        setProgress(await progressRepository.list());
         const sp = await settingsRepository.get('startedPlans');
         setStartedPlanIds((sp?.value as string[]) || []);
+        setSaveError(null);
       } catch {
         setSaveError('No se pudieron cargar tus datos.');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     if (mesoInicio) {
       getMarks(mesoInicio).then(setMarks).catch(() => setSaveError('No se pudieron leer las marcas del mesociclo.'));
     }
-  }, [mesoInicio]);
+  }, [mesoInicio, reloadKey]);
 
   const ahora = useNow();
   const hoyIso = iso(ahora);
@@ -71,7 +72,8 @@ export default function Home() {
   const dIni = mesoInicio ? new Date(mesoInicio + 'T00:00:00') : null;
   const semana = dIni ? Math.max(1, Math.floor(entreDias(dIni, ahora) / 7) + 1) : null;
   const iniDescarga = dIni ? addDias(dIni, MESO.carga * 7) : null;
-  const faltaDescarga = iniDescarga ? entreDias(ahora, iniDescarga) : null;
+  const faltaDescarga = iniDescarga ? entreDias(ahora, iniDescarga) : 0;
+  const semanaActual = semana != null && semana <= MESO.total ? semana : null;
 
   const fechasLog = new Set(sessions.map((s) => s.date));
   const lunes = lunesDe(ahora);
@@ -108,22 +110,24 @@ export default function Home() {
         const progSessions = sessions.filter((s) => s.planId === p.id && s.completed);
         const completedModels = new Set(progSessions.map((s) => s.modelId)).size;
         const totalModels = p.models.length || 1;
-        // best value from marks + progress for this program's exercises
+        /* Best mark of this program's exercises. Marks carry the exercise display name and progress
+           rows carry exercise ids, so only marks can be matched until the catalogue names are
+           normalized (see odd/tasks/logstenia.md). */
         const exNames = new Set(p.models.flatMap((m) => m.blocks.flatMap((b) => b.exercises.map((e) => e.name))));
         let best: { value: number; unit: string } | null = null;
         for (const m of marks) {
           if (exNames.has(m.exercise) && (!best || m.value > best.value)) best = { value: m.value, unit: m.unit };
-        }
-        for (const pr of progress) {
-          if (exNames.has(pr.exerciseId)) {
-            if (!best || pr.value > best.value) best = { value: pr.value, unit: 'reps' };
-          }
         }
         out.push({ prog: p, cat: c, sessions: progSessions.length, completedModels, totalModels, best });
       }
     }
     return out;
   })();
+
+  const retryLoad = () => {
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  };
 
   const toggleWarmup = async () => {
     const v = !warmup;
@@ -147,19 +151,19 @@ export default function Home() {
   };
 
   const ultimas = (() => {
-    const m = new Map<string, { k: string; fecha: string; sesion_id: string; series: number }>();
+    const m = new Map<string, { k: string; fecha: string; sesion_id: string; sesiones: number }>();
     for (const s of sessions) {
       const k = s.date + '|' + s.modelId;
-      const x = m.get(k) || { k, fecha: s.date, sesion_id: s.modelId, series: 0 };
-      x.series += 1;
+      const x = m.get(k) || { k, fecha: s.date, sesion_id: s.modelId, sesiones: 0 };
+      x.sesiones += 1;
       m.set(k, x);
     }
     return [...m.values()].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, 5);
   })();
 
   const info = (() => {
-    const m = new Map<string, { prog: Program; modelId: string }>();
-    for (const c of cats) for (const p of c.programs) for (const md of p.models) m.set(md.id, { prog: p, modelId: md.id });
+    const m = new Map<string, { prog: Program; model: Model }>();
+    for (const c of cats) for (const p of c.programs) for (const md of p.models) m.set(md.id, { prog: p, model: md });
     return m;
   })();
 
@@ -186,9 +190,19 @@ export default function Home() {
         </p>
       </header>
       {saveError && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
-          {saveError}
-        </p>
+        <div className="flex items-center justify-between gap-3 border border-ink bg-secondary px-3 py-2">
+          <p role="alert" className="text-sm text-foreground">
+            {saveError}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="lg" onClick={retryLoad}>
+              Reintentar
+            </Button>
+            <Button variant="ghost" size="icon-lg" aria-label="Descartar aviso" onClick={() => setSaveError(null)}>
+              ×
+            </Button>
+          </div>
+        </div>
       )}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -196,7 +210,10 @@ export default function Home() {
             <span className="label-caps text-foreground">Mesociclo</span>
           </div>
           <div className="space-y-3 p-4">
-            <p className="label-caps">{MESO.carga} semanas de carga + 1 de descarga</p>
+            <p className="text-sm text-muted-foreground">
+              <span className="metric text-foreground">{MESO.carga}</span> semanas de carga +{' '}
+              <span className="metric text-foreground">{MESO.total - MESO.carga}</span> de descarga
+            </p>
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="meso-inicio" className="label-caps">
@@ -210,41 +227,49 @@ export default function Home() {
                   onChange={(e) => onMesoChange(e.currentTarget.value)}
                 />
               </div>
-              {semana != null && (
-                <span className="pb-3 label-caps">
-                  semana <span className="metric text-base text-foreground">{Math.min(semana, MESO.total)}</span> de{' '}
-                  {MESO.total}
+              {semanaActual != null && (
+                <span className="pb-3 text-sm text-muted-foreground">
+                  semana <span className="metric text-base text-foreground">{semanaActual}</span> de {MESO.total}
                 </span>
               )}
             </div>
             {semana == null ? (
-              <p className="label-caps">cargá la fecha de inicio para ubicarte</p>
+              <p className="text-sm text-muted-foreground">cargá la fecha de inicio para ubicarte</p>
             ) : (
               <div className="space-y-2">
-                <div className="flex gap-1" role="img" aria-label={`Semana ${Math.min(semana, MESO.total)} de ${MESO.total}`}>
-                  {Array.from({ length: MESO.total }, (_, i) => (
-                    <div
-                      key={`semana-${i + 1}`}
-                      className={
-                        'h-2 flex-1 ' +
-                        (i + 1 < Math.min(semana, MESO.total)
-                          ? 'bg-primary'
-                          : i + 1 === Math.min(semana, MESO.total)
-                            ? 'bg-accent ring-1 ring-ink'
-                            : 'bg-secondary')
-                      }
-                    />
-                  ))}
+                <div
+                  className="flex gap-1"
+                  role="img"
+                  aria-label={
+                    semanaActual != null
+                      ? `Semana ${semanaActual} de ${MESO.total}`
+                      : `Mesociclo terminado, ${MESO.total} semanas completadas`
+                  }
+                >
+                  {Array.from({ length: MESO.total }, (_, i) => {
+                    const n = i + 1;
+                    const estado =
+                      semanaActual == null || n < semanaActual
+                        ? 'bg-ink'
+                        : n === semanaActual
+                          ? 'bg-accent ring-1 ring-ink'
+                          : 'bg-secondary dark:bg-border';
+                    return <div key={`semana-${n}`} className={`h-2 flex-1 ${estado}`} />;
+                  })}
                 </div>
-                {semana > MESO.total ? (
-                  <p className="label-caps text-muted-foreground">mesociclo terminado (semana {semana})</p>
-                ) : semana === MESO.total ? (
+                {semanaActual == null ? (
+                  <p className="text-sm text-muted-foreground">
+                    mesociclo terminado · semana <span className="metric text-foreground">{semana}</span>
+                  </p>
+                ) : semanaActual === MESO.total ? (
                   <Badge className="label-status border border-ink bg-accent text-on-accent">
                     descarga · última semana
                   </Badge>
                 ) : (
-                  <p className="label-caps">
-                    carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span> días ({iniDescarga ? iso(iniDescarga) : ''})
+                  <p className="text-sm text-muted-foreground">
+                    carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span>{' '}
+                    {pluralForm(faltaDescarga, 'día', 'días')}
+                    {iniDescarga ? ` (${formatDayMonth(iso(iniDescarga))})` : ''}
                   </p>
                 )}
               </div>
@@ -255,8 +280,8 @@ export default function Home() {
         <Card>
           <div className="border-b border-border px-4 py-2 flex items-center justify-between">
             <span className="label-caps text-foreground">Esta semana</span>
-            <span className="label-caps">
-              <span className="metric text-foreground">{entrenados}</span> / 7 días
+            <span className="text-sm text-muted-foreground">
+              <span className="metric text-foreground">{entrenados}</span> de 7 días
             </span>
           </div>
           <div className="p-4">
@@ -264,15 +289,10 @@ export default function Home() {
               {semana7.map((d) => (
                 <div
                   key={d.iso}
-                  className={
-                    'border p-2 text-center ' +
-                    (d.iso === hoyIso
-                      ? 'border-ink bg-accent/10 dark:border-accent dark:bg-accent/20'
-                      : 'border-border')
-                  }
+                  className={'border p-2 text-center ' + (d.iso === hoyIso ? 'border-ink' : 'border-border')}
                 >
                   <div className="label-caps">{d.dia}</div>
-                  <div className={'metric text-base ' + (d.iso === hoyIso ? 'text-ink dark:text-accent' : '')}>{d.num}</div>
+                  <div className="metric text-base">{d.num}</div>
                   {d.marcas ? (
                     <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
                       M
@@ -284,7 +304,10 @@ export default function Home() {
                   ) : (
                     <span className="mx-auto mt-1 inline-block h-2 w-2 bg-secondary dark:bg-border" aria-hidden="true" />
                   )}
-                  <span className="sr-only">{d.marcas ? 'toma de marcas' : d.entreno ? 'entrenado' : 'sin entrenar'}</span>
+                  <span className="sr-only">
+                    {d.iso === hoyIso ? 'hoy, ' : ''}
+                    {d.marcas ? 'toma de marcas' : d.entreno ? 'entrenado' : 'sin entrenar'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -295,7 +318,7 @@ export default function Home() {
       <Card>
         <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-2">
           <span className="label-caps text-foreground">Entrenamiento</span>
-          <label className="flex items-center gap-2 label-caps text-muted-foreground">
+          <label className="flex min-h-11 items-center gap-2 label-caps text-muted-foreground">
             <input type="checkbox" className="h-4 w-4 accent-foreground" aria-label="Incluir calentamiento" checked={warmup} onChange={toggleWarmup} />
             calentamiento
           </label>
@@ -305,30 +328,59 @@ export default function Home() {
             <div className="flex items-center justify-between gap-3 border border-border bg-secondary p-3">
               <div className="min-w-0">
                 <p className="font-medium truncate">{warmupRoutine.model.name}</p>
-                <p className="label-caps text-muted-foreground">{warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento</p>
+                <p className="label-caps text-muted-foreground">
+                  {warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento
+                </p>
               </div>
-              <Button variant="accent" size="sm" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>Entrenar</Button>
+              <Button variant="outline" size="lg" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>
+                Iniciar rutina
+              </Button>
             </div>
           )}
-          {startedPrograms.length === 0 ? (
-            <p className="label-caps text-muted-foreground">Todavía no registraste entrenamientos. Elegí un plan para empezar.</p>
-          ) : (
+          {startedPrograms.length > 0 ? (
             <ul className="space-y-2">
-              {startedPrograms.map((p) => (
+              {startedPrograms.map((p, index) => (
                 <li key={p.prog.id}>
                   <div className="flex items-center justify-between gap-3 border border-border bg-card p-3">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{p.prog.name}</p>
-                      <p className="label-caps text-muted-foreground">{p.completedModels}/{p.totalModels} modelos · {p.sessions} sesiones</p>
+                      <p className="label-caps text-muted-foreground">
+                        <span className="metric text-foreground">{p.completedModels}</span>/{p.totalModels}{' '}
+                        {pluralForm(p.totalModels, 'rutina', 'rutinas')} ·{' '}
+                        <span className="metric text-foreground">{p.sessions}</span>{' '}
+                        {pluralForm(p.sessions, 'sesión', 'sesiones')}
+                      </p>
+                      {p.best && (
+                        <p className="mt-1 flex items-baseline gap-1.5">
+                          <span className="label-caps text-muted-foreground">mejor marca</span>
+                          <span className="metric text-foreground">{p.best.value}</span>
+                          <span className="label-caps text-muted-foreground">{p.best.unit}</span>
+                        </p>
+                      )}
                     </div>
-                    <Button variant="accent" size="sm" onClick={() => navigate(`/program/${p.prog.id}`)}>Entrenar</Button>
+                    <Button
+                      variant={index === 0 ? 'accent' : 'outline'}
+                      size="lg"
+                      onClick={() => navigate(`/program/${p.prog.id}`)}
+                    >
+                      Abrir programa
+                    </Button>
                   </div>
                 </li>
               ))}
             </ul>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Todavía no registraste entrenamientos. Elegí un programa para empezar.
+              </p>
+              <Button variant="accent" size="lg" onClick={() => navigate('/planes')}>
+                Ver programas
+              </Button>
+            </div>
           )}
-          {!warmup && !warmupRoutine && startedPrograms.length === 0 && (
-            <p className="label-caps text-muted-foreground">Etiquetá una rutina con "calentamiento" para verla acá.</p>
+          {warmup && !warmupRoutine && startedPrograms.length > 0 && (
+            <p className="text-sm text-muted-foreground">Etiquetá una rutina con "calentamiento" para verla acá.</p>
           )}
         </div>
       </Card>
@@ -336,13 +388,13 @@ export default function Home() {
       <Card>
         <div className="border-b border-border px-4 py-2 flex items-center justify-between">
           <span className="label-caps text-foreground">Últimos entrenamientos</span>
-          <span className="label-caps">
+          <span className="text-sm text-muted-foreground">
             <span className="metric text-foreground">{ultimas.length}</span> de 5
           </span>
         </div>
         <div className="p-4">
           {ultimas.length === 0 ? (
-            <p className="label-caps">todavía no registraste entrenamientos</p>
+            <p className="text-sm text-muted-foreground">Todavía no registraste entrenamientos.</p>
           ) : (
             <ul className="divide-y divide-border">
               {ultimas.map((h) => {
@@ -352,21 +404,26 @@ export default function Home() {
                     <button
                       type="button"
                       disabled={!it}
-                      onClick={() => it && navigate(`/routine/${it.modelId}`)}
+                      onClick={() => it && navigate(`/routine/${it.model.id}`)}
                       className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left hover:bg-secondary disabled:opacity-60"
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-foreground">
-                          {it ? `${it.prog.name}` : h.sesion_id}
+                          {it ? it.model.name : h.sesion_id}
                         </span>
-                        <span className="label-caps">
-                          <span className="metric text-foreground">{h.series}</span>{' '}
-                          {h.series === 1 ? 'serie' : 'series'}
+                        <span className="label-caps text-muted-foreground">
+                          {it && `${it.prog.name} · `}
+                          <span className="metric text-foreground">{h.sesiones}</span>{' '}
+                          {pluralForm(h.sesiones, 'sesión', 'sesiones')}
                         </span>
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="label-status tabular text-muted-foreground">{h.fecha}</span>
-                        {it && <span className="label-caps text-foreground">→</span>}
+                        <span className="label-status tabular text-muted-foreground">{formatDayMonth(h.fecha)}</span>
+                        {it && (
+                          <span className="label-caps text-foreground" aria-hidden="true">
+                            →
+                          </span>
+                        )}
                       </span>
                     </button>
                   </li>

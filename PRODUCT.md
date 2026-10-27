@@ -9,8 +9,8 @@ web
 ## Stack
 
 React + Vite + TypeScript · Tailwind CSS 4 · Dexie (IndexedDB) · vite-plugin-pwa ·
-datos estáticos en `app/src/data/plans.json`. UI en español. Diseño: Kinetic Swiss Grid
-(documentado en `docs/DESIGN.md`).
+datos estáticos en `app/src/data/plans.json`. UI en español. Diseño: The Timing Board
+(documentado en `DESIGN.md`).
 
 ## Users
 
@@ -90,8 +90,8 @@ No decidido / no confirmado / futuro:
 ## Brand Commitments
 
 - Nombre en la interfaz: **Logtenia**.
-- Sistema visual comprometido por el usuario: **Kinetic Swiss Grid** (Swiss style) sobre
-  shadcn/ui — se detalla en `docs/DESIGN.md` (The Timing Board), no se expande acá.
+- Sistema visual comprometido por el usuario: **The Timing Board** (Swiss style) sobre
+  shadcn/ui — se detalla en `DESIGN.md`, no se expande acá.
 
 ## Product Principles
 
@@ -111,6 +111,6 @@ No decidido / no confirmado / futuro:
 - `catalogo_ejercicios.csv` / `.json` (226 ejercicios) como fuente de clasificación y
   `anclas.csv`.
 - 7 PDFs originales en la raíz del proyecto.
-- Sistema de diseño implementado en `docs/DESIGN.md` + `app/src/index.css` (tokens).
+- Sistema de diseño implementado en `DESIGN.md` + `app/src/index.css` (tokens).
 - **No** hay usuarios reales, testimonios ni datos de producción: es uso personal de un solo
   usuario. No fabricar métricas sociales ni prueba social.

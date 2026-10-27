@@ -1,7 +1,7 @@
 /**
  * Button — Logtenia design system.
  *
- * Variants (see docs/DESIGN.md "Components > Buttons"):
+ * Variants (see DESIGN.md "Components > Buttons"):
  *   - `accent` (default): Voltage Lime fill, Ink text, Ink border. The primary
  *     action on a screen (Entrenar, Siguiente, Guardar, ...). Hover drops the
  *     fill and keeps a Lime border (Lime text in dark, Ink text in light).
@@ -29,8 +29,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-accent text-on-accent border-ink hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent",
-        accent: "bg-accent text-on-accent border-ink hover:bg-transparent hover:text-ink hover:border-accent dark:hover:text-accent",
+        default: "bg-accent text-on-accent border-ink hover:bg-ink hover:text-on-ink hover:border-ink",
+        accent: "bg-accent text-on-accent border-ink hover:bg-ink hover:text-on-ink hover:border-ink",
         ink: "bg-ink text-on-ink border-ink hover:bg-accent hover:text-on-accent",
         outline:
           "bg-transparent text-ink border-ink hover:bg-ink hover:text-on-ink",

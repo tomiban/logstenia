@@ -33,7 +33,8 @@ export interface IRepository<T> {
    */
   put(row: Omit<T, 'updatedAt' | 'deletedAt'> & Partial<Pick<SyncFields, 'updatedAt' | 'deletedAt'>>): Promise<void>;
   add(row: Omit<T, 'id' | 'updatedAt' | 'deletedAt'> & { id?: string }): Promise<void>;
-  bulkPut(rows: T[]): Promise<void>;
+  /** Same write-side shape as `put`, in one transaction, for seeds and imports. */
+  bulkPut(rows: InsertRow<T>[]): Promise<void>;
   /**
    * Tombstone delete (design §2, §6). Since schema v1004 this writes `deletedAt` +
    * a bumped `updatedAt` instead of removing the row; tombstoned rows stay out of
@@ -41,6 +42,13 @@ export interface IRepository<T> {
    */
   softDelete(key: string | number): Promise<void>;
 }
+
+/**
+ * A row handed to a write method: the sync identity (`id`, `updatedAt`, `deletedAt`) is
+ * optional because the repository chokepoint stamps whatever the caller left out.
+ */
+export type InsertRow<T> = Omit<T, 'id' | 'updatedAt' | 'deletedAt'> &
+  Partial<{ id: string; updatedAt: string; deletedAt: string | null }>;
 
 export type ISessionRepository = IRepository<SessionRecord>;
 

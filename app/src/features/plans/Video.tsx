@@ -14,7 +14,7 @@ export default function Video({ query, video }: { query: string; video?: Exercis
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-8 w-12 items-center justify-center border border-border bg-secondary text-muted-foreground hover:text-ink hover:border-ink transition-colors"
+        className="inline-flex h-11 w-14 items-center justify-center border border-border bg-secondary text-muted-foreground hover:text-ink hover:border-ink transition-colors"
         aria-label={`${video ? 'Ver' : 'Buscar'} video de ${query} en YouTube`}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

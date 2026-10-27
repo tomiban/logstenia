@@ -15,6 +15,14 @@ import {
   exerciseSeries,
   unitForExercise,
   delta,
+  metricsView,
+  earliestDay,
+  sessionsWithin,
+  marksWithin,
+  comparisonsWithin,
+  volumeWeeks,
+  sessionMeasure,
+  trendOf,
 } from './metrics';
 import type { SessionRecord } from '@/db';
 
@@ -27,6 +35,18 @@ const ses = (date: string, over: Partial<SessionRecord> = {}): SessionRecord => 
   durationSec: 3600,
   completed: true,
   ...over,
+});
+
+describe('metricsView', () => {
+  it('shows the error state after a failed read even when no day was resolved', () => {
+    expect(
+      metricsView({ loading: false, error: 'No se pudieron leer los datos de este dispositivo.', today: '' }),
+    ).toBe('error');
+  });
+
+  it('stays loading while the read is in flight', () => {
+    expect(metricsView({ loading: true, error: null, today: '' })).toBe('loading');
+  });
 });
 
 describe('addDays', () => {
@@ -61,6 +81,116 @@ describe('windowsFor', () => {
     const w = windowsFor('all', '2026-10-20', '2026-01-05');
     expect(w.current).toEqual({ start: '2026-01-05', end: '2026-10-20' });
     expect(w.previous).toBeNull();
+  });
+});
+
+describe('sessionsWithin', () => {
+  const sessions = [ses('2026-10-20'), ses('2026-10-14'), ses('2026-10-01'), ses('2026-08-01')];
+
+  it('keeps only the sessions inside the selected range', () => {
+    const win = windowsFor('7d', '2026-10-20');
+    expect(sessionsWithin(sessions, win).map((s) => s.date)).toEqual(['2026-10-20', '2026-10-14']);
+  });
+
+  it('keeps everything recorded for the all range', () => {
+    const win = windowsFor('all', '2026-10-20', earliestDay(sessions, []));
+    expect(sessionsWithin(sessions, win)).toHaveLength(sessions.length);
+  });
+});
+
+describe('marksWithin', () => {
+  const entries = collectMarks(
+    [
+      ses('2026-10-20', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+      ses('2026-08-01', { sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '20', unit: 'sec', bloqueOrden: 0, orden: 0 }] }),
+    ],
+    [],
+  );
+
+  it('keeps only the marks inside the selected range', () => {
+    const win = windowsFor('30d', '2026-10-20');
+    expect(marksWithin(entries, win).map((e) => e.date)).toEqual(['2026-10-20']);
+  });
+
+  it('keeps the best mark of the range, not the best of all history', () => {
+    const win = windowsFor('30d', '2026-10-20');
+    expect(bestMarks(marksWithin(entries, win), '2026-10-20')[0].value).toBe(12);
+  });
+});
+
+describe('comparisonsWithin', () => {
+  it('keeps only the compared sessions inside the selected range', () => {
+    const all = compareSessions([ses('2026-10-20'), ses('2026-10-18'), ses('2026-08-01')]);
+    const win = windowsFor('7d', '2026-10-20');
+    expect(comparisonsWithin(all, win).map((c) => c.summary.date)).toEqual(['2026-10-18', '2026-10-20']);
+  });
+});
+
+describe('earliestDay', () => {
+  it('takes the first recorded day across sessions and marks', () => {
+    expect(
+      earliestDay(
+        [ses('2026-10-20'), ses('2026-03-04')],
+        [{ id: 'm', updatedAt: '2026-10-20T12:00:00.000Z', exercise: 'Plank', unit: 'sec', value: 30, date: '2026-01-09', mesoInicio: '2026-01-01' }],
+      ),
+    ).toBe('2026-01-09');
+  });
+
+  it('has no first day without records', () => {
+    expect(earliestDay([], [])).toBeUndefined();
+  });
+});
+
+describe('volumeWeeks', () => {
+  it('counts the weeks the selected range covers', () => {
+    expect(volumeWeeks(windowsFor('7d', '2026-10-20'))).toBe(2);
+    expect(volumeWeeks(windowsFor('30d', '2026-10-20'))).toBe(5);
+  });
+
+  it('caps a long history so the weekly chart stays readable', () => {
+    expect(volumeWeeks(windowsFor('90d', '2026-10-20'))).toBe(13);
+    expect(volumeWeeks(windowsFor('all', '2026-10-20', '2026-01-05'))).toBe(13);
+  });
+});
+
+describe('sessionMeasure', () => {
+  it('plots duration when a session recorded it', () => {
+    expect(sessionMeasure([ses('2026-10-20', { durationSec: 1800 })])).toEqual({
+      key: 'duracion',
+      title: 'Duración por sesión',
+      unit: 'min',
+    });
+  });
+
+  it('plots series when no session recorded a duration', () => {
+    expect(
+      sessionMeasure([
+        ses('2026-10-20', {
+          durationSec: 0,
+          sets: [{ exercise: 'Tuck planche', setIndex: 1, value: '12', unit: 'sec', bloqueOrden: 0, orden: 0 }],
+        }),
+      ]),
+    ).toEqual({ key: 'series', title: 'Series por sesión', unit: 'series' });
+  });
+
+  it('plots series when there is nothing to measure', () => {
+    expect(sessionMeasure([]).key).toBe('series');
+  });
+});
+
+describe('trendOf', () => {
+  it('reads the direction between the two halves of the series', () => {
+    expect(trendOf([10, 20, 30, 40])).toBe('up');
+    expect(trendOf([40, 30, 20, 10])).toBe('down');
+  });
+
+  it('calls a series that holds its level flat', () => {
+    expect(trendOf([20, 20, 20])).toBe('flat');
+  });
+
+  it('has no direction with fewer than two points', () => {
+    expect(trendOf([])).toBe('none');
+    expect(trendOf([42])).toBe('none');
   });
 });
 
@@ -282,6 +412,18 @@ describe('compareSessions', () => {
     expect(all[1].previous?.date).toBe('2026-10-01');
     expect(all[1].durationDelta).toBe(10);
     expect(all[1].gained).toBe(true);
+  });
+
+  it('does not borrow another plan session when its own plan has no previous one', () => {
+    const all = compareSessions([
+      ses('2026-10-01', { planId: 'a', durationSec: 1800 }),
+      ses('2026-10-05', { planId: 'b', durationSec: 3600 }),
+      ses('2026-10-06', { planId: 'b', durationSec: 3000 }),
+    ]);
+    expect(all[1].previous).toBeNull();
+    expect(all[1].durationDelta).toBeNull();
+    expect(all[1].gained).toBeNull();
+    expect(all[2].previous?.date).toBe('2026-10-05');
   });
 
   it('marks a session as lost when it lasted less than the previous one', () => {

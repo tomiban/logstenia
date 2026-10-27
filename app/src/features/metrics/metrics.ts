@@ -25,6 +25,21 @@ export const RANGE_OPTIONS: RangeOption[] = [
 /** Days that count as a fresh record worth highlighting. */
 export const FRESH_DAYS = 7;
 
+export type MetricsView = 'loading' | 'error' | 'ready';
+
+export interface MetricsViewState {
+  loading: boolean;
+  error: string | null;
+  today: string;
+}
+
+/** Which branch the metrics screen renders. */
+export function metricsView({ loading, error, today }: MetricsViewState): MetricsView {
+  if (error) return 'error';
+  if (loading || !today) return 'loading';
+  return 'ready';
+}
+
 export interface DayWindow {
   start: string; // inclusive, YYYY-MM-DD
   end: string; // inclusive, YYYY-MM-DD
@@ -55,6 +70,31 @@ export function windowsFor(range: RangeKey, today: string, earliest?: string): R
     previous: { start: addDays(today, -(2 * days - 1)), end: addDays(today, -days) },
     days,
   };
+}
+
+/** First recorded day across sessions and marks; it opens the `all` range. */
+export function earliestDay(sessions: SessionRecord[], marks: MarkRecord[]): string | undefined {
+  let first: string | undefined;
+  for (const day of [...sessions.map((s) => s.date), ...marks.map((m) => m.date)]) {
+    const iso = day.slice(0, 10);
+    if (first === undefined || iso < first) first = iso;
+  }
+  return first;
+}
+
+/** Sessions inside the selected range; `all` keeps every recorded session. */
+export function sessionsWithin(sessions: SessionRecord[], win: RangeWindows): SessionRecord[] {
+  return sessions.filter((s) => inWindow(s.date.slice(0, 10), win.current));
+}
+
+/** Marks inside the selected range, so the mark panels obey the filter too. */
+export function marksWithin(entries: MarkEntry[], win: RangeWindows): MarkEntry[] {
+  return entries.filter((e) => inWindow(e.date.slice(0, 10), win.current));
+}
+
+/** Compared sessions inside the selected range. */
+export function comparisonsWithin(list: SessionComparison[], win: RangeWindows): SessionComparison[] {
+  return list.filter((c) => inWindow(c.summary.date.slice(0, 10), win.current));
 }
 
 export interface Telemetry {
@@ -131,6 +171,17 @@ function mondayOf(isoDay: string): string {
   const [y, m, d] = isoDay.split('-').map(Number);
   const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = sunday
   return addDays(isoDay, -((weekday + 6) % 7));
+}
+
+/** Widest weekly chart that still prints a legible date under every bar. */
+export const MAX_VOLUME_WEEKS = 13;
+
+/** Weeks the selected range covers, so the weekly chart never plots outside it. */
+export function volumeWeeks(win: RangeWindows): number {
+  const span = mondayOf(win.current.end);
+  const start = mondayOf(win.current.start);
+  const weeks = Math.round((Date.parse(span) - Date.parse(start)) / (7 * 86400000)) + 1;
+  return Math.min(MAX_VOLUME_WEEKS, Math.max(1, weeks));
 }
 
 function dayLabel(isoDay: string): string {
@@ -359,17 +410,11 @@ export function anchorProgress(anchors: AnchorLike[], entries: MarkEntry[]): Anc
 
   for (const entry of entries) {
     const name = normalizeText(entry.exercise);
-    const entryId = (entry as any).exerciseId;
     let target = -1;
     let targetKey = '';
     keys.forEach((key, index) => {
       if (anchors[index].unidad !== entry.unit) return;
-      const anchor = anchors[index];
-      if (anchor.ejercicioId && entryId) {
-        if (anchor.ejercicioId !== entryId) return;
-      } else {
-        if (!name.startsWith(key as string)) return;
-      }
+      if (!name.startsWith(key as string)) return;
       if (String(key).length > targetKey.length) {
         target = index;
         targetKey = String(key);
@@ -484,6 +529,7 @@ export function delta(current: number, previous: number | null): string {
 }
 
 export interface SessionSummary {
+  id: string;
   date: string;
   planId: string;
   planName: string;
@@ -505,6 +551,7 @@ export function summarizeSession(session: SessionRecord): SessionSummary {
     else reps += value;
   }
   return {
+    id: session.id,
     date: session.date,
     planId: session.planId,
     planName: getProgram(session.planId)?.name ?? session.planId,
@@ -513,6 +560,19 @@ export function summarizeSession(session: SessionRecord): SessionSummary {
     reps,
     seconds,
   };
+}
+
+export interface SessionMeasure {
+  key: 'duracion' | 'series';
+  title: string;
+  unit: string;
+}
+
+/** What the session panels plot: time when a session recorded it, work otherwise. */
+export function sessionMeasure(sessions: SessionRecord[]): SessionMeasure {
+  return sessions.some((s) => (s.durationSec || 0) > 0)
+    ? { key: 'duracion', title: 'Duración por sesión', unit: 'min' }
+    : { key: 'series', title: 'Series por sesión', unit: 'series' };
 }
 
 export interface SessionComparison {
@@ -529,12 +589,12 @@ function previousIndex(sorted: SessionRecord[], index: number): number | null {
   for (let j = index - 1; j >= 0; j--) {
     if (sorted[j].planId === planId) return j;
   }
-  return index > 0 ? index - 1 : null;
+  return null;
 }
 
 /**
- * Compares every session against the previous one (same plan when possible)
- * and flags the sessions that were gained: more time, or the same time with more work.
+ * Compares every session against the previous one of the same plan and flags the
+ * sessions that were gained: more time, or the same time with more work.
  */
 export function compareSessions(sessions: SessionRecord[]): SessionComparison[] {
   const sorted = [...sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -568,6 +628,18 @@ export function compareSessions(sessions: SessionRecord[]): SessionComparison[] 
   }
 
   return out;
+}
+
+export type Trend = 'up' | 'down' | 'flat' | 'none';
+
+/** Direction between the two halves of a series, so a single spike cannot flip it. */
+export function trendOf(values: number[]): Trend {
+  if (values.length < 2) return 'none';
+  const half = Math.floor(values.length / 2);
+  const average = (list: number[]) => list.reduce((a, v) => a + v, 0) / list.length;
+  const diff = average(values.slice(values.length - half)) - average(values.slice(0, half));
+  if (Math.abs(diff) < 0.5) return 'flat';
+  return diff > 0 ? 'up' : 'down';
 }
 
 export interface ExercisePoint {

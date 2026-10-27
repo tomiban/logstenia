@@ -2,7 +2,8 @@ import type { PlanData, Category, Program, Model, Block, Exercise } from '@/type
 import plansJson from '@/data/plans.json';
 import { plansRepository } from '@/data/plansRepository';
 import { onPulledRows } from '@/repositories/sync/engine';
-import { addTag } from '@/lib/tags';
+import { seedTags } from '@/lib/tags';
+import { isTimedExercise } from '@/lib/exercise';
 import { nextBlockId, migrateBlocksToIds, assignBlockIds } from './blocks';
 
 // In-memory cache (storage-agnostic: backed by plansRepository).
@@ -90,17 +91,33 @@ export async function initPlans(): Promise<void> {
   // for the path where init fails and the app renders anyway).
   await migrateBlocksToIds();
   notify();
-  // Seed tags declared on models (idempotent).
-  for (const c of data.categories) {
-    for (const p of c.programs) {
-      for (const m of p.models) {
-        for (const t of m.tags ?? []) {
-          // A failed tag is best-effort: it must never lose the routine.
-          await addTag('routine', m.id, t).catch(() => undefined);
+  await seedPlanTags();
+}
+
+/**
+ * Fills the tag mirror from the catalogue (idempotent): the tags a model declares and the
+ * isometric tag the runner derives per exercise. Best-effort — a failed tag write must never
+ * lose the routine — and it runs here, before the first render, so the mirror is complete for
+ * every model instead of only the one a screen happens to open.
+ */
+async function seedPlanTags(): Promise<void> {
+  const routineTags: [string, string[]][] = [];
+  const exerciseTags: [string, string[]][] = [];
+  for (const category of data.categories) {
+    for (const program of category.programs) {
+      for (const model of program.models) {
+        routineTags.push([model.id, model.tags ?? []]);
+        for (const block of model.blocks) {
+          for (const exercise of block.exercises) {
+            const targetId = exercise.id || exercise.name;
+            exerciseTags.push([targetId, isTimedExercise(exercise) ? ['isometricos'] : []]);
+          }
         }
       }
     }
   }
+  await seedTags('routine', routineTags).catch(() => undefined);
+  await seedTags('exercise', exerciseTags).catch(() => undefined);
 }
 
 export async function persistPlans(): Promise<void> {

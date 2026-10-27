@@ -1,15 +1,16 @@
 import { useParams, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useId, useState } from 'react';
 import type { Block, BlockType, Exercise, Intensity } from '@/types';
+import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
+import { cn } from '@/lib/utils';
 import { BackLink } from '@/components/BackLink';
 import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, reorderExercises, moveExercise, allModels } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
-import { nextBlockId } from './blocks';
+import { exerciseKey, nextBlockId } from './blocks';
 import { MoreHorizontal, GripVertical, Pencil, X } from 'lucide-react';
-import { addTag } from '@/lib/tags';
 import Video from './Video';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
@@ -28,8 +29,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-function fmtRest(sec: number) { return sec >= 60 ? `${Math.round(sec / 60)}min` : `${sec}s`; }
-
 function youtubeId(url: string): string | null {
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
@@ -45,6 +44,96 @@ function toBlockType(raw: string | null | undefined): BlockType {
 /** The select hands back a string; anything outside the three levels falls back to the first. */
 function toIntensity(raw: string | null | undefined): Intensity {
   return raw === '2' ? 2 : raw === '3' ? 3 : 1;
+}
+
+/** A block header: where the block sits in the routine, its shape, then its numbers as telemetry. */
+function BlockHeader({ block, position }: { block: Block; position: number }) {
+  const betweenExercises = block.restBetweenExercisesSec;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="label-caps text-foreground">Bloque {position}</span>
+        <span className="label-status border border-border px-1.5 py-0.5 text-muted-foreground">
+          {BLOCK_TYPE_LABEL[block.type]}
+        </span>
+      </div>
+      <dl className="flex flex-wrap items-start gap-x-4 gap-y-1">
+        <div>
+          <dt className="label-caps text-muted-foreground">Series</dt>
+          <dd className="metric text-sm text-foreground">{block.sets}</dd>
+        </div>
+        <div>
+          <dt className="label-caps text-muted-foreground">Descanso</dt>
+          <dd className="metric text-sm text-foreground">{restLabel(block.restBetweenSetsSec)}</dd>
+        </div>
+        {betweenExercises ? (
+          <div>
+            <dt className="label-caps text-muted-foreground">Entre ejercicios</dt>
+            <dd className="metric text-sm text-foreground">{restLabel(betweenExercises)}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </div>
+  );
+}
+
+interface ExerciseBankProps {
+  exercises: Exercise[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  onCreate: () => void;
+  onGrab: (exercise: Exercise) => void;
+  onRelease: () => void;
+  actionClassName?: string;
+  listClassName?: string;
+}
+
+/**
+ * The exercise bank: search, create, and the draggable pool of every exercise the plans already
+ * know. Both the desktop sidebar and the mobile sheet render this, so only the spacing their
+ * containers disagree on is configurable.
+ */
+function ExerciseBank({ exercises, search, onSearchChange, onCreate, onGrab, onRelease, actionClassName, listClassName }: ExerciseBankProps) {
+  const query = search.toLowerCase();
+  const matches = exercises.filter((e) => e.name.toLowerCase().includes(query));
+  return (
+    <>
+      <Input placeholder="Buscar ejercicio..." value={search} onChange={(e) => onSearchChange(e.target.value)} />
+      <Button variant="accent" size="sm" className={cn('w-full', actionClassName)} onClick={onCreate}>+ Crear ejercicio</Button>
+      <div className={cn('space-y-2 overflow-auto overflow-x-hidden', listClassName)}>
+        {matches.map((ex) => (
+          <div
+            key={ex.id || ex.name}
+            draggable
+            onDragStart={() => onGrab(ex)}
+            onDragEnd={onRelease}
+            className="border border-border bg-secondary px-3 py-2 cursor-grab text-sm flex items-center gap-2 select-none min-w-0"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <span className="flex-1 min-w-0 line-clamp-2 break-words">{ex.name}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+interface ExerciseActionsMenuProps {
+  onEdit: () => void;
+  onEditVideo: () => void;
+  onDelete: () => void;
+}
+
+/** The actions every exercise row offers, shared by the read-only list and the editor list. */
+function ExerciseActionsMenu({ onEdit, onEditVideo, onDelete }: ExerciseActionsMenuProps) {
+  return (
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={onEdit}>Editar</DropdownMenuItem>
+      <DropdownMenuItem onClick={onEditVideo}>Editar video</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className="text-destructive" onClick={onDelete}>Borrar</DropdownMenuItem>
+    </DropdownMenuContent>
+  );
 }
 
 /** Fields the model dialog round-trips; the number input hands back a string. */
@@ -76,6 +165,7 @@ const EMPTY_EXERCISE_FORM: ExerciseForm = { name: '', reps: '', timeSec: '', cad
 
 export default function Routine() {
   const { id } = useParams();
+  const tagsLabelId = useId();
   usePlansVersion();
   const res = getModel(id || '');
 
@@ -104,26 +194,18 @@ export default function Routine() {
   const [editing, setEditing] = useState(false);
   const [urlEdit, setUrlEdit] = useState<{ bi: number; ei: number; url: string } | null>(null);
 
-  useEffect(() => {
-    if (!res) return;
-    const { model } = res;
-    (async () => {
-      try {
-        for (const b of model.blocks) {
-          for (const e of b.exercises) {
-            if (e.name.toLowerCase().includes('hold') || e.timeSec) {
-              await addTag('exercise', e.id || e.name, 'isometricos');
-            }
-          }
-        }
-      } catch {
-        setSaveError('No se pudieron etiquetar los ejercicios isométricos.');
-      }
-    })();
-  }, [id, res?.model?.blocks?.length]);
-
-  if (!res) return <p className="label-caps">Rutina no encontrada.</p>;
+  if (!res) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">No encontramos esta rutina.</p>
+        <Link to="/planes" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+          Volver a planes
+        </Link>
+      </div>
+    );
+  }
   const { model, program } = res;
+  const showStartBar = !editing && model.blocks.length > 0;
 
   const existingExerciseOptions = Array.from(
     new Map(
@@ -132,6 +214,13 @@ export default function Routine() {
         .map((e) => [e.id || e.name, e] as const),
     ).values(),
   );
+
+  const openExerciseCreate = () => {
+    if (model.blocks.length === 0) setBlockCreateOpen(true);
+    else setExCreate({ blockIndex: model.blocks.length - 1 });
+  };
+  const grabFromBank = (exercise: Exercise) => setDragPayload({ kind: 'bank', ex: exercise });
+  const releaseBankDrag = () => setDragPayload(null);
 
   const openModelEdit = () => {
     setModelForm({ name: model.name, intensity: model.intensity, totalTimeMin: String(model.totalTimeMin) });
@@ -298,51 +387,56 @@ export default function Routine() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={showStartBar ? 'space-y-6 pb-28 md:pb-20' : 'space-y-6'}>
       <div>
         <BackLink to={`/program/${program.id}`}>{program.name}</BackLink>
       </div>
 
-      <header className="border-b border-border pb-4">
-        <ContextMenu>
-          <ContextMenuTrigger className="min-w-0">
-            <h1 className="break-words font-heading text-lg leading-tight font-bold tracking-tight text-foreground sm:text-3xl">{model.name}</h1>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onClick={openModelEdit}>Editar datos</ContextMenuItem>
-            <ContextMenuSub>
-              <ContextMenuSubTrigger>Etiquetas</ContextMenuSubTrigger>
-              <ContextMenuSubContent >
-                <TagsMenu targetType="routine" targetId={model.id} />
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => setEditing((v) => !v)}>{editing ? 'Cerrar edición' : 'Editar rutina'}</ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Intensidad {model.intensity} · {model.totalTimeMin} min
-          {program.rules.length > 0 && ` · ${program.rules.join(' · ')}`}
-        </p>
-        <div className="mt-2 min-w-0">
-          <TagsInput targetType="routine" targetId={model.id} className="w-full" />
-        </div>
-        <div className="mt-2">
+      <header className="space-y-4 border-b border-border pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <ContextMenu>
+              <ContextMenuTrigger className="min-w-0">
+                <h1 className="break-words font-heading text-2xl leading-tight font-bold tracking-tight text-foreground">{model.name}</h1>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={openModelEdit}>Editar datos</ContextMenuItem>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger>Etiquetas</ContextMenuSubTrigger>
+                  <ContextMenuSubContent >
+                    <TagsMenu targetType="routine" targetId={model.id} />
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => setEditing((v) => !v)}>{editing ? 'Cerrar edición' : 'Editar rutina'}</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+            <p className="text-sm text-muted-foreground">
+              Intensidad {model.intensity} · {model.totalTimeMin} min
+              {program.rules.length > 0 && ` · ${program.rules.join(' · ')}`}
+            </p>
+          </div>
           <Button
-            size="sm"
+            size="lg"
             variant={editing ? 'ink' : 'outline'}
             aria-pressed={editing}
-            className="gap-1.5"
+            className="shrink-0 gap-1.5"
             onClick={() => setEditing((v) => !v)}
           >
             {editing ? <X aria-hidden="true" /> : <Pencil aria-hidden="true" />}
             {editing ? 'Cerrar edición' : 'Editar rutina'}
           </Button>
         </div>
+        <div className="space-y-1.5">
+          <p id={tagsLabelId} className="label-caps text-muted-foreground">Etiquetas</p>
+          <div role="group" aria-labelledby={tagsLabelId} className="min-w-0">
+            <TagsInput targetType="routine" targetId={model.id} className="w-full sm:max-w-md" />
+          </div>
+        </div>
       </header>
 
       {saveError && (
-        <p role="alert" className="label-caps border border-ink bg-secondary px-3 py-2 text-foreground">
+        <p role="alert" className="border border-ink bg-secondary px-3 py-2 text-sm text-foreground">
           {saveError}
         </p>
       )}
@@ -383,12 +477,12 @@ export default function Routine() {
               <Select value={newBlock.type} onValueChange={(v) => setNewBlock({ ...newBlock, type: toBlockType(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{BLOCK_TYPE_LABEL[t]}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label>Sets</Label><Input type="number" value={newBlock.sets} onChange={(e) => setNewBlock({ ...newBlock, sets: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label>Descanso entre sets (s)</Label><Input type="number" value={newBlock.restBetweenSetsSec} onChange={(e) => setNewBlock({ ...newBlock, restBetweenSetsSec: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Series</Label><Input type="number" value={newBlock.sets} onChange={(e) => setNewBlock({ ...newBlock, sets: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Descanso entre series (s)</Label><Input type="number" value={newBlock.restBetweenSetsSec} onChange={(e) => setNewBlock({ ...newBlock, restBetweenSetsSec: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Descanso entre ejercicios (s)</Label><Input type="number" value={newBlock.restBetweenExercisesSec} onChange={(e) => setNewBlock({ ...newBlock, restBetweenExercisesSec: e.target.value })} /></div>
           </div>
           <DialogFooter>
@@ -408,12 +502,12 @@ export default function Routine() {
                 <Select value={blockEdit.form.type} onValueChange={(v) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, type: toBlockType(v) } })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {BLOCK_TYPES.map((t) => <SelectItem key={t} value={t}>{BLOCK_TYPE_LABEL[t]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label>Sets</Label><Input type="number" value={blockEdit.form.sets} onChange={(e) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, sets: e.target.value } })} /></div>
-              <div className="space-y-1.5"><Label>Descanso entre sets (s)</Label><Input type="number" value={blockEdit.form.restBetweenSetsSec} onChange={(e) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, restBetweenSetsSec: e.target.value } })} /></div>
+              <div className="space-y-1.5"><Label>Series</Label><Input type="number" value={blockEdit.form.sets} onChange={(e) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, sets: e.target.value } })} /></div>
+              <div className="space-y-1.5"><Label>Descanso entre series (s)</Label><Input type="number" value={blockEdit.form.restBetweenSetsSec} onChange={(e) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, restBetweenSetsSec: e.target.value } })} /></div>
               <div className="space-y-1.5"><Label>Descanso entre ejercicios (s)</Label><Input type="number" value={blockEdit.form.restBetweenExercisesSec} onChange={(e) => setBlockEdit({ ...blockEdit!, form: { ...blockEdit!.form, restBetweenExercisesSec: e.target.value } })} /></div>
             </div>
           )}
@@ -512,31 +606,8 @@ export default function Routine() {
           <section key={b.id} className="border border-border">
             <ContextMenu>
               <ContextMenuTrigger className="block">
-                <div className="border-b border-border bg-secondary px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="label-caps text-foreground">{b.type}</span>
-                    <span className="label-caps text-muted-foreground">
-                      {b.sets} vuelta(s) · descanso {fmtRest(b.restBetweenSetsSec)}
-                      {b.restBetweenExercisesSec ? ` · entre ejercicios ${fmtRest(b.restBetweenExercisesSec)}` : ''}
-                    </span>
-                  </div>
-                  {editing && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setExCreate({ blockIndex: i })}>+ Ejercicio</Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setExCreate({ blockIndex: i })}>Nuevo ejercicio</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => openBlockEdit(i)}>Editar bloque</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setBlockDelete(i)}>Borrar bloque</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  </div>
-                  )}
+                <div className="border-b border-border bg-secondary">
+                  <BlockHeader block={b} position={i + 1} />
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
@@ -576,7 +647,7 @@ export default function Routine() {
             >
               {b.exercises.map((e, j) => (
                 <li
-                  key={e.id ?? `${e.name}-${j}`}
+                  key={exerciseKey(b.exercises, j)}
                   draggable={editing}
                   onDragStart={() => { if (editing) setDrag({ bi: i, ei: j }); }}
                   onDragOver={(ev) => ev.preventDefault()}
@@ -603,12 +674,11 @@ export default function Routine() {
                             <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openExEdit(i, j)}>Editar</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}>Editar video</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => setExDelete({ bi: i, ei: j })}>Borrar</DropdownMenuItem>
-                            </DropdownMenuContent>
+                            <ExerciseActionsMenu
+                              onEdit={() => openExEdit(i, j)}
+                              onEditVideo={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}
+                              onDelete={() => setExDelete({ bi: i, ei: j })}
+                            />
                           </DropdownMenu>
                           )}
                         </div>
@@ -666,27 +736,15 @@ export default function Routine() {
         <div className="grid gap-4 lg:grid-cols-[260px_1fr] min-w-0">
           <aside className="hidden lg:block border border-border bg-card p-3 space-y-3 h-fit min-w-0">
             <h2 className="font-heading text-base font-bold">Ejercicios</h2>
-            <Input placeholder="Buscar ejercicio..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            <Button variant="accent" size="sm" className="w-full" onClick={() => {
-              if (model.blocks.length === 0) setBlockCreateOpen(true);
-              else setExCreate({ blockIndex: model.blocks.length - 1 });
-            }}>+ Crear ejercicio</Button>
-            <div className="space-y-2 max-h-[60vh] overflow-auto overflow-x-hidden">
-              {existingExerciseOptions
-                .filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
-                .map((ex) => (
-                  <div
-                    key={ex.id || ex.name}
-                    draggable
-                    onDragStart={() => setDragPayload({ kind: 'bank', ex })}
-                    onDragEnd={() => setDragPayload(null)}
-                    className="border border-border bg-secondary px-3 py-2 cursor-grab text-sm flex items-center gap-2 select-none min-w-0"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <span className="flex-1 min-w-0 line-clamp-2 break-words">{ex.name}</span>
-                  </div>
-                ))}
-            </div>
+            <ExerciseBank
+              exercises={existingExerciseOptions}
+              search={search}
+              onSearchChange={setSearch}
+              onCreate={openExerciseCreate}
+              onGrab={grabFromBank}
+              onRelease={releaseBankDrag}
+              listClassName="max-h-[60vh]"
+            />
           </aside>
 
           <div className="space-y-3">
@@ -712,11 +770,8 @@ export default function Routine() {
               }}
               className={`border border-border bg-card transition-colors ${dropTarget?.bi === i ? 'ring-1 ring-accent' : ''}`}
             >
-              <div className="border-b border-border bg-secondary px-3 py-2 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="label-caps text-foreground">{b.type}</span>
-                  <span className="label-caps text-muted-foreground truncate">{b.sets} vuelta(s) · descanso {fmtRest(b.restBetweenSetsSec)}</span>
-                </div>
+              <div className="border-b border-border bg-secondary">
+                <BlockHeader block={b} position={i + 1} />
               </div>
               <div className="divide-y divide-border">
                 {b.exercises.length === 0 && (
@@ -724,7 +779,7 @@ export default function Routine() {
                 )}
                 {b.exercises.map((e, j) => (
                   <div
-                    key={e.id ?? `${e.name}-${j}`}
+                    key={exerciseKey(b.exercises, j)}
                     draggable
                     onDragStart={() => setDragPayload({ kind: 'routine', bi: i, ei: j, ex: e })}
                     onDragEnd={() => setDragPayload(null)}
@@ -736,12 +791,11 @@ export default function Routine() {
                       <DropdownMenuTrigger className="inline-flex h-6 w-6 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:border-ink shrink-0" aria-label="Acciones">
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openExEdit(i, j)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}>Editar video</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => setExDelete({ bi: i, ei: j })}>Borrar</DropdownMenuItem>
-                      </DropdownMenuContent>
+                      <ExerciseActionsMenu
+                        onEdit={() => openExEdit(i, j)}
+                        onEditVideo={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}
+                        onDelete={() => setExDelete({ bi: i, ei: j })}
+                      />
                     </DropdownMenu>
                   </div>
                 ))}
@@ -760,38 +814,35 @@ export default function Routine() {
               <h2 className="font-heading text-base font-bold">Ejercicios</h2>
               <Button size="sm" variant="ghost" onClick={() => setBankOpen(false)}>Cerrar</Button>
             </div>
-            <Input placeholder="Buscar ejercicio..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            <Button variant="accent" size="sm" className="w-full mt-2" onClick={() => {
-              if (model.blocks.length === 0) setBlockCreateOpen(true);
-              else setExCreate({ blockIndex: model.blocks.length - 1 });
-            }}>+ Crear ejercicio</Button>
-            <div className="space-y-2 mt-2 max-h-[50vh] overflow-auto overflow-x-hidden">
-              {existingExerciseOptions
-                .filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
-                .map((ex) => (
-                  <div
-                    key={ex.id || ex.name}
-                    draggable
-                    onDragStart={() => setDragPayload({ kind: 'bank', ex })}
-                    onDragEnd={() => setDragPayload(null)}
-                    className="border border-border bg-secondary px-3 py-2 cursor-grab text-sm flex items-center gap-2 select-none min-w-0"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <span className="flex-1 min-w-0 line-clamp-2 break-words">{ex.name}</span>
-                  </div>
-                ))}
-            </div>
+            <ExerciseBank
+              exercises={existingExerciseOptions}
+              search={search}
+              onSearchChange={setSearch}
+              onCreate={openExerciseCreate}
+              onGrab={grabFromBank}
+              onRelease={releaseBankDrag}
+              actionClassName="mt-2"
+              listClassName="mt-2 max-h-[50vh]"
+            />
           </div>
         </div>
       )}
       </>
       )}
 
-      {!editing && (
-        <div>
-          <Link to={`/run/${model.id}`} className="block">
-            <Button variant="accent" className="w-full">Iniciar rutina</Button>
-          </Link>
+      {!editing && model.blocks.length === 0 && (
+        <p className="border border-border bg-card px-3 py-4 text-sm text-muted-foreground">
+          Esta rutina todavía no tiene bloques. Editala para agregar el primero.
+        </p>
+      )}
+
+      {showStartBar && (
+        <div className="fixed inset-x-0 bottom-[57px] z-40 border-t border-border bg-background md:bottom-0">
+          <div className="mx-auto w-full max-w-6xl px-6 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-2">
+            <Link to={`/run/${model.id}`} className={cn(buttonVariants({ variant: 'accent', size: 'lg' }), 'w-full')}>
+              Iniciar rutina
+            </Link>
+          </div>
         </div>
       )}
     </div>

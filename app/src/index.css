@@ -53,7 +53,11 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-html, body, #root { height: 100%; max-width: 100%; overflow-x: hidden; }
+/* Horizontal clipping without a scroll container: `clip` keeps the document as the scroller, so
+   the wheel, PageDown and window.scrollY behave like any other page. `overflow-x: hidden` here
+   would turn html/body/#root into three nested scrollers and freeze document scrolling. */
+html, body { max-width: 100%; overflow-x: clip; }
+#root { min-height: 100%; max-width: 100%; }
 body {
   margin: 0;
   background: var(--bg);
@@ -127,17 +131,40 @@ body {
 }
 
 /* Sliders: use palette accent instead of browser default (blue). */
+/* Slider: the rail in Muted Surface, the filled part in the beacon and a square ink thumb.
+   `accent-color` is not enough here — the browser then paints the track with its own derived
+   colour and the slider stops reading as the system. The filled width comes from an inline
+   `--fill` set by the component, the only dynamic value allowed inline. */
 input[type="range"] {
-  accent-color: var(--ink);
+  -webkit-appearance: none;
+  appearance: none;
+  height: 36px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 8px;
+  cursor: pointer;
 }
-.dark input[type="range"] {
-  accent-color: var(--voltage-lime);
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 24px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
 }
-input[type="range"]::-webkit-slider-runnable-track {
-  background: var(--muted-surface);
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 24px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
 }
 input[type="range"]::-moz-range-track {
-  background: var(--muted-surface);
+  background: transparent;
+}
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 @layer base {

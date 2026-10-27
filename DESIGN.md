@@ -4,12 +4,14 @@ description: Logtenia de calistenia — retícula suiza, telemetría en mono y u
 colors:
   voltage-lime: "#ccff00"
   ink: "#111111"
-  paper: "#f8f9fa"
+  on-ink: "#ccff00"
+  on-accent: "#111111"
+  paper: "#f0f0f0"
   surface: "#ffffff"
   foreground: "#191c1d"
   muted-surface: "#f3f4f5"
   muted-ink: "#555555"
-  hairline: "#e2e4e8"
+  hairline: "#d0d0d0"
   alert: "#ba1a1a"
 typography:
   display:
@@ -46,24 +48,26 @@ spacing:
 components:
   button-accent:
     backgroundColor: "{colors.voltage-lime}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.none}"
     padding: "12px 24px"
   button-accent-hover:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.voltage-lime}"
+    backgroundColor: "transparent"
+    borderColor: "{colors.voltage-lime}"
+    textColor: "{colors.ink}"
   button-ink:
     backgroundColor: "{colors.ink}"
-    textColor: "{colors.voltage-lime}"
+    textColor: "{colors.on-ink}"
     rounded: "{rounded.none}"
     padding: "8px 16px"
   button-outline:
     textColor: "{colors.ink}"
+    borderColor: "{colors.ink}"
     rounded: "{rounded.none}"
     padding: "12px 20px"
   badge-status:
     backgroundColor: "{colors.voltage-lime}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.none}"
   card:
     backgroundColor: "{colors.surface}"
@@ -112,18 +116,49 @@ Paleta de instrumento: tinta sobre papel técnico, con una única señal lima.
 ### Neutral
 - **Ink** (#111111): texto de máxima jerarquía y fondo del estado activo (nav/botón). También es
   el color de foco (`--ring`).
+- **On Ink** (Voltage Lime): texto sobre relleno Ink. No se invierte con el tema.
+- **On Accent** (#111111): texto sobre relleno Voltage Lime. Fijo en ambos modos: la lima siempre
+  lleva tinta encima.
 - **Foreground** (#191c1d): color de texto por defecto del cuerpo.
-- **Paper** (#f8f9fa): fondo de la página. Papel técnico, apenas más frío que blanco.
+- **Paper** (#f0f0f0): fondo de la página. Papel técnico, apenas más frío que blanco.
 - **Surface** (#ffffff): fondo de tarjetas y controles, un escalón por encima del papel.
 - **Muted Surface** (#f3f4f5): rellenos secundarios (raíles, celdas inactivas).
 - **Muted Ink** (#555555): texto secundario, labels y metadatos.
-- **Hairline** (#e2e4e8): bordes de 1px y reglas. Hace el trabajo que en otros sistemas haría
+- **Hairline** (#d0d0d0): bordes de 1px y reglas. Hace el trabajo que en otros sistemas haría
   una sombra.
 - **Alert** (#ba1a1a): solo para error o destructivo. No es parte de la identidad.
+
+### Dark mode
+El tema oscuro no es un gris apagado: es negro de tablero con la misma baliza lima, que gana
+protagonismo porque el negro la hace brillar. Los valores viven en el bloque `.dark` de
+`app/src/index.css`.
+
+- **Background** (#111111) y **Card** (#1a1a1a): el papel y la superficie se invierten.
+- **Ink** (#f8f9fa): la tinta se invierte. `text-ink`, `border-ink`, `ring-ink` son texto y borde
+  claros de máxima jerarquía. Bajo ninguna circunstancia se usa `#111111` como texto sobre fondo
+  oscuro.
+- **On Ink** (#111111): texto sobre relleno Ink, que en oscuro es papel.
+- **On Accent** (#111111): igual que en claro, porque la lima no cambia.
+- **Muted Surface** (#2e2e2e): raíles de sliders y cursor de los charts; un escalón sobre la
+  tarjeta, no gris claro.
+- **Hairline** (#2a2a2a) y **Muted Ink** (#8a8a8a): el borde y el texto secundario suben de tono
+  para seguir siendo legibles.
+- **Alert** (#ffb4ab): el rojo de texto se aclara; `#ba1a1a` sobre negro no se lee.
+- **Primary** (Voltage Lime, texto #111111): el estado activo de un filtro o segmento se rellena
+  de lima. En oscuro la lima se permite algo más que en claro: es la sinergia del tema.
+- **Regla de contraste:** todo texto semántico (`ink`, `muted`, `foreground`, `destructive`) y el
+  texto sobre rellenos (`on-ink`, `on-accent`, `primary-foreground`) debe superar 4.5:1 contra su
+  superficie. `app/src/index.css.test.ts` lo verifica con los tokens reales, en ambos modos.
 
 ### Named Rules
 **The Beacon Rule.** El Voltage Lime ocupa ≤10% de cualquier pantalla. Su escasez es el punto:
 si dos elementos compiten en lima, uno está mal.
+
+**The Lime-is-a-Fill Rule.** El lima rellena, bordea y marca; **nunca es el color del texto sobre
+papel o superficie**. `#ccff00` sobre `#f0f0f0` da 1.03:1: no es una preferencia, es ilegible. El
+estado se escribe en tinta (`text-ink`/`text-foreground`) y el lima queda como marca al lado
+(cuadrado de 8px) o como relleno con `text-on-accent` encima. Los únicos textos lima admitidos son
+los que viven sobre el overlay negro del descanso.
 
 **The Ink-or-Paper Rule.** Un elemento es tinta sólida o papel, nunca un gris intermedio de
 relleno "para suavizar". El gris intermedio existe solo como texto muted.
@@ -139,7 +174,9 @@ dice "instrumento": legible en el cuerpo, mecánica y precisa en los números.
 
 ### Hierarchy
 - **Display** (Space Grotesk 700, ~1.5rem, tracking −0.02em): nombre del ejercicio en la sesión
-  guiada y títulos de pantalla.
+  guiada y títulos de pantalla. **Los siete `h1` de pantalla usan la misma escala:**
+  `font-heading text-2xl font-bold tracking-tight`. Un título de pantalla más grande que otro es
+  deriva, no énfasis.
 - **Heading** (Space Grotesk 700, tracking −0.02em): `h1–h4`; encabezados de tarjeta.
 - **Body** (Hanken Grotesk 400): texto corriente y celdas de tabla.
 - **Label** (JetBrains Mono 600, 11px, letter-spacing 0.08em, UPPERCASE, muted): etiquetas de
@@ -152,7 +189,8 @@ dice "instrumento": legible en el cuerpo, mecánica y precisa en los números.
 (`tabular-nums`). Los dígitos nunca deben bailar entre filas.
 
 **The Mono-means-data Rule.** El mono se reserva a números, labels y estados. Nunca se usa para
-prosa.
+prosa: una frase en `label-caps` obliga a deletrear cada palabra. La frase va en cuerpo
+(`text-sm text-muted-foreground`) y el número que contiene, en `.metric`.
 
 ## Layout
 
@@ -196,17 +234,55 @@ redondeada. Si un componente de librería la trae, se anula.
 ## Components
 
 ### Buttons
-- **Shape:** rectángulo, radio 0, borde 1px.
-- **Accent:** relleno Voltage Lime con texto Ink y borde Ink — la acción principal (`Registrar`,
-  `Entrenar`, `Siguiente`). En hover invierte: relleno Ink, texto lima.
-- **Ink (nav activa):** relleno Ink con texto Voltage Lime y texto/label en uppercase mono.
-- **Outline:** fondo transparente, borde Ink, texto Ink; hover relleno Ink con texto blanco.
-- **Ghost:** sin borde ni fondo; texto muted. Para acciones terciarias (`Reiniciar`, `editar`).
-- **States:** `label-caps` en todos; foco visible por `--ring` (Ink).
+Variantes exportadas por `app/src/components/ui/button.tsx` (class-variance-authority). Cada
+variante se aplica con `variant="..."`; el tamaño con `size="..."` (`xs` h-6, `sm` h-8,
+`default` h-9, `lg` h-11 touch de 44px, `icon`/`icon-sm`/`icon-lg`).
+
+- **Shape:** rectángulo, radio 0, borde 1px. Sin sombras, `transition-colors` únicamente.
+- **accent** (alias `default`): relleno Voltage Lime con texto On Accent (#111) y borde Ink — la
+  acción principal de la pantalla (`Entrenar`, `Siguiente`, `Guardar`, `Crear`, `Agregar`,
+  `Iniciar rutina`, `Continuar`, `Exportar`, `saltar descanso`). Hover **invierte a relleno Ink**:
+  texto lima en claro, texto tinta sobre papel en oscuro. La baliza no se va, cambia de lugar (del
+  relleno a la etiqueta), y el feedback es inequívoco; soltar el relleno y dejar un contorno lima se
+  leía como un botón apagado. Es la única señal lima de la vista (Beacon Rule). Los controles que viven **dentro de una fila o de una tarjeta** —`Usar tiempo`,
+  `Aplicar`, `confirmar`, `editar`, `+ serie`— no son la acción de la pantalla y van `outline` o
+  `ghost`.
+- **ink**: relleno Ink con texto On Ink (lima) y borde Ink. Estado activo / selección / nav
+  activa. Hover invierte a lima/ink. En oscuro el relleno Ink es papel y el texto tinta.
+- **outline**: fondo transparente, borde Ink, texto Ink. Hover relleno Ink, texto On Ink.
+  Acciones secundarias delineadas (`Anterior`, `Importar`, controles de timer).
+- **ghost**: sin borde ni fondo; texto muted. Acciones terciarias (`Cancelar`, `Reiniciar`,
+  `editar`, `volver`, `+ serie`). Hover relleno Muted Surface.
+- **secondary**: relleno Muted Surface, texto Foreground. Botón relleno de baja jerarquía.
+- **destructive**: texto/borde Alert sobre fondo alert/10. Solo acciones destructivas.
+- **link**: texto primary subrayado. Enlaces con aspecto de botón.
+- **States:** `label-caps` en los botones de acción de texto; foco visible por `--ring` (Ink);
+  deshabilitado con `opacity-50` y `pointer-events-none`.
+
+### Button patterns (raw `<button>`)
+Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
+- **Row button** (Home, sesiones recientes): `<button>` a ancho completo, `min-h-14`,
+  separado por `divide-y`; hover `bg-secondary`. Texto en `text-foreground`, metadatos en
+  `label-caps`/`label-status` con `tabular-nums`.
+- **Segmented control** (Metrics, rango de tiempo): grupo `divide-x border border-border`,
+  cada segmento `label-caps h-11`; activo `bg-primary text-primary-foreground`, inactivo
+  `bg-card text-muted-foreground hover:bg-secondary`.
+- **Chip remove** (tags): botón `×` dentro del chip, `opacity-60 hover:opacity-100`, sin
+  borde propio.
+- **Timer control** (Runner, descanso): overlay siempre negro con texto lima (en ambos modos)
+  `bg-on-accent text-accent`; `Button variant="outline"` con borde/texto lima para ±10s y
+  `Button variant="accent"` para "saltar descanso" (única acción del overlay). Dentro de la sesión,
+  el único accent es el botón de avance de la barra fija: el cronómetro y sus controles de fila van
+  `outline`.
 
 ### Chips / Badges
-- **Style:** fondo Voltage Lime + texto Ink para el dato destacado (PR, énfasis activo); versión
-  outline con borde hairline y texto muted para el subgrupo.
+- **Style:** fondo Voltage Lime + texto On Accent (#111) para el dato destacado (PR, énfasis
+  activo); versión outline con borde hairline y texto muted para el subgrupo.
+- **Excepción documentada — tags:** los chips de etiqueta definida por el usuario usan una
+  paleta pastel de ocho pares (`app/src/lib/tags.ts`, `TAG_PASTELS`) como segundo lenguaje de
+  color. Es una decisión de producto del usuario, no una deriva: la Beacon Rule no los alcanza
+  porque distinguen categorías, no señalan estado ni acción. Si se agrega un noveno color, tiene
+  que entrar en esa tabla y mantener contraste AA sobre su propio fondo.
 - **Typography:** `.label-status` (mono 10px uppercase).
 
 ### Cards / Containers
@@ -228,6 +304,12 @@ redondeada. Si un componente de librería la trae, se anula.
   segmentados (borde 1px, divididos por `divide-x`), no como tabs con sombra.
 - **Default:** fondo blanco, texto muted. **Activa:** relleno Ink, texto Voltage Lime. Sin
   subrayados ni píldoras.
+- **Ajustes:** el disparador del header es un control fantasma compacto (glifo + el nombre del
+  perfil en `label-caps`, caja táctil de 44px). No es un botón delineado: el header no compite con
+  el CTA de la pantalla.
+- **Sesión guiada (`/run`):** la nav inferior se oculta. El runner trae su propia barra de control
+  fija (`fixed bottom-0 z-40`) con el único accent de la vista; dos barras fijas en 390px se tapan
+  entre sí.
 
 ### Signature: Telemetry readouts
 Los pares label/número que definen el sistema: `.label-caps` arriba, `.metric` abajo, alineados
@@ -260,4 +342,41 @@ el descanso (suena + vibra al llegar a 0).
   en la misma vista.
 - **Don't** rellenar con grises intermedios "para suavizar"; elegí tinta o papel, y dejá el gris
   solo para texto muted.
+- **Don't** escribir texto en lima sobre papel o superficie (The Lime-is-a-fill Rule): el estado
+  se escribe en tinta y el lima queda como marca.
 - **Don't** usar color como único portador de significado (el estado también va en texto/forma).
+
+## Herramientas de diseño y precedencia
+
+Este archivo es la **única fuente de verdad** del sistema. no hay copia paralela que pueda
+desincronizarse; `app/src/index.css` es la fuente de verdad de los valores y el frontmatter de
+arriba los refleja.
+
+Cuando una herramienta externa de diseño opina sobre esta interfaz, la precedencia es:
+
+1. Este archivo y `AGENTS.md`.
+2. `improve-ui` — drift del sistema con puerta de prueba triple; read-only, escribe planes.
+3. `impeccable critique` — puntuación heurística; read-only.
+4. `impeccable audit` — a11y, performance, responsive y theming; read-only.
+5. `web-design-guidelines` — patrones mecánicos de a11y y motion.
+
+Los hallazgos ya auditados viven en `design-plans/ui-audit-findings.md` (código),
+`design-plans/critique-per-page.md` (heurísticas por pantalla) y
+`design-plans/ui-polish-render-pass.md` (crítica sobre capturas renderizadas, con el pulido
+posterior).
+
+### Overrides explícitos
+
+Los defaults genéricos de las herramientas de diseño **no gobiernan** este sistema. En particular:
+
+- **Radio 0 y cero sombras son decisiones, no deuda.** Un checklist que pida "card radii 12–16px" o
+  "shadows con offset y blur suave" describe el promedio de la industria, no este tablero: aplican
+  The Zero-Radius Rule y The No-Shadow Rule.
+- **No hay memoización manual.** El React Compiler resuelve la memoización (ver `AGENTS.md`);
+  "missing memoization" no es un hallazgo de performance acá.
+- **La densidad es intencional.** Filas compactas y mucha información por pantalla son el modo
+  Operate del sistema, no un defecto de jerarquía.
+- **Una sola baliza.** Cualquier propuesta de enriquecer la paleta, sumar un segundo acento o
+  colorear por categoría choca con The Beacon Rule y requiere decisión explícita del usuario.
+- **Los tags pastel son la excepción ya decidida.** El usuario eligió la paleta pastel para las
+  etiquetas: no es una violación a reportar ni a "corregir" hacia el chip outline.
