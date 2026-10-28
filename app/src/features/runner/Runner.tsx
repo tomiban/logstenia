@@ -412,8 +412,10 @@ export default function Runner() {
   const proximo = r.steps[idx + 1];
   const marcaAnterior = soloUnEjercicio ? r.history[primero.name] : undefined;
 
+  /* 57px = header h-14 (56px) + its 1px hairline: the pie has to land on the viewport edge. The
+     runner takes the whole screen and never scrolls as a document: only the set list can scroll. */
   return (
-    <div className="-mx-6 -mt-6 flex min-h-[calc(100dvh-3.5rem)] flex-col">
+    <div className="-mx-6 -mt-6 -mb-6 flex h-[calc(100dvh-57px)] flex-col overflow-hidden">
       <header className="banda">
         <div className="min-w-0">
           <p className="banda-kicker">
@@ -440,7 +442,7 @@ export default function Runner() {
       </header>
 
       <div className="h-1 w-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={n} aria-valuenow={idx + 1}>
-        <div className="h-full bg-ink dark:bg-foreground" style={{ width: `${((idx + 1) / n) * 100}%` }} />
+        <div className="h-full bg-accent" style={{ width: `${((idx + 1) / n) * 100}%` }} />
       </div>
 
       <div className="franja border-border">
@@ -454,7 +456,7 @@ export default function Runner() {
         </span>
       </div>
 
-      <section key={`${current.blockIdx}-${idx}`} className="plate-in space-y-6 px-6 py-5">
+      <section key={`${current.blockIdx}-${idx}`} className="plate-in min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {current.exercises.map((ex, ei) => {
             const exStep = {
               blockIdx: current.blockIdx,
@@ -517,17 +519,19 @@ export default function Runner() {
       )}
 
       <div className="accion accion-pie">
+        {idx > 0 && (
+          <button
+            type="button"
+            className="accion-secundaria shrink-0 text-on-accent disabled:opacity-40 disabled:no-underline"
+            disabled={r.restUntil != null}
+            onClick={() => r.goTo(idx - 1)}
+          >
+            Anterior
+          </button>
+        )}
         <button
           type="button"
-          className="accion-secundaria shrink-0 text-on-accent disabled:opacity-40 disabled:no-underline"
-          disabled={idx === 0 || r.restUntil != null}
-          onClick={() => r.goTo(idx - 1)}
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          className="accion-primaria disabled:opacity-40"
+          className="accion-primaria ml-auto disabled:opacity-40"
           disabled={r.restUntil != null}
           onClick={r.nextStep}
         >

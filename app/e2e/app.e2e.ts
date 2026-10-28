@@ -49,8 +49,8 @@ test('no hay entradas de datos en la pantalla de métricas', async ({ page }) =>
 });
 
 test('la página scrollea como un documento, con rueda y con teclado', async ({ page }) => {
-  /* Un viewport bajo hace que cualquier pantalla tenga alto que recorrer: el test mide cómo
-     scrollea el documento, no cuánto contenido tiene la pantalla de turno. */
+  /* A short viewport gives every screen height to travel: the test measures how the document
+     scrolls, not how much content the current screen happens to have. */
   await page.setViewportSize({ width: 390, height: 300 });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
