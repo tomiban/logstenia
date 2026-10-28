@@ -460,6 +460,9 @@ La gramática compartida por `/` y `/run/:id`: el destino se anuncia, no se elig
   mono. En `/` va pegada a la banda y arranca la sesión; en `/run` es `.accion-pie`, fija al pie
   (la ruta es inmersiva: no hay nav inferior que compita).
 - **Franja** (`.franja`): hairline con dos lecturas mono (`bloque 1 de 5` · `nada registrado hoy`).
+- **El borde de la banda en la sesión lo ocupa `Salir`** (`.banda-salir`): en `/run` la flecha
+  decorativa no tenía destino y la sesión no ofrecía salida; la acción de avance vive en la barra del
+  pie, así que el borde queda para lo único que el atleta puede querer ahí: irse.
 - **Fila y puerta** (`.fila`, `.puerta`): el bloque es una puerta numerada, alto mínimo 56px, nombre
   en 15px/600, dosis en mono 11px y la flecha al borde. La fila entera es el objetivo táctil.
 - **The Edge-Arrow Rule.** Todo lo que es "siguiente" lleva `→` al borde derecho de su contenedor:

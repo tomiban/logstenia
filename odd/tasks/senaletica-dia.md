@@ -112,6 +112,21 @@ critique.
 | D7 | Acción `Siguiente` de la barra a ≥44px de alto (medido 131×36) | critique P2 · detector | inline |
 | D8 | `totalTimeMin` saneado o no exhibido (dice 8 min donde la dosis implica ~15) | critique P2-6 | inline |
 | D9 | Mesociclo fuera del primer viewport (revelado, no en medio del entrenamiento) | critique P2-7 | inline |
-| D10 | Acción principal de las cinco vistas con la anatomía de `.accion` en línea | contrato §4 | por ola |
+| D10 | Acción principal de las cinco vistas con la anatomía de `.accion` en línea | contrato §4 | **pendiente** |
 | D11 | Un solo indicador de foco (anillo de 2px) también en enlaces | critique menores | inline |
 | D12 | El cierre de sesión no corona un conteo | critique journey | inline |
+
+L9. D1-D9 y D12 aplicados en `7e63d56`: banda oscura sobre `--surface`, kicker y flecha fuera del
+presupuesto de lima, marca de la última vez en la banda y fantasma `antes N` por serie, `Salir` en el
+borde de la sesión, cierre que vuelve a la app, puertas con ancla de bloque (`#bN`, con `scrollIntoView`
+por ref en `Routine`), `.label-status` a 11px, acción de la barra a 44px, mesociclo plegado y series
+reales en vez de `totalTimeMin`. Verificado con 391 tests, lint 19, build en verde y medición en
+navegador: `última vez 8 · 8 · 7`, `antes 8/8/7`, altura de acción 44, kicker `oklab(0.72…)` (neutro),
+banda oscura `rgb(26,26,26)`, cero sombras, cero radios, y la puerta `03` aterrizando en `#b3`.
+
+L10. D11 en `pendiente-doc`: los enlaces usaban el outline del navegador (1px auto) mientras los
+botones llevaban anillo de 2px; ahora comparten `a:focus-visible { outline: 2px solid var(--ring) }`.
+
+L11. D10 sigue abierto: llevar la anatomía de `.accion` en línea a las cinco superficies de ficha.
+Es la única deuda del contrato y la que más reescribe de T2-T7, así que va por ola con un commit por
+vista.

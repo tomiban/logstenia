@@ -208,6 +208,9 @@ html { scrollbar-color: var(--hairline) transparent; }
 ::-webkit-scrollbar-thumb { background: var(--hairline); border: 2px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 :focus-visible { outline-offset: 2px; }
+/* One focus language: the links shipped the platform's 1px auto outline while buttons carried a
+   2px ring, so the same keyboard user met two indicators. */
+a:focus-visible { outline: 2px solid var(--ring); }
 a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 
 /* The one authored beat. Use it for a state change worth noticing, never as an entrance on every
