@@ -13,6 +13,26 @@ test('el runner informa los descansos configurados dentro del ejercicio', async 
   await expect(pair('Descanso final')).toContainText('2 min');
 });
 
+test('el runner no scrollea el documento', async ({ page }) => {
+  /* The board owns the whole screen: when it does not fit, the set list scrolls, never the page. */
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.goto(`/run/${MODEL}`);
+  await expect(page.getByRole('button', { name: 'Siguiente' })).toBeVisible();
+
+  const heights = await page.evaluate(() => ({
+    doc: document.documentElement.scrollHeight,
+    view: window.innerHeight,
+  }));
+  expect(heights.doc).toBeLessThanOrEqual(heights.view);
+});
+
+test('el primer paso no ofrece volver atrás', async ({ page }) => {
+  await page.goto(`/run/${MODEL}`);
+
+  await expect(page.getByRole('button', { name: 'Siguiente' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Anterior' })).toHaveCount(0);
+});
+
 test('los descansos de la rutina no se editan en el runner', async ({ page }) => {
   await page.goto(`/run/${MODEL}`);
 
