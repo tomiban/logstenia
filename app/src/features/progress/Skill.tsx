@@ -13,7 +13,7 @@ import { useCrudModal, CrudModal } from '@/components/ui/crud-modal';
 import { uniqueId } from '@/features/plans/ids';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lock, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from '@/components/ui/context-menu';
@@ -298,53 +298,25 @@ export default function Skill() {
         </p>
       )}
 
-      {chains.groups.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 className="font-heading text-base font-bold tracking-tight">Cadena de progresión</h2>
-            <p className="text-sm text-muted-foreground">De más fácil a más difícil.</p>
-          </div>
-          {chains.groups.map((chain) => (
-            <ol key={chain.join('>')} className="grid gap-px bg-border ring-1 ring-border sm:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
-              {chain.map((pid, idx) => {
-                const program = programsById.get(pid);
-                const report = reports.get(pid) ?? null;
-                const state = report?.completed ? 'completado' : report && !report.unlocked ? 'bloqueado' : 'disponible';
-                return (
-                  <li key={pid}>
-                    <Link
-                      to={`/program/${pid}`}
-                      className={
-                        'flex h-full items-center gap-3 bg-card px-3 py-3 transition-colors hover:bg-ink hover:text-on-ink ' +
-                        (report && !report.unlocked && !report.completed ? 'text-muted-foreground' : 'text-ink')
-                      }
-                    >
-                      <span aria-hidden="true" className="metric text-lg">{idx + 1}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-heading text-sm font-bold leading-snug">{program?.name ?? pid}</span>
-                        <span className="label-status block">{state}</span>
-                      </span>
-                      {report?.completed && <span aria-hidden="true" className="size-2 shrink-0 bg-accent" />}
-                      {report && !report.unlocked && <Lock aria-hidden="true" className="size-3.5 shrink-0" />}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ol>
-          ))}
-        </section>
-      )}
-
-      <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cat.programs.map((p) => {
+      {(() => {
+        const sueltos = cat.programs.filter((p) => !chains.slots.has(p.id));
+        const tarjeta = (p: (typeof cat.programs)[number]) => {
           const report = reports.get(p.id) ?? null;
+          const slot = chains.slots.get(p.id);
           return (
             <ContextMenu key={p.id}>
               <ContextMenuTrigger className="block">
                 <Card className="relative p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
                   <div className="flex items-start justify-between gap-2">
                     <Link to={`/program/${p.id}`} className="block min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                      <h2 className="font-heading text-lg font-bold tracking-tight">{p.name}</h2>
+                      <div className="flex items-baseline gap-2">
+                        {slot && (
+                          <span className="metric text-sm text-muted-foreground" aria-label={`nivel ${slot.position} de ${slot.total}`}>
+                            {slot.position}
+                          </span>
+                        )}
+                        <h2 className="font-heading text-lg font-bold tracking-tight">{p.name}</h2>
+                      </div>
                       <p className="mt-1 text-sm text-muted-foreground">{LEVEL_LABEL[p.level] ?? p.level}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="label-status">{p.models.length} rutinas</Badge>
@@ -388,8 +360,40 @@ export default function Skill() {
               </ContextMenuContent>
             </ContextMenu>
           );
-        })}
-      </div>
+        };
+
+        return (
+          <>
+            {chains.groups.map((chain, gi) => (
+              <section key={chain.join('>')} className="space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <h2 className="font-heading text-base font-bold tracking-tight">
+                    {chains.groups.length > 1 ? `Cadena de progresión ${gi + 1}` : 'Cadena de progresión'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">De más fácil a más difícil.</p>
+                </div>
+                <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {chain.map((pid) => {
+                    const programa = programsById.get(pid);
+                    return programa ? tarjeta(programa) : null;
+                  })}
+                </div>
+              </section>
+            ))}
+
+            {sueltos.length > 0 && (
+              <section className="space-y-2">
+                <h2 className="font-heading text-base font-bold tracking-tight">
+                  {chains.groups.length > 0 ? 'Programas fuera de la cadena' : 'Programas'}
+                </h2>
+                <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {sueltos.map((p) => tarjeta(p))}
+                </div>
+              </section>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
