@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('la app carga la pantalla de hoy', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Elegí tu plan');
 });
 
 test('métricas explica qué falta cuando todavía no hay registros', async ({ page }) => {
@@ -49,13 +49,16 @@ test('no hay entradas de datos en la pantalla de métricas', async ({ page }) =>
 });
 
 test('la página scrollea como un documento, con rueda y con teclado', async ({ page }) => {
-  await page.goto('/metrics');
-  await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible();
+  /* Un viewport bajo hace que cualquier pantalla tenga alto que recorrer: el test mide cómo
+     scrollea el documento, no cuánto contenido tiene la pantalla de turno. */
+  await page.setViewportSize({ width: 390, height: 300 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
   const scrollY = () => page.evaluate(() => window.scrollY);
 
-  await page.mouse.move(200, 400);
-  await page.mouse.wheel(0, 600);
+  await page.mouse.move(200, 150);
+  await page.mouse.wheel(0, 100);
   await expect.poll(scrollY).toBeGreaterThan(0);
 
   const afterWheel = await scrollY();

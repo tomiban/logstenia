@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCategories } from '@/hooks/usePlans';
 import type { Category, Model, Program } from '@/types';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
@@ -17,7 +17,8 @@ import {
   entreDias,
   iso,
 } from '@/features/plans/meso';
-import { getMarks } from '@/features/progress/marks';
+import { getMarks, ANCLAS } from '@/features/progress/marks';
+import { anchorProgress, collectMarks } from '@/features/metrics/metrics';
 import { targetsByTag } from '@/lib/tags';
 import { useNow } from '@/hooks/useNow';
 import { formatDayMonth } from '@/lib/date';
@@ -168,6 +169,10 @@ export default function Home() {
   })();
 
   const totalProgramas = cats.reduce((acc, c) => acc + c.programs.length, 0);
+  /* How the key lifts are coming along: best record per anchor against its target, in the unit
+     the exercise is measured in (holds in seconds, reps in reps). */
+  const anclas = anchorProgress(ANCLAS, collectMarks(sessions, marks));
+  const hayAnclas = anclas.some((a) => a.current > 0);
   const planesActivos = startedPrograms.map((x) => ({ id: x.prog.id, prog: x.prog, cat: x.cat }));
   const elegido = elegidoId ? planesActivos.find((x) => x.id === elegidoId) : undefined;
   const destino = elegido
@@ -492,6 +497,39 @@ export default function Home() {
         {warmup && !warmupRoutine && startedPrograms.length > 0 && (
           <p className="px-6 py-3 text-sm text-muted-foreground">
             Etiquetá una rutina con "calentamiento" para verla acá.
+          </p>
+        )}
+      </section>
+
+      <section aria-label="Marcas clave">
+        <div className="franja border-border">
+          <span className="label-caps text-foreground">Marcas clave</span>
+          <Link to="/metrics" className="label-caps text-muted-foreground hover:text-foreground">
+            ver métricas →
+          </Link>
+        </div>
+        {hayAnclas ? (
+          anclas.map((a) => (
+            <div key={a.exercise} className="fila">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold text-foreground">{a.exercise}</span>
+                <span className="label-caps mt-1 block text-muted-foreground">
+                  {a.current === 0
+                    ? 'sin registro'
+                    : a.reached
+                      ? 'objetivo alcanzado'
+                      : `al ${a.pct}% del objetivo`}
+                </span>
+              </span>
+              <span className="label-caps shrink-0 text-muted-foreground">
+                <span className="metric text-lg tabular-nums text-foreground">{a.current}</span> / {a.target}{' '}
+                {a.unit === 'sec' ? 'seg' : 'reps'}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="px-6 py-4 text-sm text-muted-foreground">
+            Registrá una serie con valor o una toma de marcas y acá aparece cómo venís en pino, planche, front lever y dominadas.
           </p>
         )}
       </section>
