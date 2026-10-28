@@ -166,7 +166,8 @@ export default function Home() {
     return m;
   })();
 
-  const destino = destinoDeHoy(cats, sessions, hoyIso);
+  const destino = destinoDeHoy(cats, sessions, hoyIso, startedPlanIds);
+  const totalProgramas = cats.reduce((acc, c) => acc + c.programs.length, 0);
   const bloques = destino ? bloquesDe(destino.model) : [];
   const sesionesHoy = sessions.filter((s) => s.date === hoyIso && s.completed).length;
   const seriesDelDia = bloques.reduce((acc, b) => acc + (b.block.sets || 0), 0);
@@ -187,7 +188,7 @@ export default function Home() {
       <header className="banda">
         <div className="min-w-0">
           <p className="banda-kicker">Hoy · {fechaLarga}</p>
-          <h1 className="banda-titulo">{destino ? destino.model.name : 'Sin programa'}</h1>
+          <h1 className="banda-titulo">{destino ? destino.model.name : 'Elegí tu plan'}</h1>
           <p className="banda-sub flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             {destino ? (
               <>
@@ -200,7 +201,15 @@ export default function Home() {
                 <span className="whitespace-nowrap">{seriesDelDia} series</span>
               </>
             ) : (
-              <span>elegí un programa y el día aparece acá</span>
+              <>
+                <span className="whitespace-nowrap">
+                  {cats.length} {pluralForm(cats.length, 'categoría', 'categorías')}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">
+                  {totalProgramas} {pluralForm(totalProgramas, 'programa', 'programas')}
+                </span>
+              </>
             )}
           </p>
         </div>
@@ -226,7 +235,9 @@ export default function Home() {
       {destino ? (
         <>
           <button type="button" className="accion" onClick={() => navigate(`/run/${destino.model.id}`)}>
-            <span className="accion-titulo">{destino.hoyCompletada ? 'Repetir' : 'Iniciar'}</span>
+            <span className="accion-titulo">
+              {destino.nuevo ? 'Empezar' : destino.hoyCompletada ? 'Repetir' : 'Iniciar'}
+            </span>
             <span className="accion-meta">
               {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')} · {seriesDelDia} series{' '}
               <span aria-hidden="true">→</span>
@@ -266,14 +277,20 @@ export default function Home() {
           </div>
         </>
       ) : (
-        <div className="border-b border-border px-6 py-6">
-          <p className="text-sm text-muted-foreground">
-            Todavía no registraste entrenamientos. Elegí un programa para empezar.
-          </p>
-          <Button variant="accent" size="lg" className="mt-3" onClick={() => navigate('/planes')}>
-            Ver programas
-          </Button>
-        </div>
+        <>
+          <button type="button" className="accion" onClick={() => navigate('/planes')}>
+            <span className="accion-titulo">Elegir programa</span>
+            <span className="accion-meta">
+              {totalProgramas} {pluralForm(totalProgramas, 'programa', 'programas')}{' '}
+              <span aria-hidden="true">→</span>
+            </span>
+          </button>
+          <div className="border-b border-border px-6 py-4">
+            <p className="text-sm text-muted-foreground">
+              Cuando empieces uno, acá aparece la rutina que toca ese día.
+            </p>
+          </div>
+        </>
       )}
 
       <section aria-label="Semana">

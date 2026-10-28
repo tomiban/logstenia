@@ -156,3 +156,11 @@ L14. Feature cerrada. Estado final de la rama `feat/senaletica-dia`:
   44px, piso de 11px, cero sombras y cero radios).
 - T8 de `impeccable-plays` (el runner como tablero de tiempos) queda **superado** por este port: el
   descanso, el resumen y la lógica se conservan, la composición no.
+
+L15. Estado vacío corregido (reporte del atleta: "sigo sin entender esto"). `destinoDeHoy` sólo
+miraba sesiones **completadas**, así que un plan empezado desde `/program` no producía destino y Hoy
+respondía "Sin programa" con 16 programas disponibles. Ahora recibe `startedPlanIds`: si hay historial
+manda el historial; si no, el plan empezado resuelve su primera rutina con `nuevo: true`; y si tampoco
+hay plan empezado, la banda invita (`Elegí tu plan` · `7 categorías · 16 programas`) con la acción
+`Elegir programa` en el borde, en lugar de declarar una ausencia sin salida. Tres casos nuevos en
+`hoy.test.ts` (394 tests). Verificado en navegador: vacío y plan-empezado-sin-sesiones.

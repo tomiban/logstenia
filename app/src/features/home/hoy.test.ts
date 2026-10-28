@@ -61,8 +61,33 @@ const sesion = (planId: string, modelId: string, date: string, completed = true)
 const catalogo = [programa('a', [modelo('a1', 'Modelo A1'), modelo('a2', 'Modelo A2'), modelo('a3', 'Modelo A3')])];
 
 describe('destinoDeHoy', () => {
-  it('sin sesiones no inventa un destino', () => {
+  it('sin sesiones y sin planes empezados no inventa un destino', () => {
     expect(destinoDeHoy(catalogo, [], '2026-10-28')).toBeNull();
+    expect(destinoDeHoy(catalogo, [], '2026-10-28', [])).toBeNull();
+  });
+
+  it('un plan empezado sin sesiones ya tiene destino: su primera rutina', () => {
+    const destino = destinoDeHoy(catalogo, [], '2026-10-28', ['a']);
+    expect(destino?.prog.id).toBe('a');
+    expect(destino?.model.id).toBe('a1');
+    expect(destino?.nuevo).toBe(true);
+  });
+
+  it('el historial manda sobre los planes empezados', () => {
+    const sesiones = [sesion('a', 'a2', '2026-10-27')];
+    const destino = destinoDeHoy(catalogo, sesiones, '2026-10-28', ['a']);
+    expect(destino?.model.id).toBe('a3');
+    expect(destino?.nuevo).toBe(false);
+  });
+
+  it('saltea un plan empezado que ya no existe o no tiene rutinas', () => {
+    const conVacio = [
+      ...catalogo,
+      { ...programa('c', []), id: 'cat-c', programs: [{ ...programa('c', []).programs[0], id: 'c' }] },
+    ];
+    const destino = destinoDeHoy(conVacio, [], '2026-10-28', ['fantasma', 'c', 'a']);
+    expect(destino?.prog.id).toBe('a');
+    expect(destino?.nuevo).toBe(true);
   });
 
   it('sigue al programa entrenado más recientemente con el modelo siguiente', () => {
