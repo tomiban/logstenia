@@ -5,7 +5,7 @@ import { toIntensity } from '@/lib/intensity';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { BackLink } from '@/components/BackLink';
-import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, reorderExercises, moveExercise, allModels } from './plans';
+import { getModel, updateModel, createBlock, updateBlock, deleteBlock, createExercise, updateExercise, deleteExercise, moveExercise, allModels } from './plans';
 import { usePlansVersion } from '@/hooks/usePlans';
 import { uniqueId } from './ids';
 import { exerciseKey, nextBlockId } from './blocks';
@@ -205,7 +205,6 @@ export default function Routine() {
   const [newEx, setNewEx] = useState<ExerciseForm>(EMPTY_EXERCISE_FORM);
   const [exEdit, setExEdit] = useState<{ bi: number; ei: number; form: ExerciseForm } | null>(null);
   const [exDelete, setExDelete] = useState<{ bi: number; ei: number } | null>(null);
-  const [drag, setDrag] = useState<{ bi: number; ei: number } | null>(null);
   const [dragPayload, setDragPayload] = useState<{ kind: 'bank' | 'routine'; ex?: Exercise; bi?: number; ei?: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ bi: number } | null>(null);
   const [search, setSearch] = useState('');
@@ -406,7 +405,7 @@ export default function Routine() {
   };
 
   return (
-    <div className={showStartBar ? 'space-y-4 pb-28 md:pb-20' : 'space-y-4'}>
+    <div className={showStartBar ? 'space-y-4 pb-20' : 'space-y-4'}>
       <div>
         <BackLink to={`/program/${program.id}`}>{program.name}</BackLink>
       </div>
@@ -637,76 +636,20 @@ export default function Routine() {
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                {editing ? (
-                  <>
-                    <ContextMenuItem onClick={() => setExCreate({ blockIndex: i })}>Nuevo ejercicio</ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => openBlockEdit(i)}>Editar bloque</ContextMenuItem>
-                    <ContextMenuSub>
-                      <ContextMenuSubTrigger>Etiquetas del bloque</ContextMenuSubTrigger>
-                      <ContextMenuSubContent className="w-64 p-2">
-                        <TagsMenu targetType="routine" targetId={model.id} />
-                      </ContextMenuSubContent>
-                    </ContextMenuSub>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem className="text-destructive" onClick={() => setBlockDelete(i)}>Borrar bloque</ContextMenuItem>
-                  </>
-                ) : (
-                  <ContextMenuItem onClick={() => setEditing(true)}>Editar rutina</ContextMenuItem>
-                )}
+                <ContextMenuItem onClick={() => setEditing(true)}>Editar rutina</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
-            <ul
-              className="divide-y divide-border min-h-[2rem]"
-              onDragOver={(ev) => ev.preventDefault()}
-              onDrop={(ev) => {
-                ev.stopPropagation();
-                if (!drag) return;
-                if (drag.bi === i) {
-                  const last = Math.max(0, b.exercises.length - 1);
-                  if (drag.ei !== last) reorderExercises(model.id, i, drag.ei, last).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
-                  else setDrag(null);
-                } else {
-                  moveExercise(model.id, drag.bi, drag.ei, i, b.exercises.length).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
-                }
-              }}
-            >
+            <ul className="divide-y divide-border min-h-[2rem]">
               {b.exercises.map((e, j) => (
                 <li
                   key={exerciseKey(b.exercises, j)}
-                  draggable={editing}
-                  onDragStart={() => { if (editing) setDrag({ bi: i, ei: j }); }}
-                  onDragOver={(ev) => ev.preventDefault()}
-                  onDragEnd={() => setDrag(null)}
-                  onDrop={(ev) => {
-                    ev.stopPropagation();
-                    if (!drag) { setDrag(null); return; }
-                    if (drag.bi === i && drag.ei === j) { setDrag(null); return; }
-                    if (drag.bi === i) {
-                      reorderExercises(model.id, i, drag.ei, j).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
-                    } else {
-                      moveExercise(model.id, drag.bi, drag.ei, i, j).then(() => setDrag(null)).catch(() => setSaveError('No se pudo mover el ejercicio.'));
-                    }
-                  }}
-                  className={`px-3 py-3 bg-card cursor-move ${drag?.bi === i && drag?.ei === j ? 'opacity-50' : ''}`}
+                  className="px-3 py-3 bg-card"
                 >
                   <ContextMenu>
                     <ContextMenuTrigger className="block">
                       <div className="grid grid-cols-[minmax(0,1fr)_48px_5ch] items-center gap-2">
                         <div className="flex min-w-0 items-start justify-between gap-2">
                           <span className="block font-heading text-base font-bold text-foreground">{e.name}</span>
-                          {editing && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </DropdownMenuTrigger>
-                            <ExerciseActionsMenu
-                              onEdit={() => openExEdit(i, j)}
-                              onEditVideo={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}
-                              onDelete={() => setExDelete({ bi: i, ei: j })}
-                            />
-                          </DropdownMenu>
-                          )}
                         </div>
                         <div className="justify-self-center">
                           <Video query={e.name} video={e.video} />
@@ -721,34 +664,11 @@ export default function Routine() {
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                      {editing ? (
-                        <>
-                          <ContextMenuItem onClick={() => openExEdit(i, j)}>Editar</ContextMenuItem>
-                          <ContextMenuItem onClick={() => setUrlEdit({ bi: i, ei: j, url: e.video?.url ?? '' })}>Editar video</ContextMenuItem>
-                          <ContextMenuSub>
-                            <ContextMenuSubTrigger>Etiquetas</ContextMenuSubTrigger>
-                            <ContextMenuSubContent className="w-64 p-2">
-                              <TagsMenu targetType="exercise" targetId={e.id || e.name} />
-                            </ContextMenuSubContent>
-                          </ContextMenuSub>
-                          <ContextMenuSeparator />
-                          <ContextMenuItem className="text-destructive" onClick={() => setExDelete({ bi: i, ei: j })}>Borrar</ContextMenuItem>
-                        </>
-                      ) : (
-                        <ContextMenuItem onClick={() => setEditing(true)}>Editar rutina</ContextMenuItem>
-                      )}
+                      <ContextMenuItem onClick={() => setEditing(true)}>Editar rutina</ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
                 </li>
               ))}
-              {editing && b.exercises.length === 0 && (
-                <li className="px-3 py-3 bg-card">
-                  <Button size="sm" variant="ghost" onClick={() => setExCreate({ blockIndex: i })}>
-                    + Agregar ejercicio
-                  </Button>
-                </li>
-              )}
-
             </ul>
           </section>
         ))}
@@ -795,9 +715,9 @@ export default function Routine() {
               }}
               className={`border border-border bg-card transition-colors ${dropTarget?.bi === i ? 'ring-1 ring-accent' : ''}`}
             >
-              <div className="border-b border-border bg-secondary">
+              <button type="button" className="block w-full border-b border-border bg-secondary text-left" onClick={() => openBlockEdit(i)}>
                 <BlockHeader block={b} position={i + 1} />
-              </div>
+              </button>
               <div className="divide-y divide-border">
                 {b.exercises.length === 0 && (
                   <p className="px-3 py-4 text-sm text-muted-foreground">Arrastrá un ejercicio aquí</p>
@@ -862,7 +782,7 @@ export default function Routine() {
       )}
 
       {showStartBar && (
-        <div className="fixed inset-x-0 bottom-[57px] z-40 md:bottom-0">
+        <div className="fixed inset-x-0 bottom-0 z-40">
           <Link
             to={`/run/${model.id}`}
             className="accion accion-borde-alto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
