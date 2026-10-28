@@ -167,8 +167,8 @@ export default function Planes() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cats.map((c) => (
           <ContextMenu key={c.id}>
-            <ContextMenuTrigger className="block h-full">
-              <Card className="relative h-full p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
+            <ContextMenuTrigger className="block">
+              <Card className="relative p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
                 <div className="flex items-start justify-between gap-2">
                   <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                     <h2 className="font-heading text-lg font-bold tracking-tight">{c.name}</h2>

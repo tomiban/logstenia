@@ -340,8 +340,8 @@ export default function Skill() {
           const report = reports.get(p.id) ?? null;
           return (
             <ContextMenu key={p.id}>
-              <ContextMenuTrigger className="block h-full">
-                <Card className="relative h-full p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
+              <ContextMenuTrigger className="block">
+                <Card className="relative p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
                   <div className="flex items-start justify-between gap-2">
                     <Link to={`/program/${p.id}`} className="block min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                       <h2 className="font-heading text-lg font-bold tracking-tight">{p.name}</h2>
