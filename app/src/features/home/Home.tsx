@@ -22,7 +22,7 @@ import { targetsByTag } from '@/lib/tags';
 import { useNow } from '@/hooks/useNow';
 import { formatDayMonth } from '@/lib/date';
 import { pluralForm } from '@/lib/format';
-import { bloquesDe, destinoDeHoy, dosisDeBloque } from './hoy';
+import { bloquesDe, destinoDeHoy, destinoDePlan, dosisDeBloque } from './hoy';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -41,6 +41,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [elegidoId, setElegidoId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -166,8 +167,12 @@ export default function Home() {
     return m;
   })();
 
-  const destino = destinoDeHoy(cats, sessions, hoyIso, startedPlanIds);
   const totalProgramas = cats.reduce((acc, c) => acc + c.programs.length, 0);
+  const planesActivos = startedPrograms.map((x) => ({ id: x.prog.id, prog: x.prog, cat: x.cat }));
+  const elegido = elegidoId ? planesActivos.find((x) => x.id === elegidoId) : undefined;
+  const destino = elegido
+    ? destinoDePlan(elegido.prog, sessions, hoyIso)
+    : destinoDeHoy(cats, sessions, hoyIso, startedPlanIds);
   const bloques = destino ? bloquesDe(destino.model) : [];
   const sesionesHoy = sessions.filter((s) => s.date === hoyIso && s.completed).length;
   const seriesDelDia = bloques.reduce((acc, b) => acc + (b.block.sets || 0), 0);
@@ -212,6 +217,26 @@ export default function Home() {
               </>
             )}
           </p>
+          {planesActivos.length > 1 && (
+            <div className="banda-tabs" role="group" aria-label="Planes activos">
+              {planesActivos.map((x) => {
+                const activo = x.id === (elegido?.id ?? destino?.prog.id);
+                const repetido = planesActivos.filter((y) => y.cat.id === x.cat.id).length > 1;
+                return (
+                  <button
+                    key={x.id}
+                    type="button"
+                    className="banda-tab"
+                    aria-pressed={activo}
+                    onClick={() => setElegidoId(x.id)}
+                  >
+                    {x.cat.name}
+                    {repetido ? ` · ${x.prog.level === 'beginner' ? 'N1' : x.prog.level === 'intermediate' ? 'N2' : 'N3'}` : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <span aria-hidden="true" className="banda-flecha">
           →

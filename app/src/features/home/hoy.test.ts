@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Category, Model } from '@/types';
 import type { SessionRecord } from '@/db';
-import { destinoDeHoy, bloquesDe, dosisDeBloque } from './hoy';
+import { destinoDeHoy, destinoDePlan, bloquesDe, dosisDeBloque } from './hoy';
 
 const modelo = (id: string, name: string): Model => ({
   id,
@@ -142,6 +142,35 @@ describe('destinoDeHoy', () => {
   it('ignora sesiones de un programa que ya no está en el catálogo', () => {
     const sesiones = [sesion('fantasma', 'x1', '2026-10-27')];
     expect(destinoDeHoy(catalogo, sesiones, '2026-10-28')).toBeNull();
+  });
+});
+
+describe('destinoDePlan', () => {
+  it('un plan sin sesiones arranca por su primera rutina', () => {
+    const d = destinoDePlan(catalogo[0].programs[0], [], '2026-10-28');
+    expect(d.model.id).toBe('a1');
+    expect(d.nuevo).toBe(true);
+    expect(d.hoyCompletada).toBe(false);
+  });
+
+  it('continúa la rutina siguiente a la última entrenada de ese plan', () => {
+    const d = destinoDePlan(catalogo[0].programs[0], [sesion('a', 'a1', '2026-10-26')], '2026-10-28');
+    expect(d.model.id).toBe('a2');
+    expect(d.nuevo).toBe(false);
+  });
+
+  it('si ese plan ya entrenó hoy, hoy sigue siendo su misma rutina', () => {
+    const d = destinoDePlan(
+      catalogo[0].programs[0],
+      [sesion('a', 'a1', '2026-10-26'), sesion('a', 'a2', '2026-10-28')],
+      '2026-10-28',
+    );
+    expect(d.model.id).toBe('a2');
+    expect(d.hoyCompletada).toBe(true);
+  });
+
+  it('cicla al terminar el plan', () => {
+    expect(destinoDePlan(catalogo[0].programs[0], [sesion('a', 'a3', '2026-10-27')], '2026-10-28').model.id).toBe('a1');
   });
 });
 

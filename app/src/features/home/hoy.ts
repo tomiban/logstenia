@@ -58,6 +58,29 @@ export function destinoDeHoy(
   return null;
 }
 
+/**
+ * The destination of one chosen plan: its next routine after the last one trained, or its first one
+ * when the plan has no history yet. Tabs use this so switching a plan never guesses.
+ */
+export function destinoDePlan(prog: Program, sessions: SessionRecord[], hoyIso: string): DestinoHoy {
+  const propias = sessions.filter((s) => s.completed && s.planId === prog.id);
+  if (propias.length === 0) return { prog, model: prog.models[0], hoyCompletada: false, nuevo: true };
+
+  const porFecha = [...propias].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const deHoy = porFecha.find((s) => s.date === hoyIso);
+  if (deHoy) {
+    return {
+      prog,
+      model: prog.models.find((m) => m.id === deHoy.modelId) ?? prog.models[0],
+      hoyCompletada: true,
+      nuevo: false,
+    };
+  }
+
+  const i = prog.models.findIndex((m) => m.id === porFecha[0].modelId);
+  return { prog, model: prog.models[(i + 1) % prog.models.length], hoyCompletada: false, nuevo: false };
+}
+
 export interface BloqueDeHoy {
   block: Block;
   nombre: string;

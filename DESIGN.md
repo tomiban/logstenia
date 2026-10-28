@@ -468,6 +468,12 @@ La gramática compartida por `/` y `/run/:id`: el destino se anuncia, no se elig
 - **The Edge-Arrow Rule.** Todo lo que es "siguiente" lleva `→` al borde derecho de su contenedor:
   filas, barra de acción, fila "Después". Nunca en el medio, nunca un icono de librería.
 
+- **Tabs de plan activo** (`.banda-tabs` / `.banda-tab`): cuando hay más de un plan empezado, la
+  banda lleva un control segmentado en su pie para cambiar de destino sin bajar a *Programas*. Vive en
+  tinta con hairline y mono; la pestaña activa se invierte a papel con texto tinta. **Nunca lima**: el
+  lima sigue siendo la acción, y el tab elige, no ejecuta. Etiqueta = nombre de la categoría (con `· N1/N2/N3`
+  cuando dos planes activos comparten categoría), objetivo táctil de 44px.
+
 Reglas que la señalética no toca: radio 0, cero sombras, una sola baliza lima (la acción; la marca de
 PR y el descanso usan la inversión tinta/lima, no otro acento) y mono tabular para todo número.
 

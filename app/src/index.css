@@ -441,3 +441,39 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
+
+/* Plan switches ride inside the band: they change the destination, so they live where the
+   destination is announced — ink, hairline and mono, never the beacon. */
+@layer components {
+  .banda-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    margin-top: 1rem;
+    border: 1px solid var(--banda-mute);
+    width: fit-content;
+    max-width: 100%;
+  }
+  .banda-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--banda-mute);
+  }
+  .banda-tab:hover {
+    color: var(--banda-fg);
+  }
+  .banda-tab[aria-pressed='true'] {
+    background: var(--banda-fg);
+    color: var(--ink);
+  }
+  .dark .banda-tab[aria-pressed='true'] {
+    color: var(--surface);
+  }
+}

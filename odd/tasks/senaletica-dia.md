@@ -172,3 +172,11 @@ su rutina siguiente, (3) el **último** plan empezado, con su primera rutina. Lo
 alcanzables en *Programas*, y el encabezado dice cuántos están activos (`2 activos`). Dos casos nuevos
 en `hoy.test.ts` (396 tests); verificado en navegador con `handstand-principiante` + `fuerza-intermedios`:
 la banda anuncia `Modelo B1 · Fuerza Intermedia` y las dos filas quedan en Programas.
+
+L17. Tabs de plan activo (propuesta del atleta). Con varios planes empezados había un solo destino y
+nadie sabía que existían los otros. Ahora la banda lleva tabs en su pie cuando hay más de uno activo:
+cambian el destino en un toque, sin bajar a *Programas*, y la pestaña activa se invierte a papel con
+texto tinta (nunca lima: el tab elige, la acción ejecuta). El destino de cada plan sale de
+`destinoDePlan` (su rutina siguiente, o la primera si no tiene historial), regla nueva con cuatro casos
+propios. Verificado en navegador con tres planes: `Handstand ✓ | Planche | Fuerza`, 44px por pestaña, y
+al tocar Planche la banda pasa a `Tuck Planche R1` con acción `Empezar`. 400 tests.
