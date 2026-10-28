@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCategories } from '@/hooks/usePlans';
 import type { Category, Model, Program } from '@/types';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
@@ -23,6 +23,7 @@ import { getMarks } from '@/features/progress/marks';
 import { targetsByTag } from '@/lib/tags';
 import { useNow } from '@/hooks/useNow';
 import { formatDayMonth } from '@/lib/date';
+import { ChevronRight } from 'lucide-react';
 import { pluralForm } from '@/lib/format';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -338,13 +339,24 @@ export default function Home() {
             </div>
           )}
           {startedPrograms.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-border border border-border">
               {startedPrograms.map((p, index) => (
-                <li key={p.prog.id}>
-                  <div className="flex items-center justify-between gap-3 border border-border bg-card p-3">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{p.prog.name}</p>
-                      <p className="label-caps text-muted-foreground">
+                <li key={p.prog.id} className={index === 0 ? 'bg-card' : undefined}>
+                  <div className="relative flex items-center justify-between gap-3 p-3">
+                    <Link
+                      to={`/program/${p.prog.id}`}
+                      className="min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      <p
+                        className={
+                          index === 0
+                            ? 'font-heading text-xl font-bold leading-tight tracking-tight'
+                            : 'font-heading text-sm font-bold leading-tight tracking-tight'
+                        }
+                      >
+                        {p.prog.name}
+                      </p>
+                      <p className="label-caps mt-1 text-muted-foreground">
                         <span className="metric text-foreground">{p.completedModels}</span>/{p.totalModels}{' '}
                         {pluralForm(p.totalModels, 'rutina', 'rutinas')} ·{' '}
                         <span className="metric text-foreground">{p.sessions}</span>{' '}
@@ -357,14 +369,17 @@ export default function Home() {
                           <span className="label-caps text-muted-foreground">{p.best.unit}</span>
                         </p>
                       )}
-                    </div>
-                    <Button
-                      variant={index === 0 ? 'accent' : 'outline'}
-                      size="lg"
-                      onClick={() => navigate(`/program/${p.prog.id}`)}
-                    >
-                      Abrir programa
-                    </Button>
+                    </Link>
+                    {index === 0 ? (
+                      <Button
+                        variant="accent"
+                        size="lg"
+                        className="relative z-10 shrink-0"
+                        onClick={() => navigate(`/program/${p.prog.id}`)}
+                      >
+                        Abrir programa
+                      </Button>
+                    ) : null}
                   </div>
                 </li>
               ))}
@@ -386,7 +401,7 @@ export default function Home() {
       </Card>
 
       <Card>
-        <div className="border-b border-border px-4 py-2 flex items-center justify-between">
+        <div className="flex items-baseline gap-2 border-b border-border px-4 py-2">
           <span className="label-caps text-foreground">Últimos entrenamientos</span>
           <span className="text-sm text-muted-foreground">
             <span className="metric text-foreground">{ultimas.length}</span> de 5
@@ -419,11 +434,7 @@ export default function Home() {
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className="label-status tabular text-muted-foreground">{formatDayMonth(h.fecha)}</span>
-                        {it && (
-                          <span className="label-caps text-foreground" aria-hidden="true">
-                            →
-                          </span>
-                        )}
+                        {it && <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-foreground" />}
                       </span>
                     </button>
                   </li>
