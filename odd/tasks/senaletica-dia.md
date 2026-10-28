@@ -37,13 +37,14 @@ error/recarga siguen existiendo, recompuestos en la gramática de señalética.
 | --- | --- | --- | --- |
 | T1 | `hoy.ts` + `hoy.test.ts`: regla del destino del día y dosis de bloque, test-first | S1, S2 | `5d50822` |
 | T2 | `/` Home recompuesta en señalética, sin perder ninguna capacidad | S2, S3, S4 | `12d68bd` |
-| T3 | `/run/:id` en la misma gramática, conservando `useRunner` y sus tests | S2, S3 | pendiente |
-| T4 | Documentar el sistema construido en `DESIGN.md` | S3 | pendiente |
+| T3 | `/run/:id` en la misma gramática, conservando `useRunner` y sus tests | S2, S3 | `70a4b3e` |
+| T4 | Documentar el sistema construido en `DESIGN.md` | S3 | `pendiente` |
 
 ## Delivery slices
 
 - **Slice 1:** T1 + T2, `5d50822` y `12d68bd` — la regla del día y Home en señalética (391 tests).
-- **Slice 2:** T3 — `/run/:id` en la misma gramática.
+- **Slice 2:** T3, `70a4b3e` — `/run/:id` en la misma gramática, con el plato de descanso intacto.
+- **Slice 3:** T4 — documentar la gramática en `DESIGN.md`.
 
 ## Log
 
@@ -66,3 +67,12 @@ L6. T2 cerrado: `/` recompuesta. Verificado con 391 tests (31 archivos), lint en
 advertencias nuevas), `build` en verde, y captura real a 390×844 claro/oscuro y 1440×900 sobre
 datos sembrados (`handstand-intermedio`, dos sesiones completadas → destino "Balance - Nivel 2
 (pino en pared)", cinco puertas).
+
+L7. T3 cerrado: `/run/:id` recompuesta sin tocar `useRunner`, `steps.ts`, `rest.ts`, `session.ts`,
+`Cronometro.tsx` ni un solo test. Verificado con 391 tests en 31 archivos, lint en 19 (las de
+siempre), `build` en verde y capturas reales a 390×844 claro/oscuro, 1440×900 y el plato de descanso
+en curso (60s contando, −10/+10, saltar). El paso multi-ejercicio (biserie) conserva su encabezado
+propio; el de un solo ejercicio lo delega a la banda para no repetirlo.
+
+L8. T4: la gramática quedó documentada en `DESIGN.md` como sección propia ("Señalética del día"), con
+las dos escalas de título, la regla de la flecha al borde y las invariantes que la señalética no toca.

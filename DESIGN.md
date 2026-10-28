@@ -429,3 +429,26 @@ Los defaults genéricos de las herramientas de diseño **no gobiernan** este sis
   colorear por categoría choca con The Beacon Rule y requiere decisión explícita del usuario.
 - **Los tags pastel son la excepción ya decidida.** El usuario eligió la paleta pastel para las
   etiquetas: no es una violación a reportar ni a "corregir" hacia el chip outline.
+
+## Señalética del día
+
+La gramática compartida por `/` y `/run/:id`: el destino se anuncia, no se elige.
+
+- **Banda de destino** (`.banda`): fondo `--ink`, kicker mono `--on-ink` (fecha o bloque), título
+  Space Grotesk 700 con tracking −0.04em, línea de contexto `.banda-sub` (12px mono, corta sólo
+  entre segmentos `·`, cada segmento `nowrap`) y **flecha al borde derecho** (`--on-ink`), decorativa.
+  Dos escalones de título: `.banda-titulo` para el nombre de la rutina del día y
+  `.banda-titulo-ejercicio` (`clamp(2rem, 9vw, 2.75rem)`, `max-width: 18ch`) para el ejercicio de la
+  sesión, porque los nombres del plan llegan a 50 caracteres y lo que se está registrando tiene que
+  quedar en el primer viewport.
+- **Acción** (`.accion`): franja `--accent` con `--on-accent`, título Space Grotesk 700 y metadatos
+  mono. En `/` va pegada a la banda y arranca la sesión; en `/run` es `.accion-pie`, fija al pie
+  (la ruta es inmersiva: no hay nav inferior que compita).
+- **Franja** (`.franja`): hairline con dos lecturas mono (`bloque 1 de 5` · `nada registrado hoy`).
+- **Fila y puerta** (`.fila`, `.puerta`): el bloque es una puerta numerada, alto mínimo 56px, nombre
+  en 15px/600, dosis en mono 11px y la flecha al borde. La fila entera es el objetivo táctil.
+- **The Edge-Arrow Rule.** Todo lo que es "siguiente" lleva `→` al borde derecho de su contenedor:
+  filas, barra de acción, fila "Después". Nunca en el medio, nunca un icono de librería.
+
+Reglas que la señalética no toca: radio 0, cero sombras, una sola baliza lima (la acción; la marca de
+PR y el descanso usan la inversión tinta/lima, no otro acento) y mono tabular para todo número.
