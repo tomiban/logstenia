@@ -285,9 +285,11 @@ export default function Program() {
       </AlertDialog>
 
       {!started && (
-        <div className="border border-ink bg-card p-3 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">¿Empezar este plan? Se registra con 0% de progreso en Inicio.</span>
-          <Button variant="accent" size="lg" disabled={!unlocked} onClick={async () => {
+        <div className="border border-border bg-card">
+          <p className="px-4 py-2 text-sm text-muted-foreground">
+            ¿Empezar este plan? Se registra con 0% de progreso en Inicio.
+          </p>
+          <button type="button" className="accion accion-borde-alto disabled:opacity-40" disabled={!unlocked} onClick={async () => {
             try {
               const r = await settingsRepository.get('startedPlans');
               const arr = (r?.value as string[]) || [];
@@ -299,7 +301,12 @@ export default function Program() {
             } catch {
               setSaveError('No se pudo empezar el plan.');
             }
-          }}>{unlocked ? 'Empezar plan' : 'Bloqueado'}</Button>
+          }}>
+            <span className="accion-titulo">{unlocked ? 'Empezar plan' : 'Bloqueado'}</span>
+            <span className="accion-meta">
+              {p.models.length} {p.models.length === 1 ? 'rutina' : 'rutinas'} <span aria-hidden="true">→</span>
+            </span>
+          </button>
         </div>
       )}
 

@@ -112,7 +112,7 @@ critique.
 | D7 | Acción `Siguiente` de la barra a ≥44px de alto (medido 131×36) | critique P2 · detector | inline |
 | D8 | `totalTimeMin` saneado o no exhibido (dice 8 min donde la dosis implica ~15) | critique P2-6 | inline |
 | D9 | Mesociclo fuera del primer viewport (revelado, no en medio del entrenamiento) | critique P2-7 | inline |
-| D10 | La acción principal con anatomía de `.accion`: hecha en `/routine/:id` (el choque que nombró el critique); `/planes`, `/program`, `/metrics`, `/skill` siguen con `Button` accent | contrato §4 | **parcial** |
+| D10 | Acción principal con anatomía de `.accion` en línea: `/routine/:id` y `/program/:id` | contrato §4 | `7094bae`, cierre |
 | D11 | Un solo indicador de foco (anillo de 2px) también en enlaces | critique menores | inline |
 | D12 | El cierre de sesión no corona un conteo | critique journey | inline |
 
@@ -137,3 +137,22 @@ series` · flecha al borde), así que las dos pantallas contiguas comparten inte
 en navegador: fondo `rgb(204,255,0)`, alto 64px, es un `<a>` real. Quedan `/planes`, `/program`,
 `/metrics` y `/skill` con el `Button` accent de cabecera: sus acciones primarias no viven en una barra
 fija, así que el choque visual no existe ahí y se pueden portar de a una sin prisa.
+
+L13. D10 cerrado. `/program/:id` convierte su "¿Empezar este plan?" en la anatomía de la acción
+(`Empezar plan · 6 rutinas →`, 64px, `<button>` real, con el `disabled` de bloqueo intacto), verificado
+en navegador: sin empezar muestra la acción, al tocarla desaparece y el plan queda registrado.
+`/planes`, `/metrics` y `/skill/:id` no tienen acción principal de página —sus `Button` accent viven en
+diálogos de crear/guardar o en la cadena de progresión—, así que ahí no hay nada que portar: forzar una
+barra sería el error contrario. Eso queda escrito como decisión, no como deuda.
+
+L14. Feature cerrada. Estado final de la rama `feat/senaletica-dia`:
+- Contrato: `DESIGN.md` con la señalética declarada, la baliza con presupuesto, el piso de 11px, los dos
+  registros, la reconciliación del titular de página y las tres formas de "serie" por rol.
+- Superficies: `/` y `/run/:id` en señalética completa; `/routine/:id` y `/program/:id` con la anatomía
+  de la acción.
+- Verificación: 391 tests en 31 archivos, 19 advertencias de lint (las preexistentes de `features/runner`),
+  `build` en verde, y medición en navegador de cada punto del contrato (banda oscura `rgb(26,26,26)`,
+  una sola lima por pantalla, marca de la última vez, salida de la sesión, anclas de bloque, targets de
+  44px, piso de 11px, cero sombras y cero radios).
+- T8 de `impeccable-plays` (el runner como tablero de tiempos) queda **superado** por este port: el
+  descanso, el resumen y la lógica se conservan, la composición no.
