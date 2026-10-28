@@ -96,6 +96,17 @@ body {
   --color-on-ink: var(--on-ink);
   --color-muted-surface: var(--muted-surface);
   --radius: 0px;
+
+  /* Motion language. The board acknowledges; it does not perform. Feedback lands in one tap,
+     state changes are quick, and the single authored beat is reserved for a moment the surface
+     earned. The durations are the only ones the system uses, so no view invents its own. */
+  --ease-beat: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-tap: 120ms;
+  --dur-state: 200ms;
+  --dur-move: 320ms;
+  --dur-beat: 520ms;
+  --default-transition-duration: var(--dur-state);
+  --default-transition-timing-function: var(--ease-beat);
 }
 
 .dark {
@@ -184,4 +195,37 @@ input[type="range"]:disabled {
   .label-caps { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .label-status { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .rule { border-bottom: 1px solid var(--border); }
+}
+
+/* Browser surfaces carry the system too. Selection, caret, scrollbars, focus and underline
+   offsets ship with platform defaults that belong to no design system; these come from the
+   palette, which is the cheapest signal that a page was built rather than assembled. */
+::selection { background: var(--ink); color: var(--on-ink); }
+:root { caret-color: var(--ink); }
+html { scrollbar-color: var(--hairline) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+:focus-visible { outline-offset: 2px; }
+a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+
+/* The one authored beat. Use it for a state change worth noticing, never as an entrance on every
+   section: routine transitions use the default duration and timing above. */
+@keyframes beat {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.beat { animation: beat var(--dur-beat) var(--ease-beat) both; }
+
+/* Reduced motion means fewer and gentler animations, not none: the beat keeps its opacity change
+   and drops the travel, and the skeletons stop pulsing while keeping their shape. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-move: 160ms; --dur-beat: 160ms; }
+  .beat { animation-name: beat-still; }
+  .animate-pulse { animation: none; }
+  @keyframes beat-still {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }

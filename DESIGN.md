@@ -231,6 +231,42 @@ bordes de 1px, separación por reglas. No hay píldoras, círculos salvo los ind
 **The Zero-Radius Rule.** Ningún contenedor, botón, input, badge o tarjeta lleva esquina
 redondeada. Si un componente de librería la trae, se anula.
 
+## Motion
+
+El tablero **acusa recibo, no actúa**. La interfaz es un instrumento: responde, no se luce.
+Todo el sistema usa una sola curva y cuatro duraciones, declaradas en `app/src/index.css`:
+
+- **Curva:** `--ease-beat` = `cubic-bezier(0.16, 1, 0.3, 1)` (desaceleración, sin rebote ni elástico).
+- **`--dur-tap` (120ms):** feedback inmediato de un control.
+- **`--dur-state` (200ms):** cambio de estado corriente — es el default de `transition-*`, así que
+  ningún componente necesita declararlo.
+- **`--dur-move` (320ms):** movimiento de layout u overlay.
+- **`--dur-beat` (520ms):** el único momento autorado de una superficie.
+
+### Named Rules
+**The One-Beat Rule.** Cada superficie tiene como máximo un elemento con `.beat`: el momento que
+se ganó (una marca nueva, una fase que cambia, una semana que avanza). Si dos elementos laten en la
+misma vista, uno está de más. Las transiciones de rutina usan el default y no anuncian nada.
+
+**The No-Choreography Rule.** No hay entrada de página, ni stagger de secciones, ni revelados por
+scroll. En modo Operate, hacer esperar al usuario es un defecto, no una decisión.
+
+### Reduced motion
+`prefers-reduced-motion: reduce` no apaga el motion: baja `--dur-move` y `--dur-beat` a 160ms, deja
+que `.beat` conserve el cambio de opacity y le quita el desplazamiento, y detiene el pulso de los
+skeletons (la forma queda). El spinner de estado sigue girando: informa, no decora.
+
+## Browser surfaces
+
+Lo que no dibujamos también es sistema:
+
+- **Selección:** fondo Ink, texto On Ink.
+- **Caret:** Ink.
+- **Scrollbar:** thumb Hairline con borde del fondo, track transparente (y `scrollbar-color` en Firefox).
+- **Foco:** anillo en `--ring` con `outline-offset: 2px`.
+- **Subrayados:** offset `0.2em`, grosor 1px.
+- **Números comparables:** `.tabular` (`tabular-nums`) además de `.metric`.
+
 ## Components
 
 ### Buttons
@@ -332,6 +368,9 @@ el descanso (suena + vibra al llegar a 0).
 - **Do** mantener radio 0 en cualquier componente nuevo, incluyendo los que traiga la librería.
 - **Do** usar `label-caps` para etiquetas y `.metric` para el dato, en pares alineados.
 - **Do** mantener las alturas táctiles en 44px en las pantallas de uso en el gym.
+- **Do** usar la curva y las duraciones del sistema (`--ease-beat`, `--dur-*`); el default ya es
+  `--dur-state`, así que el feedback no se declara.
+- **Do** gastar `.beat` en un solo elemento por superficie, y en el que se ganó el momento.
 
 ### Don't:
 - **Don't** usar `box-shadow` (ni `shadow-md`, ni glows, ni gradientes decorativos).
@@ -345,6 +384,10 @@ el descanso (suena + vibra al llegar a 0).
 - **Don't** escribir texto en lima sobre papel o superficie (The Lime-is-a-fill Rule): el estado
   se escribe en tinta y el lima queda como marca.
 - **Don't** usar color como único portador de significado (el estado también va en texto/forma).
+- **Don't** inventar duraciones, curvas ni entradas de página: una animación de más es deuda, y el
+  reveal por scroll no existe en este sistema.
+- **Don't** dejar superficies del navegador (selección, caret, scrollbar, foco, subrayado) con su
+  default de plataforma.
 
 ## Herramientas de diseño y precedencia
 

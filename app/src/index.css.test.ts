@@ -86,3 +86,50 @@ describe('dark: superficies de relleno', () => {
     expect(ratio).toBeLessThanOrEqual(2.5);
   });
 });
+
+const themeBlock = (() => {
+  const match = /\n\s*@theme inline\s*\{/.exec(CSS);
+  if (!match) return {} as Record<string, string>;
+  const start = match.index + match[0].length;
+  const body = CSS.slice(start, CSS.indexOf('}', start));
+  const decls: Record<string, string> = {};
+  for (const decl of body.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) decls[decl[1]] = decl[2].trim();
+  return decls;
+})();
+
+describe('lenguaje de motion', () => {
+  it('declara una sola curva y la escala de duraciones del tablero', () => {
+    expect(themeBlock['ease-beat']).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
+    expect(themeBlock['dur-tap']).toBe('120ms');
+    expect(themeBlock['dur-state']).toBe('200ms');
+    expect(themeBlock['dur-move']).toBe('320ms');
+    expect(themeBlock['dur-beat']).toBe('520ms');
+  });
+
+  it('el feedback por defecto usa la duración de estado y la curva del tablero', () => {
+    expect(themeBlock['default-transition-duration']).toBe('var(--dur-state)');
+    expect(themeBlock['default-transition-timing-function']).toBe('var(--ease-beat)');
+  });
+
+  it('reduced motion conserva la opacity del beat y le quita el desplazamiento', () => {
+    const reduce = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? '';
+    const still = /@keyframes beat-still\s*\{([\s\S]*?)\n  \}/.exec(CSS)?.[1] ?? '';
+    expect(reduce).toContain('.beat { animation-name: beat-still; }');
+    expect(still).toContain('opacity');
+    expect(still).not.toContain('transform');
+  });
+});
+
+describe('superficies del navegador', () => {
+  it('la selección usa tinta y el texto que sobre ella contrasta', () => {
+    const selection = /::selection\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+    expect(selection).toContain('background: var(--ink)');
+    expect(selection).toContain('color: var(--on-ink)');
+  });
+
+  it('el caret y el scrollbar salen de la paleta, no del navegador', () => {
+    expect(CSS).toContain('caret-color: var(--ink)');
+    expect(CSS).toContain('scrollbar-color: var(--hairline) transparent');
+    expect(CSS).toMatch(/::-webkit-scrollbar-thumb\s*\{[^}]*background: var\(--hairline\)/);
+  });
+});
