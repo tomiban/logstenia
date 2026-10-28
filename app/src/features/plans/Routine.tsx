@@ -56,7 +56,14 @@ function BlockHeader({ block, position }: { block: Block; position: number }) {
       <dl className="flex flex-wrap items-start gap-x-4 gap-y-1">
         <div>
           <dt className="label-caps text-muted-foreground">Series</dt>
-          <dd className="metric text-sm text-foreground">{block.sets}</dd>
+          <dd className="text-sm text-foreground">
+            <span aria-hidden="true" className="inline-flex flex-wrap items-center gap-1 pt-1.5">
+              {Array.from({ length: block.sets }, (_, i) => (
+                <span key={i} className="block size-2 bg-ink" />
+              ))}
+            </span>
+            <span className="sr-only">{block.sets} series</span>
+          </dd>
         </div>
         <div>
           <dt className="label-caps text-muted-foreground">Descanso</dt>
@@ -389,8 +396,8 @@ export default function Routine() {
       </div>
 
       <header className="space-y-4 border-b border-border pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1 sm:flex-1">
             <ContextMenu>
               <ContextMenuTrigger className="min-w-0">
                 <h1 className="break-words font-heading text-2xl leading-tight font-bold tracking-tight text-foreground">{model.name}</h1>
@@ -416,7 +423,7 @@ export default function Routine() {
             size="lg"
             variant={editing ? 'ink' : 'outline'}
             aria-pressed={editing}
-            className="shrink-0 gap-1.5"
+            className="shrink-0 gap-1.5 self-start"
             onClick={() => setEditing((v) => !v)}
           >
             {editing ? <X aria-hidden="true" /> : <Pencil aria-hidden="true" />}
@@ -426,7 +433,7 @@ export default function Routine() {
         <div className="space-y-1.5">
           <p id={tagsLabelId} className="label-caps text-muted-foreground">Etiquetas</p>
           <div role="group" aria-labelledby={tagsLabelId} className="min-w-0">
-            <TagsInput targetType="routine" targetId={model.id} className="w-full sm:max-w-md" />
+            <TagsInput targetType="routine" targetId={model.id} className="max-w-xs" />
           </div>
         </div>
       </header>
@@ -682,9 +689,8 @@ export default function Routine() {
                           <Video query={e.name} video={e.video} />
                         </div>
                         <div className="min-w-0 text-right">
-                          <span className="metric text-lg text-foreground">
-                            {e.timeSec ? `${e.timeSec}s` : e.reps}
-                          </span>
+                          <span className="metric block whitespace-nowrap text-lg text-foreground">{e.timeSec ?? e.reps}</span>
+                          <span className="block label-caps text-muted-foreground">{e.timeSec ? 'seg' : 'reps'}</span>
                           {e.cadence && (
                             <span className="block label-caps text-muted-foreground">CAD {e.cadence}</span>
                           )}
