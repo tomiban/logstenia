@@ -151,8 +151,13 @@ protagonismo porque el negro la hace brillar. Los valores viven en el bloque `.d
   superficie. `app/src/index.css.test.ts` lo verifica con los tokens reales, en ambos modos.
 
 ### Named Rules
-**The Beacon Rule.** El Voltage Lime ocupa ≤10% de cualquier pantalla. Su escasez es el punto:
-si dos elementos compiten en lima, uno está mal.
+**The Beacon Rule.** El Voltage Lime ocupa ≤10% de cualquier pantalla y **como máximo dos marcas
+por pantalla**: la acción principal y una marca de estado (un PR, un día entrenado, el punto de
+descanso). Una tercera marca lima es deriva: se degrada a tinta o a texto muted.
+
+**La banda no lleva baliza.** La banda de destino es una *señal*, no una luz: su kicker y su flecha
+se escriben en el color de texto de la banda (papel al 70% en claro, tinta al 70% en oscuro). El
+lima queda para lo que el atleta puede tocar o para el estado que acaba de ganar.
 
 **The Lime-is-a-Fill Rule.** El lima rellena, bordea y marca; **nunca es el color del texto sobre
 papel o superficie**. `#ccff00` sobre `#f0f0f0` da 1.03:1: no es una preferencia, es ilegible. El
@@ -174,17 +179,27 @@ dice "instrumento": legible en el cuerpo, mecánica y precisa en los números.
 
 ### Hierarchy
 - **Display** (Space Grotesk 700, ~1.5rem, tracking −0.02em): nombre del ejercicio en la sesión
-  guiada y títulos de pantalla. **Los siete `h1` de pantalla usan la misma escala:**
-  `font-heading text-2xl font-bold tracking-tight`. Un título de pantalla más grande que otro es
-  deriva, no énfasis.
+  guiada y títulos de pantalla.
+- **Titular de página** (`.text-2xl`, Space Grotesk 700, tracking −0.02em): el `h1` de las cinco
+  superficies de ficha (`/planes`, `/program`, `/routine`, `/metrics`, `/skill`). **Entre esas
+  cinco, la escala es la misma**: un titular más grande que otro es deriva, no énfasis.
+- **Destino** (dentro de la banda, sólo en las dos superficies de señalética): dos escalones
+  medidos, `.banda-titulo` ≈`clamp(2.25rem, 10vw, 3.5rem)` para el nombre de la rutina del día y
+  `.banda-titulo-ejercicio` ≈`clamp(2rem, 9vw, 2.75rem)` con `max-width: 18ch` para el ejercicio en
+  curso, porque los nombres del plan llegan a 50 caracteres y lo que se registra tiene que quedar en
+  el primer viewport.
 - **Heading** (Space Grotesk 700, tracking −0.02em): `h1–h4`; encabezados de tarjeta.
 - **Body** (Hanken Grotesk 400): texto corriente y celdas de tabla.
 - **Label** (JetBrains Mono 600, 11px, letter-spacing 0.08em, UPPERCASE, muted): etiquetas de
   campo, encabezados de columna, unidades. `.label-caps`.
-- **Status** (JetBrains Mono 700, 10px, tracking 0.06em, UPPERCASE): badges y estados. `.label-status`.
+- **Status** (JetBrains Mono 700, 11px, tracking 0.06em, UPPERCASE): badges y estados. `.label-status`.
 - **Metric** (JetBrains Mono 700, tracking −0.05em, tabular-nums): el número héroe. `.metric`.
 
 ### Named Rules
+**The Eleven-Pixel Floor.** Ningún texto con contenido baja de 11px: dosis, descanso, marcas,
+puertas, números de serie, etiquetas de navegación y acciones. La densidad se resuelve con jerarquía,
+no achicando; el detector marca cualquier texto funcional por debajo del piso.
+
 **The Tabular Rule.** Todo número que se pueda comparar en columna usa `.tabular`
 (`tabular-nums`). Los dígitos nunca deben bailar entre filas.
 
@@ -325,7 +340,7 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
   color. Es una decisión de producto del usuario, no una deriva: la Beacon Rule no los alcanza
   porque distinguen categorías, no señalan estado ni acción. Si se agrega un noveno color, tiene
   que entrar en esa tabla y mantener contraste AA sobre su propio fondo.
-- **Typography:** `.label-status` (mono 10px uppercase).
+- **Typography:** `.label-status` (mono 11px uppercase).
 
 ### Cards / Containers
 - **Corner Style:** 0.
@@ -452,3 +467,35 @@ La gramática compartida por `/` y `/run/:id`: el destino se anuncia, no se elig
 
 Reglas que la señalética no toca: radio 0, cero sombras, una sola baliza lima (la acción; la marca de
 PR y el descanso usan la inversión tinta/lima, no otro acento) y mono tabular para todo número.
+
+## Dos registros, un mundo
+
+La app tiene dos registros de composición, y son una decisión, no una migración a medias:
+
+- **Señalética** (`/`, `/run/:id`): se opera de pie, con una mano, bajo carga. Banda de destino,
+  puertas o filas, barra de acción al borde. **Máximo una acción lima.**
+- **Ficha** (`/planes`, `/program/:id`, `/routine/:id`, `/metrics`, `/skill/:id`): se explora y se
+  lee sentado. Titular de página, tarjetas, lectura densa. La acción principal usa la anatomía de
+  `.accion` **en línea** (no fija al pie), para que la intención se reconozca aunque cambie la
+  disposición.
+
+Lo que no varía entre registros: radio 0, cero sombras, mono tabular para todo número, una sola
+baliza, piso de 11px y objetivos táctiles de 44px como mínimo.
+
+**Una superficie tiene banda o titular de página, nunca las dos.**
+
+### Las tres formas de "serie", por rol
+
+No son deriva: cada una responde a una pregunta distinta y no aparecen juntas en la misma pantalla.
+
+| Forma | Dónde | Responde |
+| --- | --- | --- |
+| Puntos | tarjetas de rutina en `/routine/:id` | ¿cuántas series tiene el bloque? (vista previa) |
+| `S1…Sn` | sesión guiada | ¿en qué serie estoy y qué registré? (entrada) |
+| Puertas `01…05` | `/` | ¿por dónde voy y qué sigue? (navegación) |
+
+### La banda y el tema
+
+La banda es **siempre el plano más oscuro del tema**: en claro, `--ink`; en oscuro, `--surface` con
+hairline de `--border`, nunca el blanco de la tinta invertida. La inversión de `--ink` es para texto,
+no para rellenar una superficie grande. Así la banda conserva su papel de señal en los dos temas.

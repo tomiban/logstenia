@@ -38,7 +38,7 @@ error/recarga siguen existiendo, recompuestos en la gramática de señalética.
 | T1 | `hoy.ts` + `hoy.test.ts`: regla del destino del día y dosis de bloque, test-first | S1, S2 | `5d50822` |
 | T2 | `/` Home recompuesta en señalética, sin perder ninguna capacidad | S2, S3, S4 | `12d68bd` |
 | T3 | `/run/:id` en la misma gramática, conservando `useRunner` y sus tests | S2, S3 | `70a4b3e` |
-| T4 | Documentar el sistema construido en `DESIGN.md` | S3 | `pendiente` |
+| T4 | Documentar el sistema construido en `DESIGN.md` | S3 | `e9abba5` |
 
 ## Delivery slices
 
@@ -76,3 +76,42 @@ propio; el de un solo ejercicio lo delega a la banda para no repetirlo.
 
 L8. T4: la gramática quedó documentada en `DESIGN.md` como sección propia ("Señalética del día"), con
 las dos escalas de título, la regla de la flecha al borde y las invariantes que la señalética no toca.
+
+## Contrato cerrado (post-critique)
+
+S5. El atleta decidió, después del critique 23/40: **decidir el contrato antes de tocar código**,
+verbatim: "Decidir el contrato antes de tocar código". `DESIGN.md` quedó reconciliado en cinco
+puntos, sin cambios de código:
+
+1. **The Beacon Rule con presupuesto:** máximo dos marcas lima por pantalla (la acción principal y
+   una marca de estado); la banda **no** lleva baliza — kicker y flecha se escriben en el color de
+   texto de la banda.
+2. **Jerarquía reconciliada:** el titular de página de 24px rige las cinco superficies de ficha; las
+   dos de señalética usan banda con dos escalones (destino 3.5rem / ejercicio 2.75rem). Una
+   superficie tiene banda **o** titular, nunca las dos.
+3. **Piso de 11px** (The Eleven-Pixel Floor) y `.label-status` pasa de 10 a 11px.
+4. **Dos registros declarados** (señalética vs ficha) con las invariantes que no cambian, y el rol
+   explícito de las tres formas de "serie" (puntos = vista previa, `S1..Sn` = entrada, puertas =
+   navegación).
+5. **La banda es siempre el plano más oscuro del tema:** en claro `--ink`, en oscuro `--surface` con
+   hairline, nunca el blanco de la tinta invertida.
+
+## Derivados del contrato
+
+Ninguno ejecutado todavía: el atleta pidió cerrar el contrato primero. Orden por severidad del
+critique.
+
+| # | Cambio | Origen | Ruta |
+| --- | --- | --- | --- |
+| D1 | Banda en oscuro: `--surface` + hairline en lugar del blanco invertido | critique P1-2 · contrato §5 | inline |
+| D2 | Marca de la última vez en `/run` (`mejor anterior · fecha` + fantasma por serie), usando `r.history` sin tocar `useRunner` | critique P1-1 · S2 | inline |
+| D3 | Puertas con destino propio: ancla de bloque, o dejar de numerar | critique P1-3 | inline |
+| D4 | Salida de la sesión y cierre que vuelva a `/` | critique P1-4 | inline |
+| D5 | Kicker y flecha de la banda a texto al 70% (salen del presupuesto de lima) | contrato §1 | inline |
+| D6 | `.label-status` a 11px (nav, badges, `S1..Sn`) | contrato §3 + detector | inline |
+| D7 | Acción `Siguiente` de la barra a ≥44px de alto (medido 131×36) | critique P2 · detector | inline |
+| D8 | `totalTimeMin` saneado o no exhibido (dice 8 min donde la dosis implica ~15) | critique P2-6 | inline |
+| D9 | Mesociclo fuera del primer viewport (revelado, no en medio del entrenamiento) | critique P2-7 | inline |
+| D10 | Acción principal de las cinco vistas con la anatomía de `.accion` en línea | contrato §4 | por ola |
+| D11 | Un solo indicador de foco (anillo de 2px) también en enlaces | critique menores | inline |
+| D12 | El cierre de sesión no corona un conteo | critique journey | inline |
