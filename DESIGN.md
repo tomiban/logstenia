@@ -251,6 +251,12 @@ misma vista, uno está de más. Las transiciones de rutina usan el default y no 
 **The No-Choreography Rule.** No hay entrada de página, ni stagger de secciones, ni revelados por
 scroll. En modo Operate, hacer esperar al usuario es un defecto, no una decisión.
 
+### The plates (runner)
+La sesión guiada es el único lugar donde el tablero **cambia de placa**: cada paso de ejercicio y
+el overlay de descanso entran con `.plate-in` (un `clip-path` que barre desde abajo, `--dur-move`),
+y los dígitos caen con `.digit-in` (`--dur-tap`) en cada tick. El anillo del descanso no es un
+spinner: `.rest-ring` reporta los segundos que quedan (`stroke-dashoffset` en 1s lineal).
+
 ### Reduced motion
 `prefers-reduced-motion: reduce` no apaga el motion: baja `--dur-move` y `--dur-beat` a 160ms, deja
 que `.beat` conserve el cambio de opacity y le quita el desplazamiento, y detiene el pulso de los

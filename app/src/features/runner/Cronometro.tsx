@@ -12,7 +12,7 @@ export default function Cronometro(props: CronometroProps) {
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-4">
         {c.preparando ? (
-          <span className="metric tabular text-5xl text-ink animate-pulse">{c.countdown === 0 ? '¡YA!' : c.countdown}</span>
+          <span key={c.countdown} className="digit-in metric tabular text-5xl text-ink">{c.countdown === 0 ? '¡YA!' : c.countdown}</span>
         ) : (
           <>
             <span className={'metric tabular text-5xl ' + (c.corre ? 'text-ink' : c.agotado ? 'text-muted-foreground' : '')}>{fmt(Math.max(0, c.seg))}</span>

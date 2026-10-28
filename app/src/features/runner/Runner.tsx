@@ -322,16 +322,28 @@ export default function Runner() {
   if (n === 0) return deadEnd('Esta rutina no tiene ejercicios', 'No pudimos extraer los ejercicios de esta rutina.');
 
   if (r.restUntil != null && !r.finished) return (
-    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
+    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="plate-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
       <span className="label-caps opacity-70">{r.restLabel}</span>
       <div className="relative flex h-64 w-64 items-center justify-center">
-        <div className="absolute inset-0 animate-spin rounded-full! border-4 border-transparent border-t-accent border-r-accent/50" />
-        <span className="metric tabular text-8xl">{String(r.restRemaining).padStart(2, '0')}</span>
+        <svg viewBox="0 0 256 256" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+          <circle cx="128" cy="128" r="120" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="3" />
+          <circle
+            cx="128"
+            cy="128"
+            r="120"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray={2 * Math.PI * 120}
+            strokeDashoffset={2 * Math.PI * 120 * (1 - Math.min(1, Math.max(0, r.restRemaining / Math.max(1, r.restSeconds))))}
+            className="rest-ring"
+          />
+        </svg>
+        <span key={r.restRemaining} className="digit-in metric tabular text-8xl">{String(r.restRemaining).padStart(2, '0')}</span>
       </div>
       <p className="label-caps opacity-70">descanso configurado: {r.restSeconds}s</p>
       <div className="flex items-center gap-4">
         <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h - 10000 : null))}>-10s</Button>
-        <p className="label-caps opacity-70">descansando</p>
         <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h + 10000 : null))}>+10s</Button>
       </div>
       <Button variant="accent" size="lg" className="label-caps" onClick={r.skipRest}>saltar descanso</Button>
@@ -362,7 +374,7 @@ export default function Runner() {
         <div className="h-full bg-ink dark:bg-foreground" style={{ width: `${((idx + 1) / n) * 100}%` }} />
       </div>
 
-      <Card>
+      <Card key={`${current.blockIdx}-${idx}`} className="plate-in">
         <CardContent className="space-y-6">
           {current.exercises.map((ex, ei) => {
             const exStep = {

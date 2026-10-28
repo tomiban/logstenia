@@ -111,10 +111,23 @@ describe('lenguaje de motion', () => {
     expect(themeBlock['default-transition-timing-function']).toBe('var(--ease-beat)');
   });
 
+  it('el runner cambia de placa y su anillo de descanso cuenta el tiempo restante', () => {
+    expect(CSS).toMatch(/\.plate-in\s*\{\s*animation: plate-in/);
+    expect(CSS).toMatch(/@keyframes plate-in\s*\{\s*from \{ clip-path: inset\(0 0 100% 0\); \}/);
+    expect(CSS).toMatch(/\.rest-ring\s*\{[^}]*stroke-dashoffset/);
+  });
+
+  it('los dígitos del tablero aterrizan con la curva del sistema', () => {
+    expect(CSS).toMatch(/\.digit-in\s*\{\s*animation: digit-in var\(--dur-tap\) var\(--ease-beat\)/);
+  });
+
   it('reduced motion conserva la opacity del beat y le quita el desplazamiento', () => {
     const reduce = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? '';
     const still = /@keyframes beat-still\s*\{([\s\S]*?)\n  \}/.exec(CSS)?.[1] ?? '';
     expect(reduce).toContain('.beat { animation-name: beat-still; }');
+    expect(reduce).toContain('.plate-in { animation-name: plate-fade; }');
+    expect(reduce).toContain('.digit-in { animation-name: beat-still; }');
+    expect(reduce).toContain('.rest-ring { transition: none; }');
     expect(still).toContain('opacity');
     expect(still).not.toContain('transform');
   });

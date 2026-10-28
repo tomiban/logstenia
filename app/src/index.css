@@ -218,11 +218,33 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 }
 .beat { animation: beat var(--dur-beat) var(--ease-beat) both; }
 
+/* The board changes plate. The runner's timed sequence arrives by wiping its plate into place, and
+   the digits land on it as they tick: a timing board flips and counts, it does not fade. */
+@keyframes plate-in {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes digit-in {
+  from { opacity: 0; transform: translateY(0.18em); }
+  to { opacity: 1; transform: none; }
+}
+.plate-in { animation: plate-in var(--dur-move) var(--ease-beat) both; }
+/* The rest ring reports the seconds left; it is a countdown, not a spinner. */
+.rest-ring { transition: stroke-dashoffset 1s linear; }
+.digit-in { animation: digit-in var(--dur-tap) var(--ease-beat) both; }
+
 /* Reduced motion means fewer and gentler animations, not none: the beat keeps its opacity change
    and drops the travel, and the skeletons stop pulsing while keeping their shape. */
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-move: 160ms; --dur-beat: 160ms; }
   .beat { animation-name: beat-still; }
+  .plate-in { animation-name: plate-fade; }
+  .rest-ring { transition: none; }
+  .digit-in { animation-name: beat-still; }
+  @keyframes plate-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   .animate-pulse { animation: none; }
   @keyframes beat-still {
     from { opacity: 0; }
