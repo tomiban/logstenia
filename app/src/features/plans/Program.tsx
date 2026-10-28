@@ -27,7 +27,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { TagsMenu } from '@/components/ui/tags-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { Check, MoreHorizontal } from 'lucide-react';
 import { createSettingsRepository } from '@/repositories';
 import { tagPastel } from '@/lib/tags';
 import { useTags } from '@/hooks/useTags';
@@ -180,51 +180,50 @@ export default function Program() {
       </header>
 
       {report?.position != null && (
-        <section className="border border-border bg-card p-3 space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <div className="flex items-baseline gap-1.5">
-                <dt className="label-caps text-muted-foreground">Fase</dt>
-                <dd className="flex items-baseline gap-1">
-                  <span className="metric text-base text-foreground">{report.position}</span>
-                  <span className="label-caps text-muted-foreground">de {report.total}</span>
-                </dd>
-              </div>
-              {next && (
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <dt className="label-caps text-muted-foreground">Siguiente</dt>
-                  <dd className="min-w-0 text-sm text-foreground">{next.name}</dd>
-                </div>
-              )}
-            </dl>
+        <section className="border border-border bg-card">
+          <div className={next ? 'grid divide-y divide-border sm:grid-cols-[auto_1fr] sm:divide-x sm:divide-y-0' : ''}>
+            <div className="flex items-baseline gap-2 px-3 pt-3 sm:px-4 sm:py-4">
+              <span className="label-caps text-muted-foreground">Fase</span>
+              <span className="metric text-3xl leading-none text-foreground">{report.position}</span>
+              <span className="label-caps text-muted-foreground">de {report.total}</span>
+            </div>
             {next && (
-              <Badge
-                variant="outline"
-                className={next.unlocked ? 'label-status' : 'label-status text-muted-foreground'}
-              >
-                {next.unlocked ? 'desbloqueado' : 'bloqueado'}
-              </Badge>
+              <div className="min-w-0 px-3 py-3 sm:px-4 sm:py-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="min-w-0">
+                    <span className="label-caps block text-muted-foreground">Siguiente nivel</span>
+                    <span className="mt-1 block font-heading text-base font-bold tracking-tight text-foreground">{next.name}</span>
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className={next.unlocked ? 'label-status' : 'label-status text-muted-foreground'}
+                  >
+                    {next.unlocked ? 'desbloqueado' : 'bloqueado'}
+                  </Badge>
+                </div>
+                {!next.unlocked && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Se abre cuando completes todas las rutinas de este nivel o superes sus marcas.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
-          {next && !next.unlocked && (
-            <p className="text-sm text-muted-foreground">
-              Se abre cuando completes todas las rutinas de este nivel o superes sus marcas.
-            </p>
+          {(next?.unlocked || previous) && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-3 sm:px-4">
+              {next?.unlocked && (
+                <Link to={`/program/${next.id}`} className="inline-block">
+                  <Button variant={nextIsBeacon ? 'accent' : 'outline'} size="lg">Ir al siguiente nivel</Button>
+                </Link>
+              )}
+              {previous && (
+                <Link to={`/program/${previous.id}`} className="inline-block">
+                  <Button variant="ghost" size="lg">← Más fácil</Button>
+                </Link>
+              )}
+            </div>
           )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            {next?.unlocked && (
-              <Link to={`/program/${next.id}`} className="inline-block">
-                <Button variant={nextIsBeacon ? 'accent' : 'outline'} size="lg">Ir al siguiente nivel</Button>
-              </Link>
-            )}
-            {previous && (
-              <Link to={`/program/${previous.id}`} className="inline-block">
-                <Button variant="ghost" size="lg">← Más fácil</Button>
-              </Link>
-            )}
-          </div>
         </section>
       )}
       <Dialog open={modelCreateOpen} onOpenChange={setModelCreateOpen}>
@@ -322,7 +321,7 @@ export default function Program() {
         </p>
       )}
 
-      <div className="grid divide-y divide-border border border-border bg-card sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+      <div className="grid grid-cols-2 divide-x divide-border border border-border bg-card">
         <div className="p-3">
           <span className="label-caps text-muted-foreground">Frecuencia</span>
           <p className="metric text-base text-foreground mt-1">{p.frequency}</p>
@@ -367,7 +366,9 @@ export default function Program() {
               <ul className="space-y-1">
                 {report!.anchors.map((a) => (
                   <li key={`${a.ejercicio}-${a.objetivo}`} className="flex items-center gap-2 text-sm">
-                    <span className={a.met ? 'text-ink' : 'text-muted-foreground'}>{a.met ? '✓' : '○'}</span>
+                    <span aria-hidden="true" className={a.met ? 'text-ink' : 'text-muted-foreground'}>
+                      {a.met ? <Check className="size-3.5" /> : <span className="block size-3 border border-current" />}
+                    </span>
                     <span className="metric text-foreground">{a.objetivo}</span>
                     <span className="text-muted-foreground">{a.unidad === 'sec' ? 'seg' : 'reps'}</span>
                     <span className="text-foreground">{a.ejercicio}</span>
@@ -384,7 +385,7 @@ export default function Program() {
 
       {special.length > 0 && (
         <section>
-          <div className="border-b border-border pb-2 mb-4 flex items-center justify-between">
+          <div className="border-b border-border pb-2 mb-4 flex items-baseline gap-2">
             <span className="label-caps text-foreground">Marcas</span>
             <span className="metric text-sm text-muted-foreground">{special.length}</span>
           </div>
@@ -392,7 +393,7 @@ export default function Program() {
             {special.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 border border-border bg-card px-3 py-2">
                 <div className="min-w-0">
-                  <span className="block text-sm font-medium leading-tight text-foreground">{m.name}</span>
+                  <span className="block font-heading text-base font-bold leading-tight tracking-tight text-foreground">{m.name}</span>
                   <span className="label-status mt-1 inline-block text-muted-foreground">toma de marcas</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -400,7 +401,7 @@ export default function Program() {
                     <Button variant="outline" size="lg">Registrar marca</Button>
                   </Link>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                    <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-ring" aria-label="Acciones">
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -417,7 +418,7 @@ export default function Program() {
       )}
 
       <section>
-        <div className="border-b border-border pb-2 mb-4 flex items-center justify-between">
+        <div className="border-b border-border pb-2 mb-4 flex items-baseline gap-2">
           <span className="label-caps text-foreground">Rutinas</span>
           <span className="metric text-sm text-muted-foreground">{routines.length}</span>
         </div>
@@ -433,10 +434,10 @@ export default function Program() {
           {routines.map((m) => (
             <ContextMenu key={m.id}>
               <ContextMenuTrigger className="block h-full">
-                <Card className="flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:ring-ink">
+                <Card className="relative flex h-full flex-col gap-2 px-3 py-3 transition-shadow hover:ring-ink focus-within:ring-ink">
                   <div className="flex items-start justify-between gap-2">
-                    <Link to={`/routine/${m.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                      <h3 className="text-sm font-medium leading-tight text-foreground">{m.name}</h3>
+                    <Link to={`/routine/${m.id}`} className="block min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                      <h3 className="font-heading text-sm font-bold leading-tight tracking-tight text-foreground">{m.name}</h3>
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         <div>
                           <span className="label-caps text-muted-foreground">Minutos</span>
@@ -454,7 +455,7 @@ export default function Program() {
                       <RoutineTags routineId={m.id} />
                     </Link>
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                      <DropdownMenuTrigger className="relative z-10 inline-flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-ring" aria-label="Acciones">
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
