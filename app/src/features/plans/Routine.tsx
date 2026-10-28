@@ -1,5 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
-import { useId, useState } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Block, BlockType, Exercise, Intensity } from '@/types';
 import { toIntensity } from '@/lib/intensity';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
@@ -167,7 +167,23 @@ const EMPTY_BLOCK_FORM: BlockForm = { type: 'single', sets: '1', restBetweenSets
 const EMPTY_EXERCISE_FORM: ExerciseForm = { name: '', reps: '', timeSec: '', cadence: '', notes: '' };
 
 export default function Routine() {
+
+  const { hash } = useLocation();
   const { id } = useParams();
+  const blockRefs = useRef<(HTMLElement | null)[]>([]);
+  useEffect(() => {
+    if (!hash) return;
+    const position = Number(hash.replace('#b', ''));
+    if (!Number.isFinite(position)) return;
+    const scroll = () => blockRefs.current[position - 1]?.scrollIntoView({ block: 'start' });
+    if (blockRefs.current[position - 1]) {
+      scroll();
+      return;
+    }
+    /* The lazy route can mount before the blocks do, so one deferred retry catches the anchor. */
+    const timer = setTimeout(scroll, 150);
+    return () => clearTimeout(timer);
+  }, [hash, id]);
   const tagsLabelId = useId();
   usePlansVersion();
   const res = getModel(id || '');
@@ -606,7 +622,14 @@ export default function Routine() {
       {!editing && (
       <div className="space-y-4">
         {model.blocks.map((b, i) => (
-          <section key={b.id} className="border border-border">
+          <section
+            key={b.id}
+            id={`b${i + 1}`}
+            ref={(el) => {
+              blockRefs.current[i] = el;
+            }}
+            className="scroll-mt-20 border border-border"
+          >
             <ContextMenu>
               <ContextMenuTrigger className="block">
                 <div className="border-b border-border bg-secondary">

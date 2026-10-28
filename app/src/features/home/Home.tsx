@@ -169,6 +169,7 @@ export default function Home() {
   const destino = destinoDeHoy(cats, sessions, hoyIso);
   const bloques = destino ? bloquesDe(destino.model) : [];
   const sesionesHoy = sessions.filter((s) => s.date === hoyIso && s.completed).length;
+  const seriesDelDia = bloques.reduce((acc, b) => acc + (b.block.sets || 0), 0);
   const fechaLarga = ahora.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
 
   if (loading) {
@@ -196,7 +197,7 @@ export default function Home() {
                   {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')}
                 </span>
                 <span aria-hidden="true">·</span>
-                <span className="whitespace-nowrap">{destino.model.totalTimeMin} min</span>
+                <span className="whitespace-nowrap">{seriesDelDia} series</span>
               </>
             ) : (
               <span>elegí un programa y el día aparece acá</span>
@@ -227,7 +228,7 @@ export default function Home() {
           <button type="button" className="accion" onClick={() => navigate(`/run/${destino.model.id}`)}>
             <span className="accion-titulo">{destino.hoyCompletada ? 'Repetir' : 'Iniciar'}</span>
             <span className="accion-meta">
-              {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')} · {destino.model.totalTimeMin} min{' '}
+              {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')} · {seriesDelDia} series{' '}
               <span aria-hidden="true">→</span>
             </span>
           </button>
@@ -247,7 +248,7 @@ export default function Home() {
                 key={b.block.id ?? `bloque-${i}`}
                 type="button"
                 className="fila"
-                onClick={() => navigate(`/routine/${destino.model.id}`)}
+                onClick={() => navigate(`/routine/${destino.model.id}#b${i + 1}`)}
               >
                 <span className="puerta">{String(i + 1).padStart(2, '0')}</span>
                 <span className="min-w-0 flex-1">
@@ -275,79 +276,14 @@ export default function Home() {
         </div>
       )}
 
-      <section aria-label="Mesociclo y semana">
+      <section aria-label="Semana">
         <div className="franja border-border">
-          <span className="label-caps text-foreground">Mesociclo</span>
-          <span className="label-caps text-muted-foreground">
-            {semanaActual != null
-              ? `semana ${semanaActual} de ${MESO.total}`
-              : semana != null
-                ? 'terminado'
-                : 'sin inicio'}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-end gap-3 border-b border-border px-6 py-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="meso-inicio" className="label-caps">
-              Inicio
-            </label>
-            <Input
-              id="meso-inicio"
-              type="date"
-              className="h-11 w-full sm:w-[170px]"
-              value={mesoInicio}
-              onChange={(e) => onMesoChange(e.currentTarget.value)}
-            />
-          </div>
-          {semana == null ? (
-            <p className="text-sm text-muted-foreground">cargá la fecha de inicio para ubicarte</p>
-          ) : (
-            <div className="space-y-1.5">
-              <div
-                className="flex w-40 gap-1"
-                role="img"
-                aria-label={
-                  semanaActual != null
-                    ? `Semana ${semanaActual} de ${MESO.total}`
-                    : `Mesociclo terminado, ${MESO.total} semanas completadas`
-                }
-              >
-                {Array.from({ length: MESO.total }, (_, i) => {
-                  const n = i + 1;
-                  const estado =
-                    semanaActual == null || n < semanaActual
-                      ? 'bg-ink'
-                      : n === semanaActual
-                        ? 'bg-accent ring-1 ring-ink'
-                        : 'bg-secondary dark:bg-border';
-                  return <div key={`semana-${n}`} className={`h-2 flex-1 ${estado}`} />;
-                })}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {semanaActual == null ? (
-                  <>
-                    mesociclo terminado · semana <span className="metric text-foreground">{semana}</span>
-                  </>
-                ) : semanaActual === MESO.total ? (
-                  <span className="label-status border border-ink bg-accent px-1 text-on-accent">descarga · última semana</span>
-                ) : (
-                  <>
-                    carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span>{' '}
-                    {pluralForm(faltaDescarga, 'día', 'días')}
-                    {iniDescarga ? ` (${formatDayMonth(iso(iniDescarga))})` : ''}
-                  </>
-                )}
-              </p>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center justify-between px-6 pb-2 pt-3">
           <span className="label-caps text-foreground">Esta semana</span>
           <span className="text-sm text-muted-foreground">
             <span className="metric text-foreground">{entrenados}</span> de 7 días
           </span>
         </div>
-        <div className="grid grid-cols-7 gap-1 px-6 pb-4">
+        <div className="grid grid-cols-7 gap-1 px-6 py-4">
           {semana7.map((d) => (
             <div key={d.iso} className={'border p-2 text-center ' + (d.iso === hoyIso ? 'border-ink' : 'border-border')}>
               <div className="label-caps">{d.dia}</div>
@@ -370,6 +306,73 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <details className="border-t border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-6 py-3">
+            <span className="label-caps text-foreground">Mesociclo</span>
+            <span className="label-caps text-muted-foreground">
+              {semanaActual != null
+                ? `semana ${semanaActual} de ${MESO.total}`
+                : semana != null
+                  ? 'terminado'
+                  : 'sin inicio'}
+            </span>
+          </summary>
+          <div className="flex flex-wrap items-end gap-3 px-6 pb-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="meso-inicio" className="label-caps">
+                Inicio
+              </label>
+              <Input
+                id="meso-inicio"
+                type="date"
+                className="h-11 w-full sm:w-[170px]"
+                value={mesoInicio}
+                onChange={(e) => onMesoChange(e.currentTarget.value)}
+              />
+            </div>
+            {semana == null ? (
+              <p className="text-sm text-muted-foreground">cargá la fecha de inicio para ubicarte</p>
+            ) : (
+              <div className="space-y-1.5">
+                <div
+                  className="flex w-40 gap-1"
+                  role="img"
+                  aria-label={
+                    semanaActual != null
+                      ? `Semana ${semanaActual} de ${MESO.total}`
+                      : `Mesociclo terminado, ${MESO.total} semanas completadas`
+                  }
+                >
+                  {Array.from({ length: MESO.total }, (_, i) => {
+                    const n = i + 1;
+                    const estado =
+                      semanaActual == null || n < semanaActual
+                        ? 'bg-ink'
+                        : n === semanaActual
+                          ? 'bg-accent ring-1 ring-ink'
+                          : 'bg-secondary dark:bg-border';
+                    return <div key={`semana-${n}`} className={`h-2 flex-1 ${estado}`} />;
+                  })}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {semanaActual == null ? (
+                    <>
+                      mesociclo terminado · semana <span className="metric text-foreground">{semana}</span>
+                    </>
+                  ) : semanaActual === MESO.total ? (
+                    <span className="label-status border border-ink bg-accent px-1 text-on-accent">descarga · última semana</span>
+                  ) : (
+                    <>
+                      carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span>{' '}
+                      {pluralForm(faltaDescarga, 'día', 'días')}
+                      {iniDescarga ? ` (${formatDayMonth(iso(iniDescarga))})` : ''}
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+        </details>
       </section>
 
       <section aria-label="Programas">

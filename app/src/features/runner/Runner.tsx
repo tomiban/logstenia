@@ -21,8 +21,10 @@ type ExerciseStepProps = {
   setValues: (next: SetValue[]) => void;
   marks: Record<string, Mark>;
   blocked: boolean;
-  /** La banda de la pantalla ya nombra este ejercicio: el paso no repite su encabezado. */
+  /** The screen band already names this exercise, so the step does not repeat its header. */
   encabezado?: boolean;
+  /** Last time's values for this exercise, indexed by set number. */
+  history?: number[];
 };
 
 /** Ceiling for a hold the plan does not time ("mantenimiento máx."). */
@@ -38,6 +40,7 @@ function ExerciseStep({
   marks,
   blocked,
   encabezado = true,
+  history,
 }: ExerciseStepProps) {
   const exercise = step.exercise;
   const list = values;
@@ -135,7 +138,10 @@ function ExerciseStep({
                     className={'h-11 w-full ' + (!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : '')}
                     value={v.value || ''} onChange={(e) => writeValue(i, e.target.value)} placeholder="reps" />
                 )}
-                <span className="metric text-right text-foreground">{isTimed ? `${clampSeconds(v.value, maxSeconds)}s` : ''}</span>
+                <span className="flex items-center justify-end gap-2">
+                  {history?.[i] != null && <span className="serie-antes">antes {history[i]}</span>}
+                  <span className="metric text-right text-foreground">{isTimed ? `${clampSeconds(v.value, maxSeconds)}s` : ''}</span>
+                </span>
               </div>
               {(enabled && v.value) || mark ? (
                 <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
@@ -277,10 +283,12 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
       <header className="banda">
         <div className="min-w-0">
           <p className="banda-kicker">Entrenamiento terminado</p>
-          <h1 className="banda-titulo banda-titulo-ejercicio">
-            {rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'}
-          </h1>
-          <p className="banda-sub">
+          <h1 className="banda-titulo banda-titulo-ejercicio">Sesión cerrada</h1>
+          <p className="banda-sub flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="whitespace-nowrap">
+              {rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'}
+            </span>
+            <span aria-hidden="true">·</span>
             <span className="whitespace-nowrap">guardado en este navegador</span>
           </p>
         </div>
@@ -380,7 +388,7 @@ export default function Runner() {
           {r.errorMessage}
         </p>
       ) : null}
-      <Fin result={{ sets: r.allSets }} onBack={() => r.setFinished(false)} progression={r.progression} history={r.history} />
+      <Fin result={{ sets: r.allSets }} onBack={() => navigate('/')} progression={r.progression} history={r.history} />
     </>
   );
 
@@ -402,6 +410,7 @@ export default function Runner() {
   const titulo = soloUnEjercicio ? primero.name : `Bloque ${current.blockIdx + 1}`;
   const seriesDelPaso = current.exercises.reduce((acc, _ex, i) => acc + exerciseValues(i).length, 0);
   const proximo = r.steps[idx + 1];
+  const marcaAnterior = soloUnEjercicio ? r.history[primero.name] : undefined;
 
   return (
     <div className="-mx-6 -mt-6 flex min-h-[calc(100dvh-3.5rem)] flex-col">
@@ -417,11 +426,17 @@ export default function Runner() {
             <span className="whitespace-nowrap">{seriesDelPaso} series</span>
             <span aria-hidden="true">·</span>
             <span className="whitespace-nowrap">descanso {restLabel(current.restAfterSetSec)}</span>
+            {marcaAnterior && marcaAnterior.length > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">última vez {marcaAnterior.join(' · ')}</span>
+              </>
+            )}
           </p>
         </div>
-        <span aria-hidden="true" className="banda-flecha">
-          →
-        </span>
+        <button type="button" className="banda-salir" onClick={() => navigate('/')}>
+          Salir
+        </button>
       </header>
 
       <div className="h-1 w-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={n} aria-valuenow={idx + 1}>
@@ -464,6 +479,7 @@ export default function Runner() {
                 marks={r.marks}
                 blocked={r.restUntil != null}
                 encabezado={!soloUnEjercicio}
+                history={r.history[ex.name]}
               />
             );
           })}
@@ -503,7 +519,7 @@ export default function Runner() {
       <div className="accion accion-pie">
         <button
           type="button"
-          className="min-h-11 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-on-accent underline underline-offset-4 disabled:opacity-40 disabled:no-underline"
+          className="accion-secundaria shrink-0 text-on-accent disabled:opacity-40 disabled:no-underline"
           disabled={idx === 0 || r.restUntil != null}
           onClick={() => r.goTo(idx - 1)}
         >
@@ -511,7 +527,7 @@ export default function Runner() {
         </button>
         <button
           type="button"
-          className="flex items-baseline gap-3 disabled:opacity-40"
+          className="accion-primaria disabled:opacity-40"
           disabled={r.restUntil != null}
           onClick={r.nextStep}
         >

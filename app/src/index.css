@@ -193,7 +193,7 @@ input[type="range"]:disabled {
   }
   .metric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.05em; }
   .label-caps { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-  .label-status { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .label-status { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .rule { border-bottom: 1px solid var(--border); }
 }
 
@@ -255,13 +255,21 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 /* --- Señalética del día: banda de destino, puerta, fila y acción al borde --- */
 @layer components {
   .banda {
+    --banda-fg: var(--background);
+    --banda-mute: color-mix(in oklab, var(--background) 70%, var(--ink));
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     background: var(--ink);
-    color: var(--background);
+    color: var(--banda-fg);
     padding: 1.25rem 1.5rem 1.5rem;
+  }
+  .dark .banda {
+    --banda-fg: #f8f9fa;
+    --banda-mute: #b9b9b9;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
   }
   .banda-kicker {
     font-family: var(--font-mono);
@@ -269,7 +277,7 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--on-ink);
+    color: var(--banda-mute);
   }
   .banda-titulo {
     font-family: var(--font-heading);
@@ -291,7 +299,7 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
     font-weight: 700;
     font-size: clamp(2.25rem, 9vw, 3.25rem);
     line-height: 0.7;
-    color: var(--on-ink);
+    color: var(--banda-mute);
     flex: none;
   }
   .accion {
@@ -319,6 +327,48 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
     font-weight: 700;
     font-size: 1.5rem;
     letter-spacing: -0.03em;
+  }
+  .accion-primaria {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    min-height: 44px;
+    align-items: center;
+  }
+  .banda-salir {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--banda-mute);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    min-height: 44px;
+    padding-inline: 0.25rem;
+  }
+  .banda-salir:hover {
+    color: var(--banda-fg);
+  }
+  .serie-antes {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+  }
+  .accion-secundaria {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 4px;
   }
   .accion-meta {
     font-family: var(--font-mono);
