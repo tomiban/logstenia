@@ -70,7 +70,7 @@ export default function Planes() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-heading">Planes</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -80,7 +80,7 @@ export default function Planes() {
             {pluralForm(programCount, 'programa', 'programas')}
           </p>
         </div>
-        <Button variant="accent" size="lg" onClick={() => setCreateOpen(true)}>
+        <Button variant="outline" size="lg" className="self-start" onClick={() => setCreateOpen(true)}>
           Nueva categoría
         </Button>
       </header>
@@ -167,20 +167,20 @@ export default function Planes() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cats.map((c) => (
           <ContextMenu key={c.id}>
-            <ContextMenuTrigger className="block h-full">
-              <Card className="p-4 h-full transition-colors hover:ring-ink">
+            <ContextMenuTrigger className="block">
+              <Card className="relative p-4 transition-shadow hover:ring-ink focus-within:ring-ink">
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                    <h2 className="font-semibold">{c.name}</h2>
-                    <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
-                    <div className="mt-2 flex gap-2">
+                  <Link to={`/skill/${c.id}`} className="block min-w-0 flex-1 after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    <h2 className="font-heading text-lg font-bold tracking-tight">{c.name}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{c.description}</p>
+                    <div className="mt-2 flex items-center gap-2">
                       <Badge variant="outline" className="label-status">
                         {c.programs.length} {pluralForm(c.programs.length, 'programa', 'programas')}
                       </Badge>
                     </div>
                   </Link>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex h-11 w-11 items-center justify-center border border-border text-muted-foreground hover:text-ink hover:bg-secondary hover:border-ink" aria-label="Acciones">
+                    <DropdownMenuTrigger className="relative z-10 inline-flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-secondary hover:text-ink focus-visible:ring-2 focus-visible:ring-ring" aria-label="Acciones">
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

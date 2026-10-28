@@ -98,7 +98,7 @@ function Panel({
 }) {
   return (
     <section className="border border-border bg-card">
-      <header className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-2">
         <h2 className="label-caps text-foreground">{title}</h2>
         {meta ? <span className="label-caps text-right text-muted-foreground">{meta}</span> : null}
       </header>
@@ -114,6 +114,7 @@ function Readout({
   deltaText,
   deltaNote,
   note,
+  mark,
 }: {
   label: string;
   value: string;
@@ -121,10 +122,14 @@ function Readout({
   deltaText?: string;
   deltaNote?: string;
   note?: ReactNode;
+  mark?: boolean;
 }) {
   return (
     <div className="bg-card p-4">
-      <div className="label-caps text-muted-foreground">{label}</div>
+      <div className="label-caps flex items-center gap-1.5 text-muted-foreground">
+        {mark ? <span aria-hidden="true" className="size-2 shrink-0 bg-accent" /> : null}
+        {label}
+      </div>
       <div className="mt-1.5 flex items-baseline gap-1.5">
         <span className="metric text-3xl tabular-nums text-foreground">{value}</span>
         {unit ? <span className="label-caps text-muted-foreground">{unit}</span> : null}
@@ -295,7 +300,7 @@ export default function Metrics() {
   const measure = (c: SessionComparison) => (measureInfo.key === 'duracion' ? c.summary.durationMin : c.summary.series);
   const measureDeltaNote = (c: SessionComparison) => {
     const value = measureInfo.key === 'duracion' ? c.durationDelta : c.seriesDelta;
-    return value === null ? 'sin comparación' : `${signed(value)} vs anterior`;
+    return value === null ? '—' : `${signed(value)} vs anterior`;
   };
   const bestSession = recent.reduce<SessionComparison | null>(
     (bestOne, c) => (bestOne === null || measure(c) > measure(bestOne) ? c : bestOne),
@@ -390,20 +395,18 @@ export default function Metrics() {
       ) : null}
 
       {/* Period telemetry */}
-      <section className="border border-border" aria-label="Telemetría del período">
+      <Panel title="Período" meta={prevNote}>
         <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">
           <Readout
             label="Sesiones"
             value={nf.format(telemetry.sessions)}
             deltaText={delta(telemetry.sessions, telemetry.prevSessions)}
-            deltaNote={prevNote}
           />
           <Readout
             label="Minutos"
             value={nf.format(telemetry.minutes)}
             unit="min"
             deltaText={delta(telemetry.minutes, telemetry.prevMinutes)}
-            deltaNote={prevNote}
           />
           <Readout
             label="Racha · histórico"
@@ -423,10 +426,9 @@ export default function Metrics() {
             deltaText={
               telemetry.avgMinutes > 0 ? delta(telemetry.avgMinutes, telemetry.prevAvgMinutes) : undefined
             }
-            deltaNote={prevNote}
           />
         </div>
-      </section>
+      </Panel>
 
       {/* Sessions won */}
       <section className="border border-border" aria-label="Sesiones ganadas">
@@ -442,6 +444,7 @@ export default function Metrics() {
           />
           <Readout
             label="Mejor sesión"
+            mark={bestSession !== null}
             value={bestSession ? nf.format(measure(bestSession)) : '—'}
             unit={bestSession ? measureInfo.unit : undefined}
             note={
@@ -487,7 +490,14 @@ export default function Metrics() {
                     content={<ChartTooltip unit={measureInfo.unit} />}
                     cursor={{ fill: 'var(--muted-surface)' }}
                   />
-                  <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                  <Bar
+                    dataKey="amount"
+                    fill="currentColor"
+                    maxBarSize={72}
+                    radius={0}
+                    animationDuration={320}
+                    animationEasing="ease-out"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -519,7 +529,8 @@ export default function Metrics() {
                     ) : null}
                   </div>
                   <div className="label-caps mt-1 text-muted-foreground">
-                    {dayLabel(c.summary.date)} · {nf.format(c.summary.series)} series
+                    {dayLabel(c.summary.date)} · {nf.format(c.summary.series)}{' '}
+                    {pluralForm(c.summary.series, 'serie', 'series')}
                     {c.seriesDelta === null ? '' : ` (${signed(c.seriesDelta)})`}
                   </div>
                   {c.newBests.length > 0 ? (
@@ -539,6 +550,9 @@ export default function Metrics() {
             ))}
           </ul>
         )}
+        <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+          — sin sesión previa del mismo plan
+        </p>
       </Panel>
 
       {/* Weekly volume */}
@@ -560,7 +574,14 @@ export default function Metrics() {
                       tickLine={false}
                     />
                     <Tooltip content={<ChartTooltip unit={volumeUnit} />} cursor={{ fill: 'var(--muted-surface)' }} />
-                    <Bar dataKey="amount" fill="currentColor" maxBarSize={72} radius={0} />
+                    <Bar
+                    dataKey="amount"
+                    fill="currentColor"
+                    maxBarSize={72}
+                    radius={0}
+                    animationDuration={320}
+                    animationEasing="ease-out"
+                  />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -643,6 +664,8 @@ export default function Metrics() {
                         <Line
                           type="linear"
                           dataKey="value"
+                          animationDuration={320}
+                          animationEasing="ease-out"
                           stroke="currentColor"
                           strokeWidth={2}
                           dot={{ r: 2.5, fill: 'currentColor', strokeWidth: 0 }}

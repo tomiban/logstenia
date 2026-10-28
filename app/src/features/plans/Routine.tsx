@@ -1,5 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
-import { useId, useState } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Block, BlockType, Exercise, Intensity } from '@/types';
 import { toIntensity } from '@/lib/intensity';
 import { BLOCK_TYPE_LABEL, restLabel } from '@/lib/labels';
@@ -56,7 +56,14 @@ function BlockHeader({ block, position }: { block: Block; position: number }) {
       <dl className="flex flex-wrap items-start gap-x-4 gap-y-1">
         <div>
           <dt className="label-caps text-muted-foreground">Series</dt>
-          <dd className="metric text-sm text-foreground">{block.sets}</dd>
+          <dd className="text-sm text-foreground">
+            <span aria-hidden="true" className="inline-flex flex-wrap items-center gap-1 pt-1.5">
+              {Array.from({ length: block.sets }, (_, i) => (
+                <span key={i} className="block size-2 bg-ink" />
+              ))}
+            </span>
+            <span className="sr-only">{block.sets} series</span>
+          </dd>
         </div>
         <div>
           <dt className="label-caps text-muted-foreground">Descanso</dt>
@@ -160,7 +167,23 @@ const EMPTY_BLOCK_FORM: BlockForm = { type: 'single', sets: '1', restBetweenSets
 const EMPTY_EXERCISE_FORM: ExerciseForm = { name: '', reps: '', timeSec: '', cadence: '', notes: '' };
 
 export default function Routine() {
+
+  const { hash } = useLocation();
   const { id } = useParams();
+  const blockRefs = useRef<(HTMLElement | null)[]>([]);
+  useEffect(() => {
+    if (!hash) return;
+    const position = Number(hash.replace('#b', ''));
+    if (!Number.isFinite(position)) return;
+    const scroll = () => blockRefs.current[position - 1]?.scrollIntoView({ block: 'start' });
+    if (blockRefs.current[position - 1]) {
+      scroll();
+      return;
+    }
+    /* The lazy route can mount before the blocks do, so one deferred retry catches the anchor. */
+    const timer = setTimeout(scroll, 150);
+    return () => clearTimeout(timer);
+  }, [hash, id]);
   const tagsLabelId = useId();
   usePlansVersion();
   const res = getModel(id || '');
@@ -389,8 +412,8 @@ export default function Routine() {
       </div>
 
       <header className="space-y-4 border-b border-border pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1 sm:flex-1">
             <ContextMenu>
               <ContextMenuTrigger className="min-w-0">
                 <h1 className="break-words font-heading text-2xl leading-tight font-bold tracking-tight text-foreground">{model.name}</h1>
@@ -416,7 +439,7 @@ export default function Routine() {
             size="lg"
             variant={editing ? 'ink' : 'outline'}
             aria-pressed={editing}
-            className="shrink-0 gap-1.5"
+            className="shrink-0 gap-1.5 self-start"
             onClick={() => setEditing((v) => !v)}
           >
             {editing ? <X aria-hidden="true" /> : <Pencil aria-hidden="true" />}
@@ -426,7 +449,7 @@ export default function Routine() {
         <div className="space-y-1.5">
           <p id={tagsLabelId} className="label-caps text-muted-foreground">Etiquetas</p>
           <div role="group" aria-labelledby={tagsLabelId} className="min-w-0">
-            <TagsInput targetType="routine" targetId={model.id} className="w-full sm:max-w-md" />
+            <TagsInput targetType="routine" targetId={model.id} className="max-w-xs" />
           </div>
         </div>
       </header>
@@ -599,7 +622,14 @@ export default function Routine() {
       {!editing && (
       <div className="space-y-4">
         {model.blocks.map((b, i) => (
-          <section key={b.id} className="border border-border">
+          <section
+            key={b.id}
+            id={`b${i + 1}`}
+            ref={(el) => {
+              blockRefs.current[i] = el;
+            }}
+            className="scroll-mt-20 border border-border"
+          >
             <ContextMenu>
               <ContextMenuTrigger className="block">
                 <div className="border-b border-border bg-secondary">
@@ -682,9 +712,8 @@ export default function Routine() {
                           <Video query={e.name} video={e.video} />
                         </div>
                         <div className="min-w-0 text-right">
-                          <span className="metric text-lg text-foreground">
-                            {e.timeSec ? `${e.timeSec}s` : e.reps}
-                          </span>
+                          <span className="metric block whitespace-nowrap text-lg text-foreground">{e.timeSec ?? e.reps}</span>
+                          <span className="block label-caps text-muted-foreground">{e.timeSec ? 'seg' : 'reps'}</span>
                           {e.cadence && (
                             <span className="block label-caps text-muted-foreground">CAD {e.cadence}</span>
                           )}
@@ -833,12 +862,18 @@ export default function Routine() {
       )}
 
       {showStartBar && (
-        <div className="fixed inset-x-0 bottom-[57px] z-40 border-t border-border bg-background md:bottom-0">
-          <div className="mx-auto w-full max-w-6xl px-6 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-2">
-            <Link to={`/run/${model.id}`} className={cn(buttonVariants({ variant: 'accent', size: 'lg' }), 'w-full')}>
-              Iniciar rutina
-            </Link>
-          </div>
+        <div className="fixed inset-x-0 bottom-[57px] z-40 md:bottom-0">
+          <Link
+            to={`/run/${model.id}`}
+            className="accion accion-borde-alto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          >
+            <span className="accion-titulo">Iniciar rutina</span>
+            <span className="accion-meta">
+              {model.blocks.length} {model.blocks.length === 1 ? 'bloque' : 'bloques'} ·{' '}
+              {model.blocks.reduce((acc, b) => acc + (b.sets || 0), 0)} series{' '}
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
         </div>
       )}
     </div>

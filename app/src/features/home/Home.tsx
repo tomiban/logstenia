@@ -4,8 +4,6 @@ import { useCategories } from '@/hooks/usePlans';
 import type { Category, Model, Program } from '@/types';
 import { createSessionRepository, createSettingsRepository } from '@/repositories';
 import type { MarkRecord, SessionRecord } from '@/repositories';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,6 +22,7 @@ import { targetsByTag } from '@/lib/tags';
 import { useNow } from '@/hooks/useNow';
 import { formatDayMonth } from '@/lib/date';
 import { pluralForm } from '@/lib/format';
+import { bloquesDe, destinoDeHoy, dosisDeBloque } from './hoy';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -167,33 +166,52 @@ export default function Home() {
     return m;
   })();
 
+  const destino = destinoDeHoy(cats, sessions, hoyIso);
+  const bloques = destino ? bloquesDe(destino.model) : [];
+  const sesionesHoy = sessions.filter((s) => s.date === hoyIso && s.completed).length;
+  const seriesDelDia = bloques.reduce((acc, b) => acc + (b.block.sets || 0), 0);
+  const fechaLarga = ahora.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
+
   if (loading) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Cargando">
-        <div className="h-8 w-32 animate-pulse bg-secondary" />
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="h-40 animate-pulse bg-secondary" />
-          <div className="h-40 animate-pulse bg-secondary" />
-        </div>
-        <div className="h-24 animate-pulse bg-secondary" />
-        <div className="h-48 animate-pulse bg-secondary" />
+        <div className="h-32 animate-pulse bg-secondary" />
+        <div className="h-16 animate-pulse bg-secondary" />
+        <div className="h-64 animate-pulse bg-secondary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-heading text-2xl font-bold tracking-tight">Hoy</h1>
-        <p className="label-caps text-muted-foreground">
-          {ahora.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' })}
-        </p>
-      </header>
-      {saveError && (
-        <div className="flex items-center justify-between gap-3 border border-ink bg-secondary px-3 py-2">
-          <p role="alert" className="text-sm text-foreground">
-            {saveError}
+    <div className="-mx-6 -mt-6">
+      <header className="banda">
+        <div className="min-w-0">
+          <p className="banda-kicker">Hoy · {fechaLarga}</p>
+          <h1 className="banda-titulo">{destino ? destino.model.name : 'Sin programa'}</h1>
+          <p className="banda-sub flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            {destino ? (
+              <>
+                <span className="whitespace-nowrap">{destino.prog.name}</span>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">
+                  {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">{seriesDelDia} series</span>
+              </>
+            ) : (
+              <span>elegí un programa y el día aparece acá</span>
+            )}
           </p>
+        </div>
+        <span aria-hidden="true" className="banda-flecha">
+          →
+        </span>
+      </header>
+
+      {saveError && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-ink bg-secondary px-6 py-2">
+          <p className="text-sm text-foreground">{saveError}</p>
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="outline" size="lg" onClick={retryLoad}>
               Reintentar
@@ -204,41 +222,120 @@ export default function Home() {
           </div>
         </div>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <div className="border-b border-border px-4 py-2">
-            <span className="label-caps text-foreground">Mesociclo</span>
+
+      {destino ? (
+        <>
+          <button type="button" className="accion" onClick={() => navigate(`/run/${destino.model.id}`)}>
+            <span className="accion-titulo">{destino.hoyCompletada ? 'Repetir' : 'Iniciar'}</span>
+            <span className="accion-meta">
+              {bloques.length} {pluralForm(bloques.length, 'bloque', 'bloques')} · {seriesDelDia} series{' '}
+              <span aria-hidden="true">→</span>
+            </span>
+          </button>
+
+          <div className="franja">
+            <span className="label-caps text-foreground">Bloque 1 de {bloques.length}</span>
+            <span className="label-caps text-muted-foreground">
+              {sesionesHoy > 0
+                ? `${sesionesHoy} ${pluralForm(sesionesHoy, 'sesión', 'sesiones')} hoy`
+                : 'nada registrado hoy'}
+            </span>
           </div>
-          <div className="space-y-3 p-4">
-            <p className="text-sm text-muted-foreground">
-              <span className="metric text-foreground">{MESO.carga}</span> semanas de carga +{' '}
-              <span className="metric text-foreground">{MESO.total - MESO.carga}</span> de descarga
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="meso-inicio" className="label-caps">
-                  Inicio
-                </label>
-                <Input
-                  id="meso-inicio"
-                  type="date"
-                  className="h-11 w-full sm:w-[170px]"
-                  value={mesoInicio}
-                  onChange={(e) => onMesoChange(e.currentTarget.value)}
-                />
-              </div>
-              {semanaActual != null && (
-                <span className="pb-3 text-sm text-muted-foreground">
-                  semana <span className="metric text-base text-foreground">{semanaActual}</span> de {MESO.total}
+
+          <div>
+            {bloques.map((b, i) => (
+              <button
+                key={b.block.id ?? `bloque-${i}`}
+                type="button"
+                className="fila"
+                onClick={() => navigate(`/routine/${destino.model.id}#b${i + 1}`)}
+              >
+                <span className="puerta">{String(i + 1).padStart(2, '0')}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-2 block text-[15px] font-semibold leading-tight">{b.nombre}</span>
+                  <span className="mt-1 block font-mono text-[11px] tracking-[0.04em] text-muted-foreground">
+                    {dosisDeBloque(b.block)}
+                    {b.formato === 'simple' ? '' : ` · ${b.formato}`}
+                  </span>
                 </span>
+                <span aria-hidden="true" className="flecha">
+                  →
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="border-b border-border px-6 py-6">
+          <p className="text-sm text-muted-foreground">
+            Todavía no registraste entrenamientos. Elegí un programa para empezar.
+          </p>
+          <Button variant="accent" size="lg" className="mt-3" onClick={() => navigate('/planes')}>
+            Ver programas
+          </Button>
+        </div>
+      )}
+
+      <section aria-label="Semana">
+        <div className="franja border-border">
+          <span className="label-caps text-foreground">Esta semana</span>
+          <span className="text-sm text-muted-foreground">
+            <span className="metric text-foreground">{entrenados}</span> de 7 días
+          </span>
+        </div>
+        <div className="grid grid-cols-7 gap-1 px-6 py-4">
+          {semana7.map((d) => (
+            <div key={d.iso} className={'border p-2 text-center ' + (d.iso === hoyIso ? 'border-ink' : 'border-border')}>
+              <div className="label-caps">{d.dia}</div>
+              <div className="metric text-base">{d.num}</div>
+              {d.marcas ? (
+                <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
+                  M
+                </span>
+              ) : d.entreno ? (
+                <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
+                  ✓
+                </span>
+              ) : (
+                <span className="mx-auto mt-1 inline-block h-2 w-2 bg-secondary dark:bg-border" aria-hidden="true" />
               )}
+              <span className="sr-only">
+                {d.iso === hoyIso ? 'hoy, ' : ''}
+                {d.marcas ? 'toma de marcas' : d.entreno ? 'entrenado' : 'sin entrenar'}
+              </span>
+            </div>
+          ))}
+        </div>
+        <details className="border-t border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-6 py-3">
+            <span className="label-caps text-foreground">Mesociclo</span>
+            <span className="label-caps text-muted-foreground">
+              {semanaActual != null
+                ? `semana ${semanaActual} de ${MESO.total}`
+                : semana != null
+                  ? 'terminado'
+                  : 'sin inicio'}
+            </span>
+          </summary>
+          <div className="flex flex-wrap items-end gap-3 px-6 pb-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="meso-inicio" className="label-caps">
+                Inicio
+              </label>
+              <Input
+                id="meso-inicio"
+                type="date"
+                className="h-11 w-full sm:w-[170px]"
+                value={mesoInicio}
+                onChange={(e) => onMesoChange(e.currentTarget.value)}
+              />
             </div>
             {semana == null ? (
               <p className="text-sm text-muted-foreground">cargá la fecha de inicio para ubicarte</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div
-                  className="flex gap-1"
+                  className="flex w-40 gap-1"
                   role="img"
                   aria-label={
                     semanaActual != null
@@ -257,182 +354,140 @@ export default function Home() {
                     return <div key={`semana-${n}`} className={`h-2 flex-1 ${estado}`} />;
                   })}
                 </div>
-                {semanaActual == null ? (
-                  <p className="text-sm text-muted-foreground">
-                    mesociclo terminado · semana <span className="metric text-foreground">{semana}</span>
-                  </p>
-                ) : semanaActual === MESO.total ? (
-                  <Badge className="label-status border border-ink bg-accent text-on-accent">
-                    descarga · última semana
-                  </Badge>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span>{' '}
-                    {pluralForm(faltaDescarga, 'día', 'días')}
-                    {iniDescarga ? ` (${formatDayMonth(iso(iniDescarga))})` : ''}
-                  </p>
-                )}
+                <p className="text-sm text-muted-foreground">
+                  {semanaActual == null ? (
+                    <>
+                      mesociclo terminado · semana <span className="metric text-foreground">{semana}</span>
+                    </>
+                  ) : semanaActual === MESO.total ? (
+                    <span className="label-status border border-ink bg-accent px-1 text-on-accent">descarga · última semana</span>
+                  ) : (
+                    <>
+                      carga · descarga en <span className="metric text-foreground">{faltaDescarga}</span>{' '}
+                      {pluralForm(faltaDescarga, 'día', 'días')}
+                      {iniDescarga ? ` (${formatDayMonth(iso(iniDescarga))})` : ''}
+                    </>
+                  )}
+                </p>
               </div>
             )}
           </div>
-        </Card>
+        </details>
+      </section>
 
-        <Card>
-          <div className="border-b border-border px-4 py-2 flex items-center justify-between">
-            <span className="label-caps text-foreground">Esta semana</span>
-            <span className="text-sm text-muted-foreground">
-              <span className="metric text-foreground">{entrenados}</span> de 7 días
-            </span>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-7 gap-1">
-              {semana7.map((d) => (
-                <div
-                  key={d.iso}
-                  className={'border p-2 text-center ' + (d.iso === hoyIso ? 'border-ink' : 'border-border')}
-                >
-                  <div className="label-caps">{d.dia}</div>
-                  <div className="metric text-base">{d.num}</div>
-                  {d.marcas ? (
-                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
-                      M
-                    </span>
-                  ) : d.entreno ? (
-                    <span className="mx-auto mt-1 inline-block border border-ink bg-accent px-1 label-status text-on-accent" aria-hidden="true">
-                      ✓
-                    </span>
-                  ) : (
-                    <span className="mx-auto mt-1 inline-block h-2 w-2 bg-secondary dark:bg-border" aria-hidden="true" />
-                  )}
-                  <span className="sr-only">
-                    {d.iso === hoyIso ? 'hoy, ' : ''}
-                    {d.marcas ? 'toma de marcas' : d.entreno ? 'entrenado' : 'sin entrenar'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-2">
-          <span className="label-caps text-foreground">Entrenamiento</span>
+      <section aria-label="Programas">
+        <div className="franja border-border">
+          <span className="label-caps text-foreground">Programas</span>
           <label className="flex min-h-11 items-center gap-2 label-caps text-muted-foreground">
-            <input type="checkbox" className="h-4 w-4 accent-foreground" aria-label="Incluir calentamiento" checked={warmup} onChange={toggleWarmup} />
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-foreground"
+              aria-label="Incluir calentamiento"
+              checked={warmup}
+              onChange={toggleWarmup}
+            />
             calentamiento
           </label>
         </div>
-        <div className="p-4 space-y-3">
-          {warmup && warmupRoutine && (
-            <div className="flex items-center justify-between gap-3 border border-border bg-secondary p-3">
-              <div className="min-w-0">
-                <p className="font-medium truncate">{warmupRoutine.model.name}</p>
-                <p className="label-caps text-muted-foreground">
-                  {warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento
-                </p>
-              </div>
-              <Button variant="outline" size="lg" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>
-                Iniciar rutina
-              </Button>
-            </div>
-          )}
-          {startedPrograms.length > 0 ? (
-            <ul className="space-y-2">
-              {startedPrograms.map((p, index) => (
-                <li key={p.prog.id}>
-                  <div className="flex items-center justify-between gap-3 border border-border bg-card p-3">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{p.prog.name}</p>
-                      <p className="label-caps text-muted-foreground">
-                        <span className="metric text-foreground">{p.completedModels}</span>/{p.totalModels}{' '}
-                        {pluralForm(p.totalModels, 'rutina', 'rutinas')} ·{' '}
-                        <span className="metric text-foreground">{p.sessions}</span>{' '}
-                        {pluralForm(p.sessions, 'sesión', 'sesiones')}
-                      </p>
-                      {p.best && (
-                        <p className="mt-1 flex items-baseline gap-1.5">
-                          <span className="label-caps text-muted-foreground">mejor marca</span>
-                          <span className="metric text-foreground">{p.best.value}</span>
-                          <span className="label-caps text-muted-foreground">{p.best.unit}</span>
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant={index === 0 ? 'accent' : 'outline'}
-                      size="lg"
-                      onClick={() => navigate(`/program/${p.prog.id}`)}
-                    >
-                      Abrir programa
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Todavía no registraste entrenamientos. Elegí un programa para empezar.
-              </p>
-              <Button variant="accent" size="lg" onClick={() => navigate('/planes')}>
-                Ver programas
-              </Button>
-            </div>
-          )}
-          {warmup && !warmupRoutine && startedPrograms.length > 0 && (
-            <p className="text-sm text-muted-foreground">Etiquetá una rutina con "calentamiento" para verla acá.</p>
-          )}
-        </div>
-      </Card>
 
-      <Card>
-        <div className="border-b border-border px-4 py-2 flex items-center justify-between">
+        {warmup && warmupRoutine && (
+          <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-semibold">{warmupRoutine.model.name}</p>
+              <p className="label-caps text-muted-foreground">
+                {warmupRoutine.prog.name} · {warmupRoutine.model.totalTimeMin} min · calentamiento
+              </p>
+            </div>
+            <Button variant="outline" size="lg" onClick={() => navigate(`/routine/${warmupRoutine.model.id}`)}>
+              Iniciar rutina
+            </Button>
+          </div>
+        )}
+
+        {startedPrograms.length > 0 ? (
+          startedPrograms.map((p) => (
+            <button
+              key={p.prog.id}
+              type="button"
+              className="fila"
+              onClick={() => navigate(`/program/${p.prog.id}`)}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block font-heading text-sm font-bold leading-tight tracking-tight text-foreground">
+                  {p.prog.name}
+                </span>
+                <span className="label-caps mt-1 block text-muted-foreground">
+                  <span className="metric text-foreground">{p.completedModels}</span>/{p.totalModels}{' '}
+                  {pluralForm(p.totalModels, 'rutina', 'rutinas')} ·{' '}
+                  <span className="metric text-foreground">{p.sessions}</span>{' '}
+                  {pluralForm(p.sessions, 'sesión', 'sesiones')}
+                  {p.best ? (
+                    <>
+                      {' · '}mejor <span className="metric text-foreground">{p.best.value}</span>{' '}
+                      {p.best.unit}
+                    </>
+                  ) : null}
+                </span>
+              </span>
+              <span aria-hidden="true" className="flecha">
+                →
+              </span>
+            </button>
+          ))
+        ) : (
+          <div className="space-y-3 px-6 py-4">
+            <p className="text-sm text-muted-foreground">Elegí un programa de los planes para arrancar.</p>
+            <Button variant="accent" size="lg" onClick={() => navigate('/planes')}>
+              Ver programas
+            </Button>
+          </div>
+        )}
+        {warmup && !warmupRoutine && startedPrograms.length > 0 && (
+          <p className="px-6 py-3 text-sm text-muted-foreground">
+            Etiquetá una rutina con "calentamiento" para verla acá.
+          </p>
+        )}
+      </section>
+
+      <section aria-label="Últimos entrenamientos">
+        <div className="franja border-border">
           <span className="label-caps text-foreground">Últimos entrenamientos</span>
           <span className="text-sm text-muted-foreground">
             <span className="metric text-foreground">{ultimas.length}</span> de 5
           </span>
         </div>
-        <div className="p-4">
-          {ultimas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todavía no registraste entrenamientos.</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {ultimas.map((h) => {
-                const it = info.get(h.sesion_id);
-                return (
-                  <li key={h.k}>
-                    <button
-                      type="button"
-                      disabled={!it}
-                      onClick={() => it && navigate(`/routine/${it.model.id}`)}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left hover:bg-secondary disabled:opacity-60"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-foreground">
-                          {it ? it.model.name : h.sesion_id}
-                        </span>
-                        <span className="label-caps text-muted-foreground">
-                          {it && `${it.prog.name} · `}
-                          <span className="metric text-foreground">{h.sesiones}</span>{' '}
-                          {pluralForm(h.sesiones, 'sesión', 'sesiones')}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className="label-status tabular text-muted-foreground">{formatDayMonth(h.fecha)}</span>
-                        {it && (
-                          <span className="label-caps text-foreground" aria-hidden="true">
-                            →
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </Card>
+        {ultimas.length === 0 ? (
+          <p className="px-6 py-4 text-sm text-muted-foreground">Todavía no registraste entrenamientos.</p>
+        ) : (
+          ultimas.map((h) => {
+            const it = info.get(h.sesion_id);
+            return (
+              <button
+                key={h.k}
+                type="button"
+                disabled={!it}
+                onClick={() => it && navigate(`/routine/${it.model.id}`)}
+                className="fila disabled:opacity-60"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-foreground">
+                    {it ? it.model.name : h.sesion_id}
+                  </span>
+                  <span className="label-caps mt-1 block text-muted-foreground">
+                    {it && `${it.prog.name} · `}
+                    <span className="metric text-foreground">{h.sesiones}</span>{' '}
+                    {pluralForm(h.sesiones, 'sesión', 'sesiones')}
+                  </span>
+                </span>
+                <span className="label-status tabular shrink-0 text-muted-foreground">{formatDayMonth(h.fecha)}</span>
+                <span aria-hidden="true" className="flecha">
+                  →
+                </span>
+              </button>
+            );
+          })
+        )}
+      </section>
     </div>
   );
 }

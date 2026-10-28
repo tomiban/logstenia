@@ -96,6 +96,17 @@ body {
   --color-on-ink: var(--on-ink);
   --color-muted-surface: var(--muted-surface);
   --radius: 0px;
+
+  /* Motion language. The board acknowledges; it does not perform. Feedback lands in one tap,
+     state changes are quick, and the single authored beat is reserved for a moment the surface
+     earned. The durations are the only ones the system uses, so no view invents its own. */
+  --ease-beat: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-tap: 120ms;
+  --dur-state: 200ms;
+  --dur-move: 320ms;
+  --dur-beat: 520ms;
+  --default-transition-duration: var(--dur-state);
+  --default-transition-timing-function: var(--ease-beat);
 }
 
 .dark {
@@ -182,6 +193,251 @@ input[type="range"]:disabled {
   }
   .metric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.05em; }
   .label-caps { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-  .label-status { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .label-status { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .rule { border-bottom: 1px solid var(--border); }
+}
+
+/* Browser surfaces carry the system too. Selection, caret, scrollbars, focus and underline
+   offsets ship with platform defaults that belong to no design system; these come from the
+   palette, which is the cheapest signal that a page was built rather than assembled. */
+::selection { background: var(--ink); color: var(--on-ink); }
+:root { caret-color: var(--ink); }
+html { scrollbar-color: var(--hairline) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+:focus-visible { outline-offset: 2px; }
+/* One focus language: the links shipped the platform's 1px auto outline while buttons carried a
+   2px ring, so the same keyboard user met two indicators. */
+a:focus-visible { outline: 2px solid var(--ring); }
+a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+
+/* The one authored beat. Use it for a state change worth noticing, never as an entrance on every
+   section: routine transitions use the default duration and timing above. */
+@keyframes beat {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.beat { animation: beat var(--dur-beat) var(--ease-beat) both; }
+
+/* The board changes plate. The runner's timed sequence arrives by wiping its plate into place, and
+   the digits land on it as they tick: a timing board flips and counts, it does not fade. */
+@keyframes plate-in {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes digit-in {
+  from { opacity: 0; transform: translateY(0.18em); }
+  to { opacity: 1; transform: none; }
+}
+.plate-in { animation: plate-in var(--dur-move) var(--ease-beat) both; }
+/* The rest ring reports the seconds left; it is a countdown, not a spinner. */
+.rest-ring { transition: stroke-dashoffset 1s linear; }
+.digit-in { animation: digit-in var(--dur-tap) var(--ease-beat) both; }
+
+/* Reduced motion means fewer and gentler animations, not none: the beat keeps its opacity change
+   and drops the travel, and the skeletons stop pulsing while keeping their shape. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-move: 160ms; --dur-beat: 160ms; }
+  .beat { animation-name: beat-still; }
+  .plate-in { animation-name: plate-fade; }
+  .rest-ring { transition: none; }
+  .digit-in { animation-name: beat-still; }
+  @keyframes plate-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-pulse { animation: none; }
+  @keyframes beat-still {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* --- Señalética del día: banda de destino, puerta, fila y acción al borde --- */
+@layer components {
+  .banda {
+    --banda-fg: var(--background);
+    --banda-mute: color-mix(in oklab, var(--background) 70%, var(--ink));
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--ink);
+    color: var(--banda-fg);
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+  .dark .banda {
+    --banda-fg: #f8f9fa;
+    --banda-mute: #b9b9b9;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .banda-kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--banda-mute);
+  }
+  .banda-titulo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 10vw, 3.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    margin-top: 0.5rem;
+  }
+  .banda-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 0.75rem;
+  }
+  .banda-flecha {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 9vw, 3.25rem);
+    line-height: 0.7;
+    color: var(--banda-mute);
+    flex: none;
+  }
+  .accion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 64px;
+    padding: 0 1.5rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-bottom: 1px solid var(--ink);
+    text-align: left;
+    transition:
+      background-color var(--dur-state) var(--ease-beat),
+      color var(--dur-state) var(--ease-beat);
+  }
+  .accion:hover {
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+  .accion-titulo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.03em;
+  }
+  .accion-primaria {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    min-height: 44px;
+    align-items: center;
+  }
+  .accion-borde-alto {
+    border-bottom: 0;
+    border-top: 1px solid var(--ink);
+  }
+  .banda-salir {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--banda-mute);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    min-height: 44px;
+    padding-inline: 0.25rem;
+  }
+  .banda-salir:hover {
+    color: var(--banda-fg);
+  }
+  .serie-antes {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+  }
+  .accion-secundaria {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .accion-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .franja {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--ink);
+    padding: 0.625rem 1.5rem;
+  }
+  .fila {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 56px;
+    padding: 0.875rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    text-align: left;
+    transition: background-color var(--dur-state) var(--ease-beat);
+  }
+  .fila:hover {
+    background: var(--secondary);
+  }
+  .puerta {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.25rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+    width: 2rem;
+    flex: none;
+  }
+  .flecha {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.125rem;
+    line-height: 1;
+    flex: none;
+  }
+}
+
+/* Tier del ejercicio en la banda: los nombres del plan llegan a 50 caracteres. */
+@layer components {
+  .banda-titulo-ejercicio {
+    font-size: clamp(2rem, 9vw, 2.75rem);
+    line-height: 1;
+    max-width: 18ch;
+  }
+  .accion-pie {
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    border-bottom: 0;
+    border-top: 1px solid var(--ink);
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }

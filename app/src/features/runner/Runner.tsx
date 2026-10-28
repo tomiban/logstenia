@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +21,10 @@ type ExerciseStepProps = {
   setValues: (next: SetValue[]) => void;
   marks: Record<string, Mark>;
   blocked: boolean;
+  /** The screen band already names this exercise, so the step does not repeat its header. */
+  encabezado?: boolean;
+  /** Last time's values for this exercise, indexed by set number. */
+  history?: number[];
 };
 
 /** Ceiling for a hold the plan does not time ("mantenimiento máx."). */
@@ -36,6 +39,8 @@ function ExerciseStep({
   setValues,
   marks,
   blocked,
+  encabezado = true,
+  history,
 }: ExerciseStepProps) {
   const exercise = step.exercise;
   const list = values;
@@ -70,32 +75,34 @@ function ExerciseStep({
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <div>
-        <div className="flex items-center gap-2">
-          <span className="label-caps">Bloque {step.blockIdx + 1}</span>
-          <Badge variant="outline" className="label-status border-border text-muted-foreground">{BLOCK_TYPE_LABEL[step.block.type]}</Badge>
+    <div className="space-y-5">
+      {encabezado && (
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="label-caps">Bloque {step.blockIdx + 1}</span>
+            <Badge variant="outline" className="label-status border-border text-muted-foreground">{BLOCK_TYPE_LABEL[step.block.type]}</Badge>
+          </div>
+          <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+            <div>
+              <dt className="label-caps text-muted-foreground">Objetivo</dt>
+              <dd className="metric text-base text-foreground">{objetivo}</dd>
+            </div>
+            <div>
+              <dt className="label-caps text-muted-foreground">Series</dt>
+              <dd className="metric text-base text-foreground">{setCount}</dd>
+            </div>
+            <div>
+              <dt className="label-caps text-muted-foreground">Descanso</dt>
+              <dd className="metric text-base text-foreground">{restLabel(step.restAfterSetSec)}</dd>
+            </div>
+            <div>
+              <dt className="label-caps text-muted-foreground">Descanso final</dt>
+              <dd className="metric text-base text-foreground">{restLabel(step.restAfterExerciseSec)}</dd>
+            </div>
+          </dl>
         </div>
-        <h2 className="mt-1 font-heading text-2xl font-bold leading-tight">{exercise.name}</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-          <div>
-            <dt className="label-caps text-muted-foreground">Objetivo</dt>
-            <dd className="metric text-base text-foreground">{objetivo}</dd>
-          </div>
-          <div>
-            <dt className="label-caps text-muted-foreground">Series</dt>
-            <dd className="metric text-base text-foreground">{setCount}</dd>
-          </div>
-          <div>
-            <dt className="label-caps text-muted-foreground">Descanso</dt>
-            <dd className="metric text-base text-foreground">{restLabel(step.restAfterSetSec)}</dd>
-          </div>
-          <div>
-            <dt className="label-caps text-muted-foreground">Descanso final</dt>
-            <dd className="metric text-base text-foreground">{restLabel(step.restAfterExerciseSec)}</dd>
-          </div>
-        </dl>
-      </div>
+      )}
 
       {isTimed && (
         <Cronometro modo="crono" objetivo={exercise.timeSec} onUsar={(s: number) => {
@@ -131,7 +138,10 @@ function ExerciseStep({
                     className={'h-11 w-full ' + (!enabled || blocked || (alreadyRegistered(i) && !editing.has(i)) ? 'pointer-events-none opacity-40' : '')}
                     value={v.value || ''} onChange={(e) => writeValue(i, e.target.value)} placeholder="reps" />
                 )}
-                <span className="metric text-right text-foreground">{isTimed ? `${clampSeconds(v.value, maxSeconds)}s` : ''}</span>
+                <span className="flex items-center justify-end gap-2">
+                  {history?.[i] != null && <span className="serie-antes">antes {history[i]}</span>}
+                  <span className="metric text-right text-foreground">{isTimed ? `${clampSeconds(v.value, maxSeconds)}s` : ''}</span>
+                </span>
               </div>
               {(enabled && v.value) || mark ? (
                 <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
@@ -269,12 +279,24 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
   })();
 
   return (
-    <Card>
-      <div className="border-b border-border px-4 py-2 flex items-center justify-between">
-        <span className="label-caps text-foreground">Entrenamiento terminado · {rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'}</span>
-        <Button variant="ghost" size="sm" onClick={onBack}>volver</Button>
-      </div>
-      <CardContent className="space-y-3">
+    <div className="-mx-6 -mt-6">
+      <header className="banda">
+        <div className="min-w-0">
+          <p className="banda-kicker">Entrenamiento terminado</p>
+          <h1 className="banda-titulo banda-titulo-ejercicio">Sesión cerrada</h1>
+          <p className="banda-sub flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="whitespace-nowrap">
+              {rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="whitespace-nowrap">guardado en este navegador</span>
+          </p>
+        </div>
+        <span aria-hidden="true" className="banda-flecha">
+          →
+        </span>
+      </header>
+      <div className="space-y-3 px-6 py-5">
         <BloqueNivel progression={progression} />
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">no registraste series en este entrenamiento</p>
@@ -293,9 +315,11 @@ function Fin({ result, onBack, progression, history }: { result: { sets: Session
             </div>
           ))
         )}
-        <p className="label-caps text-muted-foreground">guardado en este navegador</p>
-      </CardContent>
-    </Card>
+        <Button variant="outline" size="lg" className="label-caps" onClick={onBack}>
+          volver
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -305,13 +329,19 @@ export default function Runner() {
 
   /* Dead end: no way forward from here, so every exit state carries the route back to the catalogue. */
   const deadEnd = (title: string, detail: string) => (
-    <Card>
-      <CardContent className="space-y-3">
-        <p className="font-heading text-xl font-bold text-foreground">{title}</p>
+    <div className="-mx-6 -mt-6">
+      <header className="banda">
+        <div className="min-w-0">
+          <p className="banda-kicker">Sesión</p>
+          <h1 className="banda-titulo banda-titulo-ejercicio">{title}</h1>
+        </div>
+        <span aria-hidden="true" className="banda-flecha">→</span>
+      </header>
+      <div className="space-y-3 px-6 py-5">
         <p className="text-sm text-muted-foreground">{detail}</p>
-        <Button variant="outline" size="lg" className="label-caps" onClick={() => navigate('/planes')}>Ir a planes</Button>
-      </CardContent>
-    </Card>
+        <Button variant="accent" size="lg" className="label-caps" onClick={() => navigate('/planes')}>Ir a planes</Button>
+      </div>
+    </div>
   );
 
   if (!r.res || !r.model || !r.program) {
@@ -322,16 +352,28 @@ export default function Runner() {
   if (n === 0) return deadEnd('Esta rutina no tiene ejercicios', 'No pudimos extraer los ejercicios de esta rutina.');
 
   if (r.restUntil != null && !r.finished) return (
-    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
+    <div role="dialog" aria-modal="true" aria-label="Descanso en curso" className="plate-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-on-accent text-accent">
       <span className="label-caps opacity-70">{r.restLabel}</span>
       <div className="relative flex h-64 w-64 items-center justify-center">
-        <div className="absolute inset-0 animate-spin rounded-full! border-4 border-transparent border-t-accent border-r-accent/50" />
-        <span className="metric tabular text-8xl">{String(r.restRemaining).padStart(2, '0')}</span>
+        <svg viewBox="0 0 256 256" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+          <circle cx="128" cy="128" r="120" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="3" />
+          <circle
+            cx="128"
+            cy="128"
+            r="120"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray={2 * Math.PI * 120}
+            strokeDashoffset={2 * Math.PI * 120 * (1 - Math.min(1, Math.max(0, r.restRemaining / Math.max(1, r.restSeconds))))}
+            className="rest-ring"
+          />
+        </svg>
+        <span key={r.restRemaining} className="digit-in metric tabular text-8xl">{String(r.restRemaining).padStart(2, '0')}</span>
       </div>
       <p className="label-caps opacity-70">descanso configurado: {r.restSeconds}s</p>
       <div className="flex items-center gap-4">
         <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h - 10000 : null))}>-10s</Button>
-        <p className="label-caps opacity-70">descansando</p>
         <Button variant="outline" size="lg" className="label-caps border-accent text-accent" onClick={() => r.setRestUntil((h) => (h ? h + 10000 : null))}>+10s</Button>
       </div>
       <Button variant="accent" size="lg" className="label-caps" onClick={r.skipRest}>saltar descanso</Button>
@@ -346,7 +388,7 @@ export default function Runner() {
           {r.errorMessage}
         </p>
       ) : null}
-      <Fin result={{ sets: r.allSets }} onBack={() => r.setFinished(false)} progression={r.progression} history={r.history} />
+      <Fin result={{ sets: r.allSets }} onBack={() => navigate('/')} progression={r.progression} history={r.history} />
     </>
   );
 
@@ -356,14 +398,63 @@ export default function Runner() {
   const exerciseKey = r.exerciseKey;
   const exerciseValues = r.exerciseValues;
 
+  const soloUnEjercicio = current.exercises.length === 1;
+  const primero = current.exercises[0];
+  const objetivoDelPaso = soloUnEjercicio
+    ? primero.timeSec
+      ? `${primero.timeSec} seg`
+      : primero.reps
+        ? `${primero.reps} reps`
+        : 'mantenimiento máx.'
+    : `${current.exercises.length} ejercicios`;
+  const titulo = soloUnEjercicio ? primero.name : `Bloque ${current.blockIdx + 1}`;
+  const seriesDelPaso = current.exercises.reduce((acc, _ex, i) => acc + exerciseValues(i).length, 0);
+  const proximo = r.steps[idx + 1];
+  const marcaAnterior = soloUnEjercicio ? r.history[primero.name] : undefined;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-28">
+    <div className="-mx-6 -mt-6 flex min-h-[calc(100dvh-3.5rem)] flex-col">
+      <header className="banda">
+        <div className="min-w-0">
+          <p className="banda-kicker">
+            Bloque {current.blockIdx + 1} · {BLOCK_TYPE_LABEL[current.block.type]}
+          </p>
+          <h1 className="banda-titulo banda-titulo-ejercicio">{titulo}</h1>
+          <p className="banda-sub flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="whitespace-nowrap">{objetivoDelPaso}</span>
+            <span aria-hidden="true">·</span>
+            <span className="whitespace-nowrap">{seriesDelPaso} series</span>
+            <span aria-hidden="true">·</span>
+            <span className="whitespace-nowrap">descanso {restLabel(current.restAfterSetSec)}</span>
+            {marcaAnterior && marcaAnterior.length > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">última vez {marcaAnterior.join(' · ')}</span>
+              </>
+            )}
+          </p>
+        </div>
+        <button type="button" className="banda-salir" onClick={() => navigate('/')}>
+          Salir
+        </button>
+      </header>
+
       <div className="h-1 w-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={n} aria-valuenow={idx + 1}>
         <div className="h-full bg-ink dark:bg-foreground" style={{ width: `${((idx + 1) / n) * 100}%` }} />
       </div>
 
-      <Card>
-        <CardContent className="space-y-6">
+      <div className="franja border-border">
+        <span className="label-caps text-foreground">
+          Paso {idx + 1} de {n}
+        </span>
+        <span className="label-caps text-muted-foreground">
+          {r.unregistered > 0
+            ? `faltan ${r.unregistered} ${pluralForm(r.unregistered, 'serie', 'series')}`
+            : 'sin series pendientes'}
+        </span>
+      </div>
+
+      <section key={`${current.blockIdx}-${idx}`} className="plate-in space-y-6 px-6 py-5">
           {current.exercises.map((ex, ei) => {
             const exStep = {
               blockIdx: current.blockIdx,
@@ -387,11 +478,25 @@ export default function Runner() {
                 setValues={(next: SetValue[]) => r.setValues((v) => ({ ...v, [key]: next }))}
                 marks={r.marks}
                 blocked={r.restUntil != null}
+                encabezado={!soloUnEjercicio}
+                history={r.history[ex.name]}
               />
             );
           })}
-        </CardContent>
-      </Card>
+      </section>
+
+      {proximo && (
+        <button type="button" className="fila mt-auto" onClick={r.nextStep} disabled={r.restUntil != null}>
+          <span className="label-caps shrink-0 text-muted-foreground">Después</span>
+          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+            {proximo.exercises.map((e) => e.name).join(' ＋ ')}
+          </span>
+          <span className="label-caps shrink-0 text-muted-foreground">B{proximo.blockIdx + 1}</span>
+          <span aria-hidden="true" className="flecha">
+            →
+          </span>
+        </button>
+      )}
 
       {r.skipDialog && (
         <div role="dialog" aria-modal="true" aria-labelledby="modal-omitir-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4">
@@ -411,22 +516,26 @@ export default function Runner() {
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
-        <div className="mx-auto w-full max-w-6xl px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="mx-auto flex max-w-2xl flex-nowrap items-center gap-2">
-            <Button variant="outline" size="lg" className="label-caps shrink-0 px-3" disabled={idx === 0 || r.restUntil != null} onClick={() => r.goTo(idx - 1)}>Anterior</Button>
-            <span className="flex min-w-0 flex-1 items-baseline justify-center gap-1">
-              <span className="metric text-base text-foreground">{idx + 1}</span>
-              <span className="label-caps text-muted-foreground">/ {n}</span>
-              {r.unregistered > 0 && (
-                <span className="label-caps hidden text-muted-foreground sm:inline">
-                  · quedan {r.unregistered} {pluralForm(r.unregistered, 'serie vacía', 'series vacías')}
-                </span>
-              )}
-            </span>
-            <Button variant="accent" size="lg" className="label-caps shrink-0 px-3" disabled={r.restUntil != null} onClick={r.nextStep}>{idx >= n - 1 ? 'Finalizar' : 'Siguiente'}</Button>
-          </div>
-        </div>
+      <div className="accion accion-pie">
+        <button
+          type="button"
+          className="accion-secundaria shrink-0 text-on-accent disabled:opacity-40 disabled:no-underline"
+          disabled={idx === 0 || r.restUntil != null}
+          onClick={() => r.goTo(idx - 1)}
+        >
+          Anterior
+        </button>
+        <button
+          type="button"
+          className="accion-primaria disabled:opacity-40"
+          disabled={r.restUntil != null}
+          onClick={r.nextStep}
+        >
+          <span className="accion-titulo">{idx >= n - 1 ? 'Finalizar' : 'Siguiente'}</span>
+          <span aria-hidden="true" className="flecha text-[24px]">
+            →
+          </span>
+        </button>
       </div>
     </div>
   );
