@@ -321,16 +321,16 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
 - **Row button** (Home, sesiones recientes): `<button>` a ancho completo, `min-h-14`,
   separado por `divide-y`; hover `bg-secondary`. Texto en `text-foreground`, metadatos en
   `label-caps`/`label-status` con `tabular-nums`.
-- **Segmented control** (Metrics, rango de tiempo): grupo `divide-x border border-border`,
+- **Segmented control** (Hoy, planes activos): grupo `divide-x border border-border`,
   cada segmento `label-caps h-11`; activo `bg-primary text-primary-foreground`, inactivo
   `bg-card text-muted-foreground hover:bg-secondary`.
 - **Chip remove** (tags): botón `×` dentro del chip, `opacity-60 hover:opacity-100`, sin
   borde propio.
 - **Timer control** (Runner, descanso): overlay siempre negro con texto lima (en ambos modos)
   `bg-on-accent text-accent`; `Button variant="outline"` con borde/texto lima para ±10s y
-  `Button variant="accent"` para "saltar descanso" (única acción del overlay). Dentro de la sesión,
-  el único accent es el botón de avance de la barra fija: el cronómetro y sus controles de fila van
-  `outline`.
+  `Button variant="accent"` para "saltar descanso" (única acción del overlay). Dentro de la sesión
+  los accents son dos: la barra de progreso del paso (rieles `secondary`, relleno Voltage Lime) y el
+  botón de avance de la barra fija. El cronómetro y sus controles de fila van `outline`.
 
 ### Chips / Badges
 - **Style:** fondo Voltage Lime + texto On Accent (#111) para el dato destacado (PR, énfasis
@@ -361,12 +361,14 @@ Patrones que no usan el componente `Button` pero deben mantenerse consistentes:
   segmentados (borde 1px, divididos por `divide-x`), no como tabs con sombra.
 - **Default:** fondo blanco, texto muted. **Activa:** relleno Ink, texto Voltage Lime. Sin
   subrayados ni píldoras.
+- **Alcance:** dos destinos (Hoy, Planes) en la barra superior desde `md`; en mobile no hay barra
+  inferior: la marca del header es el link a Hoy y cada pantalla se entra desde la anterior
+  (Hoy → Planes, Hoy → Métricas). Si aparecen más destinos, vuelve la barra inferior.
 - **Ajustes:** el disparador del header es un control fantasma compacto (glifo + el nombre del
   perfil en `label-caps`, caja táctil de 44px). No es un botón delineado: el header no compite con
   el CTA de la pantalla.
-- **Sesión guiada (`/run`):** la nav inferior se oculta. El runner trae su propia barra de control
-  fija (`fixed bottom-0 z-40`) con el único accent de la vista; dos barras fijas en 390px se tapan
-  entre sí.
+- **Sesión guiada (`/run`):** sin nav de la app a la vista. El runner trae su propia barra de control
+  fija (`fixed bottom-0 z-40`) con el único accent de la vista.
 
 ### Signature: Telemetry readouts
 Los pares label/número que definen el sistema: `.label-caps` arriba, `.metric` abajo, alineados
@@ -458,7 +460,7 @@ La gramática compartida por `/` y `/run/:id`: el destino se anuncia, no se elig
   quedar en el primer viewport.
 - **Acción** (`.accion`): franja `--accent` con `--on-accent`, título Space Grotesk 700 y metadatos
   mono. En `/` va pegada a la banda y arranca la sesión; en `/run` es `.accion-pie`, fija al pie
-  (la ruta es inmersiva: no hay nav inferior que compita).
+  (la ruta es inmersiva: el pie fijo es el único control de la pantalla).
 - **Franja** (`.franja`): hairline con dos lecturas mono (`bloque 1 de 5` · `nada registrado hoy`).
 - **El borde de la banda en la sesión lo ocupa `Salir`** (`.banda-salir`): en `/run` la flecha
   decorativa no tenía destino y la sesión no ofrecía salida; la acción de avance vive en la barra del
