@@ -80,6 +80,19 @@ describe('destinoDeHoy', () => {
     expect(destino?.nuevo).toBe(false);
   });
 
+  it('con varios planes empezados y sin historial gana el último empezado', () => {
+    const dos = [...catalogo, programa('b', [modelo('b1', 'Modelo B1'), modelo('b2', 'Modelo B2')])];
+    expect(destinoDeHoy(dos, [], '2026-10-28', ['a', 'b'])?.prog.id).toBe('b');
+    expect(destinoDeHoy(dos, [], '2026-10-28', ['a', 'b'])?.model.id).toBe('b1');
+    expect(destinoDeHoy(dos, [], '2026-10-28', ['b', 'a'])?.prog.id).toBe('a');
+  });
+
+  it('el historial manda aunque el otro plan se haya empezado después', () => {
+    const dos = [...catalogo, programa('b', [modelo('b1', 'Modelo B1')])];
+    const sesiones = [sesion('a', 'a1', '2026-10-27')];
+    expect(destinoDeHoy(dos, sesiones, '2026-10-28', ['a', 'b'])?.prog.id).toBe('a');
+  });
+
   it('saltea un plan empezado que ya no existe o no tiene rutinas', () => {
     const conVacio = [
       ...catalogo,

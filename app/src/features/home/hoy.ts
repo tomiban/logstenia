@@ -11,9 +11,10 @@ export interface DestinoHoy {
 }
 
 /**
- * Qué rutina toca hoy: la siguiente del programa entrenado más recientemente, ciclando. Una
- * sesión ya completada hoy fija ese modelo (se puede repetir); una abandonada no adelanta el
- * programa. Sin sesiones completadas no hay destino que inventar.
+ * What to train today, in precedence order: the session already completed today (it can be
+ * repeated), else the next routine of the most recently trained plan, else the first routine of
+ * the most recently started plan. With neither history nor a started plan there is no destination
+ * to invent.
  */
 export function destinoDeHoy(
   cats: Category[],
@@ -45,8 +46,10 @@ export function destinoDeHoy(
     }
   }
 
-  /* A started plan with no sessions yet still answers "what do I train today": its first routine. */
-  for (const planId of startedPlanIds) {
+  /* A started plan with no sessions yet still answers "what do I train today": its first routine.
+     With several started and no history, the most recently started one wins — that is the choice
+     the athlete just made. */
+  for (const planId of [...startedPlanIds].reverse()) {
     const prog = programas.find((p) => p.id === planId);
     if (!prog || prog.models.length === 0) continue;
     return { prog, model: prog.models[0], hoyCompletada: false, nuevo: true };

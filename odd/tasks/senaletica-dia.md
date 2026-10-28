@@ -164,3 +164,11 @@ manda el historial; si no, el plan empezado resuelve su primera rutina con `nuev
 hay plan empezado, la banda invita (`Elegí tu plan` · `7 categorías · 16 programas`) con la acción
 `Elegir programa` en el borde, en lugar de declarar una ausencia sin salida. Tres casos nuevos en
 `hoy.test.ts` (394 tests). Verificado en navegador: vacío y plan-empezado-sin-sesiones.
+
+L16. Varios planes empezados (pregunta del atleta). La regla devolvía el **primero** de la lista, que
+por orden de alta es el más viejo, y no había señal de que hubiera más de uno activo. Ahora la
+precedencia es explícita: (1) la sesión ya completada hoy, (2) el plan entrenado más recientemente, con
+su rutina siguiente, (3) el **último** plan empezado, con su primera rutina. Los demás siguen
+alcanzables en *Programas*, y el encabezado dice cuántos están activos (`2 activos`). Dos casos nuevos
+en `hoy.test.ts` (396 tests); verificado en navegador con `handstand-principiante` + `fuerza-intermedios`:
+la banda anuncia `Modelo B1 · Fuerza Intermedia` y las dos filas quedan en Programas.

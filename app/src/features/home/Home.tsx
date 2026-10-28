@@ -394,7 +394,12 @@ export default function Home() {
 
       <section aria-label="Programas">
         <div className="franja border-border">
-          <span className="label-caps text-foreground">Programas</span>
+          <span className="label-caps text-foreground">
+            Programas
+            {startedPrograms.length > 1 && (
+              <span className="ml-2 text-muted-foreground">{startedPrograms.length} activos</span>
+            )}
+          </span>
           <label className="flex min-h-11 items-center gap-2 label-caps text-muted-foreground">
             <input
               type="checkbox"
