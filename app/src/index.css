@@ -338,6 +338,10 @@ a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
     min-height: 44px;
     align-items: center;
   }
+  .accion-borde-alto {
+    border-bottom: 0;
+    border-top: 1px solid var(--ink);
+  }
   .banda-salir {
     flex: none;
     font-family: var(--font-mono);

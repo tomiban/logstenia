@@ -862,12 +862,18 @@ export default function Routine() {
       )}
 
       {showStartBar && (
-        <div className="fixed inset-x-0 bottom-[57px] z-40 border-t border-border bg-background md:bottom-0">
-          <div className="mx-auto w-full max-w-6xl px-6 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-2">
-            <Link to={`/run/${model.id}`} className={cn(buttonVariants({ variant: 'accent', size: 'lg' }), 'w-full')}>
-              Iniciar rutina
-            </Link>
-          </div>
+        <div className="fixed inset-x-0 bottom-[57px] z-40 md:bottom-0">
+          <Link
+            to={`/run/${model.id}`}
+            className="accion accion-borde-alto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          >
+            <span className="accion-titulo">Iniciar rutina</span>
+            <span className="accion-meta">
+              {model.blocks.length} {model.blocks.length === 1 ? 'bloque' : 'bloques'} ·{' '}
+              {model.blocks.reduce((acc, b) => acc + (b.sets || 0), 0)} series{' '}
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
         </div>
       )}
     </div>

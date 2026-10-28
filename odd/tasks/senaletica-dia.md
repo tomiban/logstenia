@@ -112,7 +112,7 @@ critique.
 | D7 | Acción `Siguiente` de la barra a ≥44px de alto (medido 131×36) | critique P2 · detector | inline |
 | D8 | `totalTimeMin` saneado o no exhibido (dice 8 min donde la dosis implica ~15) | critique P2-6 | inline |
 | D9 | Mesociclo fuera del primer viewport (revelado, no en medio del entrenamiento) | critique P2-7 | inline |
-| D10 | Acción principal de las cinco vistas con la anatomía de `.accion` en línea | contrato §4 | **pendiente** |
+| D10 | La acción principal con anatomía de `.accion`: hecha en `/routine/:id` (el choque que nombró el critique); `/planes`, `/program`, `/metrics`, `/skill` siguen con `Button` accent | contrato §4 | **parcial** |
 | D11 | Un solo indicador de foco (anillo de 2px) también en enlaces | critique menores | inline |
 | D12 | El cierre de sesión no corona un conteo | critique journey | inline |
 
@@ -130,3 +130,10 @@ botones llevaban anillo de 2px; ahora comparten `a:focus-visible { outline: 2px 
 L11. D10 sigue abierto: llevar la anatomía de `.accion` en línea a las cinco superficies de ficha.
 Es la única deuda del contrato y la que más reescribe de T2-T7, así que va por ola con un commit por
 vista.
+
+L12. D10 parcial, sobre el corte que el critique nombró como el peor: `/routine/:id` ya no tiene una
+barra lima con etiqueta centrada sino la anatomía de la acción (`Iniciar rutina` · `5 bloques · 15
+series` · flecha al borde), así que las dos pantallas contiguas comparten intención y forma. Verificado
+en navegador: fondo `rgb(204,255,0)`, alto 64px, es un `<a>` real. Quedan `/planes`, `/program`,
+`/metrics` y `/skill` con el `Button` accent de cabecera: sus acciones primarias no viven en una barra
+fija, así que el choque visual no existe ahí y se pueden portar de a una sin prisa.
